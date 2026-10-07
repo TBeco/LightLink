@@ -1,19 +1,151 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/black"
+
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+
+    <!-- 상단 메뉴 버튼 -->
+    <!-- 48dp 터치 영역 안에 24dp 메뉴 아이콘을 표시 -->
+    <ImageButton
+        android:id="@+id/buttonMenu"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+
+        android:padding="12dp"
+
+        android:background="?attr/selectableItemBackgroundBorderless"
+
+        android:contentDescription="Menu"
+
+        app:srcCompat="@drawable/ic_menu"
+
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+
+    <!-- 앱 이름 LightLink -->
+    <TextView
+        android:id="@+id/textTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:text="@string/app_name"
+        android:textColor="@color/white"
+        android:textSize="30sp"
+        android:textStyle="bold"
+
+        android:layout_marginStart="10dp"
+
+        app:layout_constraintStart_toEndOf="@id/buttonMenu"
+        app:layout_constraintTop_toTopOf="@id/buttonMenu"
+        app:layout_constraintBottom_toBottomOf="@id/buttonMenu" />
+
+
+    <!-- 구분선 -->
+    <View
+        android:id="@+id/topDivider"
+        android:layout_width="0dp"
+        android:layout_height="2dp"
+
+        android:background="#1E1C20"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/buttonMenu" />
+
+
+    <!-- 등록된 Base Station 영역 제목 -->
+    <TextView
+        android:id="@+id/textStationHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="20dp"
+
+        android:text="Test"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/topDivider" />
+
+
+    <!--
+        나중에 Base Station 여러 개를 표시할 목록.
+        RecyclerView를 사용할 예정.
+    -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerBaseStations"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textStationHeader"
+        app:layout_constraintBottom_toTopOf="@id/buttonScan"
+
+        tools:listitem="@layout/item_ble_device" />
+
+
+    <!-- Base Station이 하나도 없을 때 보여줄 문구 -->
+    <TextView
+        android:id="@+id/textEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:text="검색 결과 없음(예시)"
+        android:textColor="#AAAAAA"
+        android:textSize="15sp"
+
+        app:layout_constraintStart_toStartOf="@id/recyclerBaseStations"
+        app:layout_constraintEnd_toEndOf="@id/recyclerBaseStations"
+        app:layout_constraintTop_toTopOf="@id/recyclerBaseStations"
+        app:layout_constraintBottom_toBottomOf="@id/recyclerBaseStations" />
+
+
+    <!-- Base Station 검색 버튼 -->
+    <!-- 크기는 내용과 기본 패딩에 맞춰 자동 결정 -->
+    <!-- 배경색은 활성/비활성 상태에 따라 selector에서 변경 -->
+    <!-- 버튼을 누르면 ripple 효과가 표시됨 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonScan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="120dp"
+
+        android:enabled="true"
+
+        android:text="Search"
+
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+
+        app:backgroundTint="@color/button_background_color"
+        app:cornerRadius="15dp"
+        app:rippleColor="#616161"
+
+        android:layout_marginBottom="16dp"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
