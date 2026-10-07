@@ -188,7 +188,20 @@ public class MainActivity extends AppCompatActivity {
     // 현재 연결되어 있는 GATT
     private BluetoothGatt currentGatt;
 
-    private BaseStationGattController powerController;
+    /*
+     * Base Station별 전원 제어 Controller.
+     *
+     * Key   : Base Station MAC 주소
+     * Value : 해당 장치만 담당하는 Controller
+     *
+     * 장치마다 Controller를 따로 두기 때문에
+     * 서로 다른 Base Station의 Wake / Sleep 작업은
+     * 서로 기다리지 않고 독립적으로 진행할 수 있다.
+     *
+     * 검색 결과 개수에는 별도의 제한을 두지 않는다.
+     */
+    private final Map<String, BaseStationGattController> powerControllers =
+            new HashMap<>();
 
 
     /*
@@ -342,15 +355,22 @@ public class MainActivity extends AppCompatActivity {
 
 
                             /*
-                             * Controller가 아직 준비되지 않았거나
-                             * 다른 전원 작업을 처리 중이면 새 명령을 시작하지 않는다.
+                             * 이 Base Station 전용 Controller를 가져온다.
+                             *
+                             * 다른 Base Station은 각자 다른 Controller를 사용하므로
+                             * 서로 독립적으로 Wake / Sleep 작업을 진행할 수 있다.
                              */
-                            if (powerController == null
-                                    || powerController.isBusy()) {
+                            BaseStationGattController controller =
+                                    getPowerController(
+                                            device
+                                    );
+
+
+                            if (controller == null) {
 
                                 Log.d(
                                         TAG,
-                                        "Power command ignored: controller busy or unavailable"
+                                        "Power command ignored: controller unavailable"
                                 );
 
                                 return;
@@ -358,20 +378,29 @@ public class MainActivity extends AppCompatActivity {
 
 
                             /*
-                             * 초기 Power State 조회와 전원 Write가
-                             * 동시에 진행되지 않도록 한다.
+                             * 같은 Base Station에 대해서만
+                             * 중복 전원 명령을 막는다.
                              */
-                            if (scanning
-                                    || readingStatus
-                                    || !statusQueue.isEmpty()) {
+                            if (controller.isBusy()) {
 
                                 Log.d(
                                         TAG,
-                                        "Power command ignored: scan/status read in progress"
+                                        "Power command ignored: this device is already busy"
                                 );
 
                                 return;
                             }
+
+
+                            /*
+                             * 검색이나 다른 Base Station의 초기 상태 조회가
+                             * 진행 중이어도 이 장치의 상태가 Awake / Sleep으로
+                             * 확정되어 있다면 전원 명령을 허용한다.
+                             *
+                             * 같은 장치의 중복 명령은 위의 controller.isBusy()로 막고,
+                             * 아직 상태가 확정되지 않은 장치는 아래의 상태 검사에서
+                             * 자연스럽게 제외된다.
+                             */
 
 
                             /*
@@ -421,6 +450,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 // Sleep 명령
                                 sendPowerCommand(
+                                        controller,
                                         device,
                                         BaseStationGattController.TargetState.SLEEP,
                                         previousStatus
@@ -430,6 +460,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 // Wake 명령
                                 sendPowerCommand(
+                                        controller,
                                         device,
                                         BaseStationGattController.TargetState.AWAKE,
                                         previousStatus
@@ -453,15 +484,6 @@ public class MainActivity extends AppCompatActivity {
 
         bluetoothAdapter =
                 bluetoothManager.getAdapter();
-
-        /*
-         * Base Station 전원 제어 Controller 생성
-         */
-        powerController =
-                new BaseStationGattController(
-                        this,
-                        bluetoothAdapter
-                );
 
         /*
          * 앱 시작 시 Search 버튼 초기 상태 설정
@@ -495,21 +517,22 @@ public class MainActivity extends AppCompatActivity {
      * Base Station 전원 명령 전송
      */
     private void sendPowerCommand(
+            BaseStationGattController controller,
             BleDeviceItem device,
             BaseStationGattController.TargetState target,
             String previousStatus) {
 
 
         /*
-         * 전원 전환 중에는
-         * 새로운 Search를 시작하지 못하게 함.
+         * 여기서 Search 버튼을 무조건 비활성화하지 않는다.
+         *
+         * 검색 중이라면 사용자가 언제든 Stop을 누를 수 있어야 하고,
+         * 검색 중이 아니라면 아래 setPowerState() 호출 뒤
+         * updateScanButton()이 전원 작업 상태를 보고 Search만 잠근다.
          */
-        buttonScan.setEnabled(
-                false
-        );
 
 
-        powerController.setPowerState(
+        controller.setPowerState(
                 device,
                 target,
 
@@ -661,6 +684,16 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
         );
+
+
+        /*
+         * setPowerState()가 Controller의 busy 상태를 설정한 뒤
+         * Search / Stop 버튼 상태를 다시 계산한다.
+         *
+         * - 검색 중    : Stop 버튼을 계속 활성화
+         * - 검색 중 아님: 전원 작업이 끝날 때까지 새 Search만 비활성화
+         */
+        updateScanButton();
     }
 
 
@@ -694,11 +727,111 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
+     * 특정 Base Station 전용 Power Controller를 가져온다.
+     *
+     * 아직 생성되지 않은 장치라면 이 시점에 새로 만든다.
+     * Controller는 MAC 주소별로 하나씩 유지한다.
+     */
+    private BaseStationGattController getPowerController(
+            BleDeviceItem device) {
+
+
+        if (device == null
+                || bluetoothAdapter == null) {
+
+            return null;
+        }
+
+
+        String address =
+                device.getAddress();
+
+
+        BaseStationGattController controller =
+                powerControllers.get(
+                        address
+                );
+
+
+        if (controller == null) {
+
+            controller =
+                    new BaseStationGattController(
+                            this,
+                            bluetoothAdapter
+                    );
+
+
+            powerControllers.put(
+                    address,
+                    controller
+            );
+        }
+
+
+        return controller;
+    }
+
+
+    /*
+     * Base Station 중 하나라도
+     * Wake / Sleep 전환을 처리 중인지 확인한다.
+     *
+     * Search는 전원 전환이 하나라도 진행 중이면
+     * 새로 시작하지 않도록 한다.
+     */
+    private boolean isAnyPowerControllerBusy() {
+
+        for (BaseStationGattController controller
+                : powerControllers.values()) {
+
+            if (controller.isBusy()) {
+
+                return true;
+            }
+        }
+
+
+        return false;
+    }
+
+
+    /*
+     * 현재 생성되어 있는 모든 Power Controller를 정리한다.
+     *
+     * 새 Search를 시작하면 이전 검색 결과를 모두 지우므로
+     * 이전 장치용 Controller도 함께 정리한다.
+     */
+    private void clearPowerControllers() {
+
+        for (BaseStationGattController controller
+                : powerControllers.values()) {
+
+            try {
+
+                controller.close();
+
+            } catch (Exception ignored) {
+            }
+        }
+
+
+        powerControllers.clear();
+    }
+
+
+    /*
      * Search 버튼의 현재 상태를 다시 계산
      */
     private void restoreSearchButton() {
 
-        updateScanButton();
+        /*
+         * Power Controller의 Callback은 메인 스레드가 아닐 수 있으므로
+         * View를 건드리는 updateScanButton()은 항상 UI 스레드에서 실행한다.
+         */
+        runOnUiThread(
+                this::updateScanButton
+        );
     }
 
     /*
@@ -710,8 +843,7 @@ public class MainActivity extends AppCompatActivity {
          * 실제 Wake / Sleep 전환을 확인하는 동안에는
          * 새로운 Scan을 시작하지 않는다.
          */
-        if (powerController != null
-                && powerController.isBusy()) {
+        if (isAnyPowerControllerBusy()) {
 
             Log.d(
                     TAG,
@@ -809,8 +941,7 @@ public class MainActivity extends AppCompatActivity {
          * 권한 요청 화면을 거친 사이 전원 작업이 시작됐을 수도 있으므로
          * 실제 Scan 직전에도 한 번 더 확인한다.
          */
-        if (powerController != null
-                && powerController.isBusy()) {
+        if (isAnyPowerControllerBusy()) {
 
             Log.d(
                     TAG,
@@ -867,6 +998,16 @@ public class MainActivity extends AppCompatActivity {
          * 상태 조회가 있다면 초기화
          */
         resetStatusReads();
+
+
+        /*
+         * 새 Search에서는 이전 검색 결과를 사용하지 않으므로
+         * 이전 장치용 Power Controller도 함께 정리한다.
+         *
+         * 전원 작업 중에는 startBleScan() 진입 자체가 막혀 있으므로
+         * 진행 중인 명령을 여기서 끊는 일은 없다.
+         */
+        clearPowerControllers();
 
 
         /*
@@ -2077,10 +2218,7 @@ public class MainActivity extends AppCompatActivity {
         resetStatusReads();
 
 
-        if (powerController != null) {
-
-            powerController.close();
-        }
+        clearPowerControllers();
 
 
         handler.removeCallbacksAndMessages(
@@ -2140,8 +2278,7 @@ public class MainActivity extends AppCompatActivity {
          * 단순 상태 조회 중에는 다시 검색 가능.
          */
         boolean powerBusy =
-                powerController != null
-                        && powerController.isBusy();
+                isAnyPowerControllerBusy();
 
 
         buttonScan.setEnabled(
