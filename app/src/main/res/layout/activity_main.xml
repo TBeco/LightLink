@@ -120,22 +120,23 @@
 
 
     <!-- Base Station 검색 버튼 -->
-    <!-- 크기는 내용과 기본 패딩에 맞춰 자동 결정 -->
-    <!-- 배경색은 활성/비활성 상태에 따라 selector에서 변경 -->
-    <!-- 버튼을 누르면 ripple 효과가 표시됨 -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonScan"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="120dp"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:padding="0dp"
 
         android:enabled="true"
+        android:contentDescription="Search"
 
-        android:text="Search"
-
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold"
+        app:icon="@drawable/ic_search"
+        app:iconSize="40dp"
+        app:iconPadding="0dp"
+        app:iconGravity="textStart"
+        app:iconTint="@null"
 
         app:backgroundTint="@color/button_background_color"
         app:cornerRadius="15dp"

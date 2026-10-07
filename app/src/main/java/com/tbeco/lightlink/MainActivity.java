@@ -37,8 +37,10 @@ import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
@@ -53,9 +55,38 @@ public class MainActivity extends AppCompatActivity {
     // BLE 검색 시간: 10초
     private static final long SCAN_TIME = 10000;
 
+    /*
+     * BLE 검색 자동 종료 타이머
+     *
+     * 별도의 Runnable로 보관해야
+     * 사용자가 직접 검색을 중지했을 때
+     * 이전 타이머도 확실하게 취소할 수 있다.
+     */
+    private final Runnable scanTimeoutRunnable =
+            this::stopBleScan;
+
 
     // Base Station 한 대의 상태 확인 최대 대기 시간
     private static final long STATUS_TIMEOUT = 10000;
+
+
+    /*
+     * 초기 Power State 조회가 일시적으로 실패했을 때
+     * 추가로 다시 시도할 최대 횟수.
+     *
+     * 최초 시도 + 재시도 3회 = 최대 4번 확인한다.
+     */
+    private static final int STATUS_MAX_RETRIES = 3;
+
+
+    /*
+     * 초기 상태 조회 재시도 사이의 대기 시간.
+     *
+     * 오래된 휴대폰이나 일시적으로 불안정한 GATT 연결이
+     * 바로 다시 연결되면서 연속 실패하는 것을 줄이기 위해
+     * 잠깐 쉬었다가 다시 시도한다.
+     */
+    private static final long STATUS_RETRY_DELAY = 1200;
 
 
     /*
@@ -119,6 +150,23 @@ public class MainActivity extends AppCompatActivity {
      */
     private final Queue<BleDeviceItem> statusQueue =
             new ArrayDeque<>();
+
+
+    /*
+     * Base Station별 초기 상태 조회 재시도 횟수.
+     *
+     * Key   : MAC 주소
+     * Value : 이미 실행한 추가 재시도 횟수
+     */
+    private final Map<String, Integer> statusRetryCounts =
+            new HashMap<>();
+
+
+    /*
+     * 새 Search가 시작되면 이전 Search에서 예약해 둔
+     * 지연 재시도가 뒤늦게 실행되지 않도록 구분하는 번호.
+     */
+    private int statusReadGeneration = 0;
 
 
     private final Handler handler =
@@ -415,15 +463,32 @@ public class MainActivity extends AppCompatActivity {
                         bluetoothAdapter
                 );
 
+        /*
+         * 앱 시작 시 Search 버튼 초기 상태 설정
+         */
+        updateScanButton();
+
 
         /*
-         * Search 버튼
+         * 검색 버튼
          *
-         * 권한 확인 후 BLE 검색 시작
+         * 검색 중:
+         * Stop 버튼으로 동작
+         *
+         * 검색 중이 아님:
+         * 새로운 검색 시작
          */
-        buttonScan.setOnClickListener(
-                v -> checkPermissionAndScan()
-        );
+        buttonScan.setOnClickListener(v -> {
+
+            if (scanning) {
+
+                stopBleScan();
+
+            } else {
+
+                checkPermissionAndScan();
+            }
+        });
     }
 
     /*
@@ -606,69 +671,34 @@ public class MainActivity extends AppCompatActivity {
             BleDeviceItem device) {
 
 
-        int position =
-                deviceList.indexOf(
-                        device
+        /*
+         * GATT Callback은 메인 스레드가 아닐 수 있으므로
+         * RecyclerView 갱신은 항상 UI 스레드에서 실행한다.
+         */
+        runOnUiThread(() -> {
+
+            int position =
+                    deviceList.indexOf(
+                            device
+                    );
+
+
+            if (position >= 0) {
+
+                deviceAdapter.notifyItemChanged(
+                        position
                 );
-
-
-        if (position >= 0) {
-
-            deviceAdapter.notifyItemChanged(
-                    position
-            );
-        }
+            }
+        });
     }
 
 
     /*
-     * 전원 작업 종료 후 Search 버튼 복구
-     *
-     * 아직 BLE Scan 자체가 진행 중이라면
-     * Scan 종료 시 stopBleScan()이 복구하도록 둔다.
+     * Search 버튼의 현재 상태를 다시 계산
      */
     private void restoreSearchButton() {
 
-        /*
-         * Scan 중이면 Search 버튼은 계속 잠근다.
-         */
-        if (scanning) {
-
-            buttonScan.setText(
-                    "Scanning..."
-            );
-
-            buttonScan.setEnabled(
-                    false
-            );
-
-            return;
-        }
-
-
-        buttonScan.setText(
-                "Search"
-        );
-
-
-        /*
-         * 전원 전환 확인이 진행 중이라면
-         * Scan이 끝났더라도 Search를 다시 활성화하지 않는다.
-         */
-        boolean powerBusy =
-                powerController != null
-                        && powerController.isBusy();
-
-
-        boolean statusBusy =
-                readingStatus
-                        || !statusQueue.isEmpty();
-
-
-        buttonScan.setEnabled(
-                !powerBusy
-                        && !statusBusy
-        );
+        updateScanButton();
     }
 
     /*
@@ -849,16 +879,28 @@ public class MainActivity extends AppCompatActivity {
         deviceAdapter.notifyDataSetChanged();
 
 
-        scanning = true;
+        scanning =
+                true;
 
 
-        // 아직 Base Station을 찾기 전
-        textEmpty.setVisibility(View.VISIBLE);
-        textEmpty.setText("Scanning...");
+        /*
+         * 검색 중 안내
+         */
+        textEmpty.setVisibility(
+                View.VISIBLE
+        );
+
+        textEmpty.setText(
+                "Scanning..."
+        );
 
 
-        buttonScan.setText("Scanning...");
-        buttonScan.setEnabled(false);
+        /*
+         * 검색 버튼을 Stop 버튼으로 변경
+         *
+         * 검색 중에도 버튼은 계속 눌릴 수 있어야 한다.
+         */
+        updateScanButton();
 
 
         /*
@@ -870,10 +912,18 @@ public class MainActivity extends AppCompatActivity {
 
 
         /*
-         * 10초 후 자동으로 검색 종료
+         * 혹시 남아있는 이전 검색 타이머가 있다면 제거
+         */
+        handler.removeCallbacks(
+                scanTimeoutRunnable
+        );
+
+
+        /*
+         * 10초 후 자동 검색 종료
          */
         handler.postDelayed(
-                this::stopBleScan,
+                scanTimeoutRunnable,
                 SCAN_TIME
         );
     }
@@ -1049,7 +1099,16 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onScanFailed(int errorCode) {
 
-                    scanning = false;
+                    scanning =
+                            false;
+
+
+                    /*
+                     * 실패한 Scan의 자동 종료 타이머 제거
+                     */
+                    handler.removeCallbacks(
+                            scanTimeoutRunnable
+                    );
 
 
                     runOnUiThread(() -> {
@@ -1065,7 +1124,7 @@ public class MainActivity extends AppCompatActivity {
                         );
 
 
-                        restoreSearchButton();
+                        updateScanButton();
                     });
                 }
             };
@@ -1073,6 +1132,9 @@ public class MainActivity extends AppCompatActivity {
 
     /*
      * BLE 검색 종료
+     *
+     * 현재까지 발견한 Base Station 목록은
+     * 지우지 않는다.
      */
     @SuppressLint("MissingPermission")
     private void stopBleScan() {
@@ -1083,30 +1145,48 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-        scanning = false;
+        scanning =
+                false;
+
+
+        /*
+         * 자동 종료 타이머 제거
+         *
+         * 사용자가 직접 Stop을 누른 경우
+         * 이전 타이머가 다음 검색에 영향을 주는 것을 방지한다.
+         */
+        handler.removeCallbacks(
+                scanTimeoutRunnable
+        );
 
 
         if (bleScanner != null) {
 
-            bleScanner.stopScan(
-                    scanCallback
-            );
+            try {
+
+                bleScanner.stopScan(
+                        scanCallback
+                );
+
+            } catch (Exception ignored) {
+            }
         }
 
 
-        restoreSearchButton();
+        /*
+         * Stop 아이콘을 다시 Search 아이콘으로 변경
+         */
+        updateScanButton();
 
 
         /*
-         * 검색 시간 동안 Base Station을
-         * 하나도 발견하지 못함
+         * 검색 중 Base Station을 하나도 찾지 못한 경우
          */
         if (deviceList.isEmpty()) {
 
             textEmpty.setVisibility(
                     View.VISIBLE
             );
-
 
             textEmpty.setText(
                     "No Base Station found"
@@ -1637,6 +1717,37 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
+     * 초기 상태 조회 결과가 일시적인 BLE / GATT 문제이거나
+     * 아직 전환 중인 상태라면 자동 재확인한다.
+     *
+     * State read unsupported처럼 장치가 기능 자체를
+     * 지원하지 않는 경우에는 재시도하지 않는다.
+     */
+    private boolean shouldRetryStatus(
+            String statusText) {
+
+
+        if (statusText == null) {
+            return true;
+        }
+
+
+        return "Connection failed".equals(statusText)
+                || "Disconnected".equals(statusText)
+                || "Timeout".equals(statusText)
+                || "Service error".equals(statusText)
+                || "Service discovery failed".equals(statusText)
+                || "Control service not found".equals(statusText)
+                || "Power state not found".equals(statusText)
+                || "Read failed".equals(statusText)
+                || "Read error".equals(statusText)
+                || "Unknown".equals(statusText)
+                || "Checking...".equals(statusText)
+                || statusText.startsWith("Unknown (");
+    }
+
+
+    /*
      * 현재 Base Station 상태 확인 완료
      *
      * 1. RecyclerView 상태 변경
@@ -1651,7 +1762,10 @@ public class MainActivity extends AppCompatActivity {
 
         /*
          * Timeout이나 늦은 Callback 때문에
-         * 같은 연결이 두 번 종료되는 것을 방지
+         * 같은 연결이 두 번 종료되는 것을 방지한다.
+         *
+         * connectGatt() 자체가 실패한 경우에는
+         * gatt와 currentGatt가 둘 다 null일 수도 있다.
          */
         if (!readingStatus
                 || gatt != currentGatt) {
@@ -1660,17 +1774,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-        // Timeout 취소
+        // 이번 상태 조회의 Timeout 취소
         handler.removeCallbacks(
                 statusTimeoutRunnable
         );
 
 
         /*
-         * 현재 장치를 지역 변수로 보관
+         * 현재 장치와 GATT를 지역 변수로 보관한다.
          *
-         * 아래에서 currentStatusDevice를 null로 만들더라도
-         * RecyclerView 업데이트에 사용할 수 있다.
+         * 아래에서 currentStatusDevice / currentGatt를
+         * 초기화한 뒤에도 종료 및 재시도 처리에 사용한다.
          */
         BleDeviceItem finishedDevice =
                 currentStatusDevice;
@@ -1680,7 +1794,7 @@ public class MainActivity extends AppCompatActivity {
                 currentGatt;
 
 
-        // 현재 작업 종료 처리
+        // 현재 상태 조회 작업 종료 처리
         readingStatus =
                 false;
 
@@ -1692,36 +1806,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         /*
-         * 읽어온 상태 저장
-         */
-        if (finishedDevice != null) {
-
-            finishedDevice.setStatus(
-                    statusText
-            );
-
-
-            runOnUiThread(() -> {
-
-                int position =
-                        deviceList.indexOf(
-                                finishedDevice
-                        );
-
-
-                if (position >= 0) {
-
-                    deviceAdapter.notifyItemChanged(
-                            position
-                    );
-                }
-            });
-        }
-
-
-        /*
          * 상태 확인만 필요했으므로
-         * GATT 연결 종료
+         * 이번 GATT 연결은 먼저 종료한다.
+         *
+         * 재시도가 필요하면 잠시 뒤 새 연결을 만든다.
          */
         if (finishedGatt != null) {
 
@@ -1742,8 +1830,166 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        boolean retryScheduled =
+                false;
+
+
+        if (finishedDevice != null
+                && shouldRetryStatus(statusText)) {
+
+
+            String address =
+                    finishedDevice.getAddress();
+
+
+            int retryCount =
+                    statusRetryCounts.getOrDefault(
+                            address,
+                            0
+                    );
+
+
+            /*
+             * 최대 재시도 횟수가 남아 있으면
+             * 실패를 확정하지 않고 Checking... 상태를 유지한다.
+             */
+            if (retryCount < STATUS_MAX_RETRIES) {
+
+                int nextRetryCount =
+                        retryCount + 1;
+
+
+                statusRetryCounts.put(
+                        address,
+                        nextRetryCount
+                );
+
+
+                retryScheduled =
+                        true;
+
+
+                finishedDevice.setStatus(
+                        "Checking..."
+                );
+
+
+                updateDeviceRow(
+                        finishedDevice
+                );
+
+
+                Log.d(
+                        TAG,
+                        "Status read retry scheduled"
+                                + " / device = "
+                                + finishedDevice.getName()
+                                + " / retry = "
+                                + nextRetryCount
+                                + "/"
+                                + STATUS_MAX_RETRIES
+                                + " / reason = "
+                                + statusText
+                );
+
+
+                /*
+                 * 현재 Search 세대를 기억한다.
+                 *
+                 * 재시도 대기 중 새 Search가 시작되면
+                 * statusReadGeneration 값이 바뀌므로
+                 * 이전 Search의 재시도는 자동으로 무시된다.
+                 */
+                int retryGeneration =
+                        statusReadGeneration;
+
+
+                handler.postDelayed(
+                        () -> {
+
+                            if (retryGeneration
+                                    != statusReadGeneration) {
+
+                                return;
+                            }
+
+
+                            /*
+                             * 그 사이 새 Search로 목록이 교체됐다면
+                             * 오래된 장치를 다시 Queue에 넣지 않는다.
+                             */
+                            if (!deviceList.contains(
+                                    finishedDevice
+                            )) {
+
+                                return;
+                            }
+
+
+                            statusQueue.offer(
+                                    finishedDevice
+                            );
+
+
+                            processNextStatusRead();
+                        },
+                        STATUS_RETRY_DELAY
+                );
+            }
+        }
+
+
         /*
-         * 다음 Base Station 상태 확인
+         * 재시도를 예약하지 않았다면
+         * 이번 결과를 최종 상태로 표시한다.
+         */
+        if (finishedDevice != null
+                && !retryScheduled) {
+
+
+            statusRetryCounts.remove(
+                    finishedDevice.getAddress()
+            );
+
+
+            /*
+             * 0x01(Checking...)이 최대 재시도 후에도 계속되면
+             * 영원히 Checking...으로 보이지 않도록
+             * 최종적으로 Unknown으로 표시한다.
+             */
+            String finalStatus =
+                    "Checking...".equals(statusText)
+                            ? "Unknown"
+                            : statusText;
+
+
+            finishedDevice.setStatus(
+                    finalStatus
+            );
+
+
+            updateDeviceRow(
+                    finishedDevice
+            );
+
+
+            Log.d(
+                    TAG,
+                    "Status read finished"
+                            + " / device = "
+                            + finishedDevice.getName()
+                            + " / status = "
+                            + finalStatus
+            );
+        }
+
+
+        /*
+         * 다른 Base Station이 Queue에 있다면 바로 처리한다.
+         *
+         * 방금 실패한 장치의 재시도는 STATUS_RETRY_DELAY 후
+         * Queue 뒤쪽에 다시 들어오기 때문에 다른 장치를
+         * 불필요하게 기다리게 하지 않는다.
          */
         runOnUiThread(
                 this::processNextStatusRead
@@ -1760,6 +2006,15 @@ public class MainActivity extends AppCompatActivity {
     private void resetStatusReads() {
 
         statusQueue.clear();
+
+
+        /*
+         * 이전 Search에서 예약된 재시도를 무효화하고
+         * 장치별 재시도 횟수도 초기화한다.
+         */
+        statusReadGeneration++;
+
+        statusRetryCounts.clear();
 
 
         handler.removeCallbacks(
@@ -1834,5 +2089,63 @@ public class MainActivity extends AppCompatActivity {
 
 
         super.onDestroy();
+    }
+
+    /*
+     * 현재 검색 상태에 따라
+     * 검색 버튼 아이콘과 활성 상태를 변경
+     */
+    private void updateScanButton() {
+
+        /*
+         * BLE 검색 중
+         *
+         * 다시 누르면 검색을 중지할 수 있으므로
+         * 버튼은 반드시 활성화한다.
+         */
+        if (scanning) {
+
+            buttonScan.setIconResource(
+                    R.drawable.ic_stop
+            );
+
+            buttonScan.setContentDescription(
+                    "Stop scan"
+            );
+
+            buttonScan.setEnabled(
+                    true
+            );
+
+            return;
+        }
+
+
+        /*
+         * 검색 중이 아님
+         */
+        buttonScan.setIconResource(
+                R.drawable.ic_search
+        );
+
+        buttonScan.setContentDescription(
+                "Search"
+        );
+
+
+        /*
+         * 실제 Base Station 전원 전환 중일 때만
+         * 새로운 검색을 막는다.
+         *
+         * 단순 상태 조회 중에는 다시 검색 가능.
+         */
+        boolean powerBusy =
+                powerController != null
+                        && powerController.isBusy();
+
+
+        buttonScan.setEnabled(
+                !powerBusy
+        );
     }
 }
