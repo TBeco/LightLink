@@ -1,12 +1,14 @@
 package com.tbeco.lightlink;
 
-
-// BLE 검색 결과 하나를 저장하는 간단한 데이터 클래스
+// 검색된 Base Station 한 대의 정보를 저장
 public class BleDeviceItem {
 
     private final String name;
     private final String address;
     private final int rssi;
+
+    // 전원 상태
+    private String status;
 
 
     public BleDeviceItem(
@@ -17,6 +19,9 @@ public class BleDeviceItem {
         this.name = name;
         this.address = address;
         this.rssi = rssi;
+
+        // 발견 직후에는 아직 상태를 읽지 않았음
+        this.status = "Checking...";
     }
 
 
@@ -32,5 +37,15 @@ public class BleDeviceItem {
 
     public int getRssi() {
         return rssi;
+    }
+
+
+    public String getStatus() {
+        return status;
+    }
+
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

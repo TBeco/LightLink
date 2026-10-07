@@ -1,26 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="12dp">
 
-    <!-- BLE 장치 이름 -->
-    <TextView
-        android:id="@+id/textDeviceName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
 
-    <!-- MAC 주소와 RSSI -->
-    <TextView
-        android:id="@+id/textDeviceInfo"
-        android:layout_width="wrap_content"
+    <!-- 왼쪽: Base Station 정보 -->
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:textColor="#AAAAAA"
-        android:textSize="13sp"/>
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+
+        <!-- Base Station 이름 -->
+        <TextView
+            android:id="@+id/textDeviceName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+
+        <!-- 현재 상태 -->
+        <TextView
+            android:id="@+id/textDeviceStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp" />
+
+
+        <!-- MAC 주소와 RSSI -->
+        <TextView
+            android:id="@+id/textDeviceInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#777777"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+
+    <!-- 오른쪽: 전원 버튼 -->
+    <ImageButton
+        android:id="@+id/buttonPower"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+
+        android:layout_gravity="center_vertical"
+
+        android:padding="12dp"
+
+        android:background="@drawable/bg_power_button"
+
+        android:contentDescription="Power"
+
+        android:src="@drawable/ic_power" />
 
 </LinearLayout>
