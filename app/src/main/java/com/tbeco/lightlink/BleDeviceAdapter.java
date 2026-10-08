@@ -11,6 +11,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 
@@ -39,6 +41,19 @@ public class BleDeviceAdapter
 
     private static final int POWER_COLOR_UNAVAILABLE =
             Color.parseColor("#616161");
+
+
+    /*
+     * 마지막 상태 확인 시간을
+     * 화면에 표시할 형식
+     *
+     * 예:
+     * 2026-10-08 16:05:42
+     */
+    private static final DateTimeFormatter LAST_STATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern(
+                    "yyyy-MM-dd HH:mm:ss"
+            );
 
 
     // RecyclerView에 표시할 Base Station 목록
@@ -134,12 +149,28 @@ public class BleDeviceAdapter
         );
 
 
-        // MAC 주소 + RSSI
+        /*
+         * MAC 주소 + RSSI
+         *
+         * 예:
+         * AA:BB:CC:DD:EE:FF    -52 dBm
+         */
         holder.textDeviceInfo.setText(
                 device.getAddress()
                         + "    "
                         + device.getRssi()
                         + " dBm"
+        );
+
+
+        /*
+         * 마지막으로 실제 Power State를
+         * 확인하는 데 성공한 시간을 표시한다.
+         */
+        configureLastStateChecked(
+                holder,
+                device,
+                status
         );
 
 
@@ -167,13 +198,6 @@ public class BleDeviceAdapter
          */
         holder.buttonPower.setOnClickListener(v -> {
 
-            /*
-             * Enabled=false 상태에서는
-             * 기본적으로 클릭 이벤트가 실행되지 않는다.
-             *
-             * 그래도 Listener가 존재하는지
-             * 한 번 더 확인한다.
-             */
             if (powerClickListener != null) {
 
                 powerClickListener.onPowerClick(
@@ -181,6 +205,75 @@ public class BleDeviceAdapter
                 );
             }
         });
+    }
+
+
+    /*
+     * 마지막 상태 확인 시간을 표시한다.
+     *
+     * 아직 한 번도 실제 Power State 확인에
+     * 성공하지 못했다면 현재 상태에 따라
+     * "확인 중..." 또는 "확인되지 않음"을 표시한다.
+     *
+     * 이전에 한 번이라도 성공한 적이 있다면
+     * 현재 Checking... 상태이더라도
+     * 마지막으로 성공했던 시간을 계속 표시한다.
+     */
+    private void configureLastStateChecked(
+            DeviceViewHolder holder,
+            BleDeviceItem device,
+            String status) {
+
+
+        LocalDateTime lastStateCheckedAt =
+                device.getLastStateCheckedAt();
+
+
+        /*
+         * 실제 상태 확인 성공 기록이
+         * 아직 한 번도 없는 경우
+         */
+        if (lastStateCheckedAt == null) {
+
+            /*
+             * 현재 상태를 확인하고 있는 중
+             */
+            if ("Checking...".equals(status)) {
+
+                holder.textLastStateChecked.setText(
+                        "마지막 상태 확인 | 확인 중..."
+                );
+
+            } else {
+
+                /*
+                 * 상태 확인 시도가 끝났지만
+                 * 실제 Power State를 확정하지 못한 경우
+                 */
+                holder.textLastStateChecked.setText(
+                        "마지막 상태 확인 | 확인되지 않음"
+                );
+            }
+
+
+            return;
+        }
+
+
+        /*
+         * 이전에 실제 Power State 확인에
+         * 성공한 기록이 있는 경우
+         */
+        String formattedTime =
+                lastStateCheckedAt.format(
+                        LAST_STATE_TIME_FORMAT
+                );
+
+
+        holder.textLastStateChecked.setText(
+                "마지막 상태 확인 | "
+                        + formattedTime
+        );
     }
 
 
@@ -214,10 +307,6 @@ public class BleDeviceAdapter
             );
 
 
-            /*
-             * 나중에 TalkBack 등의
-             * 접근성 기능에서도 의미를 알 수 있도록 설정
-             */
             holder.buttonPower.setContentDescription(
                     device.getName()
                             + " power off"
@@ -302,7 +391,7 @@ public class BleDeviceAdapter
 
     /*
      * item_ble_device.xml 안에 있는
-     * View들을 보관
+     * View들을 보관한다.
      */
     static class DeviceViewHolder
             extends RecyclerView.ViewHolder {
@@ -311,6 +400,7 @@ public class BleDeviceAdapter
         TextView textDeviceName;
         TextView textDeviceStatus;
         TextView textDeviceInfo;
+        TextView textLastStateChecked;
 
         ImageButton buttonPower;
 
@@ -336,6 +426,12 @@ public class BleDeviceAdapter
             textDeviceInfo =
                     itemView.findViewById(
                             R.id.textDeviceInfo
+                    );
+
+
+            textLastStateChecked =
+                    itemView.findViewById(
+                            R.id.textLastStateChecked
                     );
 
 

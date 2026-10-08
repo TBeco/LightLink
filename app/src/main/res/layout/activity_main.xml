@@ -13,8 +13,12 @@
     tools:context=".MainActivity">
 
 
-    <!-- 상단 메뉴 버튼 -->
-    <!-- 48dp 터치 영역 안에 24dp 메뉴 아이콘을 표시 -->
+    <!--
+        상단 메뉴 버튼
+
+        48dp 터치 영역 안에
+        24dp 메뉴 아이콘을 표시한다.
+    -->
     <ImageButton
         android:id="@+id/buttonMenu"
         android:layout_width="48dp"
@@ -23,7 +27,6 @@
         android:padding="12dp"
 
         android:background="?attr/selectableItemBackgroundBorderless"
-
         android:contentDescription="Menu"
 
         app:srcCompat="@drawable/ic_menu"
@@ -32,7 +35,9 @@
         app:layout_constraintTop_toTopOf="parent" />
 
 
-    <!-- 앱 이름 LightLink -->
+    <!--
+        앱 이름
+    -->
     <TextView
         android:id="@+id/textTitle"
         android:layout_width="wrap_content"
@@ -50,7 +55,9 @@
         app:layout_constraintBottom_toBottomOf="@id/buttonMenu" />
 
 
-    <!-- 구분선 -->
+    <!--
+        상단 영역과 Base Station 목록을 구분하는 선
+    -->
     <View
         android:id="@+id/topDivider"
         android:layout_width="0dp"
@@ -63,7 +70,12 @@
         app:layout_constraintTop_toBottomOf="@id/buttonMenu" />
 
 
-    <!-- 등록된 Base Station 영역 제목 -->
+    <!--
+        Base Station 목록 영역 제목
+
+        현재는 임시로 Test 사용.
+        나중에 실제 제목으로 변경 예정.
+    -->
     <TextView
         android:id="@+id/textStationHeader"
         android:layout_width="wrap_content"
@@ -82,8 +94,10 @@
 
 
     <!--
-        나중에 Base Station 여러 개를 표시할 목록.
-        RecyclerView를 사용할 예정.
+        검색된 Base Station 목록
+
+        아래쪽에는 최근 검색 시간을 표시하므로
+        RecyclerView의 Bottom을 textLastScan 위쪽에 연결한다.
     -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerBaseStations"
@@ -98,18 +112,22 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textStationHeader"
-        app:layout_constraintBottom_toTopOf="@id/buttonScan"
+        app:layout_constraintBottom_toTopOf="@id/textLastScan"
 
         tools:listitem="@layout/item_ble_device" />
 
 
-    <!-- Base Station이 하나도 없을 때 보여줄 문구 -->
+    <!--
+        Base Station이 하나도 없을 때 표시할 안내 문구
+
+        RecyclerView 영역의 가운데에 표시한다.
+    -->
     <TextView
         android:id="@+id/textEmpty"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
 
-        android:text="검색 결과 없음(예시)"
+        android:text="검색을 진행해주세요."
         android:textColor="#AAAAAA"
         android:textSize="15sp"
 
@@ -119,7 +137,40 @@
         app:layout_constraintBottom_toBottomOf="@id/recyclerBaseStations" />
 
 
-    <!-- Base Station 검색 버튼 -->
+    <!--
+        마지막으로 BLE 검색을 수행한 시간
+
+        실제 앱 시작 직후에는 "-"를 표시하고,
+        검색이 완료되면 MainActivity에서 시간을 갱신한다.
+
+        tools:text는 Android Studio Preview에서만 표시된다.
+    -->
+    <TextView
+        android:id="@+id/textLastScan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:text="최근 검색 | -"
+        android:textColor="#777777"
+        android:textSize="12sp"
+
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="10dp"
+
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/buttonScan"
+
+        tools:text="최근 검색 | 2026-10-08 15:32:14" />
+
+
+    <!--
+        Base Station 검색 버튼
+
+        화면 오른쪽 아래에 배치한다.
+
+        검색 중에는 Search 아이콘 대신
+        Stop 아이콘으로 변경된다.
+    -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonScan"
         android:layout_width="80dp"
@@ -142,9 +193,9 @@
         app:cornerRadius="15dp"
         app:rippleColor="#616161"
 
-        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
 
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
 

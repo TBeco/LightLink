@@ -44,12 +44,26 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 
 public class MainActivity extends AppCompatActivity {
 
 
     // BLE 검색 시간: 10초
     private static final long SCAN_TIME = 10000;
+
+    /*
+    * 최근 검색 시간을 화면에 표시할 형식
+    *
+    * 예:
+    * 2026-10-08 15:32:14
+     */
+    private static final DateTimeFormatter LAST_SCAN_TIME_FORMAT =
+            DateTimeFormatter.ofPattern(
+                    "yyyy-MM-dd HH:mm:ss"
+            );
 
     /*
      * BLE 검색 자동 종료 타이머
@@ -111,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
     // 화면의 View
     private MaterialButton buttonScan;
     private TextView textEmpty;
+    private TextView textLastScan;
     private RecyclerView recyclerBaseStations;
 
 
@@ -309,6 +324,9 @@ public class MainActivity extends AppCompatActivity {
 
         textEmpty =
                 findViewById(R.id.textEmpty);
+
+        textLastScan =
+                findViewById(R.id.textLastScan);
 
         recyclerBaseStations =
                 findViewById(R.id.recyclerBaseStations);
@@ -581,6 +599,15 @@ public class MainActivity extends AppCompatActivity {
 
                         device.setStatus(
                                 confirmedStatus
+                        );
+
+                        /*
+                         * Wake / Sleep 전환 후
+                         * 실제 목표 상태까지 확인했으므로
+                         * 마지막 상태 확인 시간을 갱신한다.
+                         */
+                        device.setLastStateCheckedAt(
+                                LocalDateTime.now()
                         );
 
 
@@ -1036,6 +1063,12 @@ public class MainActivity extends AppCompatActivity {
         bleScanner.startScan(
                 scanCallback
         );
+
+
+        /*
+         * 이번 BLE 검색이 시작된 시간을 기록
+         */
+         updateLastScanTime();
 
 
         /*
@@ -1767,6 +1800,22 @@ public class MainActivity extends AppCompatActivity {
                         powerValue
                 );
 
+        /*
+         * 실제 Power State가 확정된 경우
+         * 이 Base Station의 마지막 상태 확인 시간을 갱신한다.
+         *
+         * Checking... 또는 Unknown 상태에서는 갱신하지 않는다.
+         */
+        if (currentStatusDevice != null
+                && ("Awake".equals(powerState)
+                || "Sleep".equals(powerState)
+                || "Standby".equals(powerState))) {
+
+            currentStatusDevice.setLastStateCheckedAt(
+                    LocalDateTime.now()
+            );
+        }
+
 
         String deviceName =
                 currentStatusDevice != null
@@ -2261,6 +2310,24 @@ public class MainActivity extends AppCompatActivity {
 
         buttonScan.setEnabled(
                 !powerBusy
+        );
+    }
+
+    /*
+     * 마지막 BLE 검색 완료 시간을 화면에 표시한다.
+     *
+     * 실제 BLE 검색이 시작된 직후 호출한다.
+     */
+    private void updateLastScanTime() {
+
+        String timeText =
+                LocalDateTime.now().format(
+                        LAST_SCAN_TIME_FORMAT
+                );
+
+
+        textLastScan.setText(
+                "최근 검색 | " + timeText
         );
     }
 }
