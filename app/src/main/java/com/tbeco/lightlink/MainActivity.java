@@ -20,7 +20,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -788,45 +787,127 @@ public class MainActivity extends AppCompatActivity {
      *
      * 현재 상태를 알 수 없으므로
      * 하나의 토글 버튼처럼 반대 상태를 추측하지 않는다.
+     *
+     * 기본 AlertDialog UI 대신
+     * LightLink 스타일의 커스텀 레이아웃을 사용한다.
      */
     private void showManualPowerDialog(
             BaseStationGattController controller,
             BleDeviceItem device) {
 
 
-        new AlertDialog.Builder(this)
-                .setTitle(
-                        "수동 전원 제어"
-                )
-                .setMessage(
-                        "현재 Base Station의 전원 상태를 읽을 수 없습니다.\n\n"
-                                + "일부 이전 버전의 Base Station 펌웨어에서 "
-                                + "발생할 수 있습니다.\n"
-                                + "원하는 전원 상태를 직접 선택해주세요."
-                )
-                .setPositiveButton(
-                        "Wake",
-                        (dialog, which) ->
-                                sendManualPowerCommand(
-                                        controller,
-                                        device,
-                                        BaseStationGattController.TargetState.AWAKE
-                                )
-                )
-                .setNegativeButton(
-                        "Sleep",
-                        (dialog, which) ->
-                                sendManualPowerCommand(
-                                        controller,
-                                        device,
-                                        BaseStationGattController.TargetState.SLEEP
-                                )
-                )
-                .setNeutralButton(
-                        "취소",
+        /*
+         * dialog_manual_power.xml을
+         * 실제 Dialog 안에서 사용할 View로 생성한다.
+         */
+        View dialogView =
+                getLayoutInflater().inflate(
+                        R.layout.dialog_manual_power,
                         null
-                )
-                .show();
+                );
+
+
+        /*
+         * 커스텀 레이아웃을 사용하는 AlertDialog 생성.
+         *
+         * 제목 / 메시지 / 기본 버튼은 사용하지 않고
+         * 모든 UI를 dialog_manual_power.xml에서 관리한다.
+         */
+        AlertDialog dialog =
+                new AlertDialog.Builder(this)
+                        .setView(dialogView)
+                        .create();
+
+
+        /*
+         * 커스텀 Dialog 안의 버튼 가져오기
+         */
+        View buttonCancel =
+                dialogView.findViewById(
+                        R.id.buttonManualCancel
+                );
+
+        View buttonSleep =
+                dialogView.findViewById(
+                        R.id.buttonManualSleep
+                );
+
+        View buttonWake =
+                dialogView.findViewById(
+                        R.id.buttonManualWake
+                );
+
+
+        /*
+         * 취소
+         *
+         * 아무 명령도 보내지 않고 Dialog만 닫는다.
+         */
+        buttonCancel.setOnClickListener(v ->
+                dialog.dismiss()
+        );
+
+
+        /*
+         * Sleep
+         */
+        buttonSleep.setOnClickListener(v -> {
+
+            /*
+             * 먼저 Dialog를 닫고
+             * 사용자가 선택한 Sleep 명령을 전송한다.
+             */
+            dialog.dismiss();
+
+
+            sendManualPowerCommand(
+                    controller,
+                    device,
+                    BaseStationGattController.TargetState.SLEEP
+            );
+        });
+
+
+        /*
+         * Wake
+         */
+        buttonWake.setOnClickListener(v -> {
+
+            /*
+             * 먼저 Dialog를 닫고
+             * 사용자가 선택한 Wake 명령을 전송한다.
+             */
+            dialog.dismiss();
+
+
+            sendManualPowerCommand(
+                    controller,
+                    device,
+                    BaseStationGattController.TargetState.AWAKE
+            );
+        });
+
+
+        /*
+         * Dialog 표시
+         */
+        dialog.show();
+
+
+        /*
+         * AlertDialog 자체의 기본 배경을 투명하게 만든다.
+         *
+         * 그래야 dialog_manual_power.xml에 적용한
+         * 둥근 모서리와 어두운 배경이 그대로 보이고,
+         * 뒤에 기본 흰색 Dialog 배경이 남지 않는다.
+         */
+        if (dialog.getWindow() != null) {
+
+            dialog.getWindow()
+                    .setBackgroundDrawableResource(
+                            android.R.color.transparent
+                    );
+        }
     }
 
 
@@ -902,28 +983,12 @@ public class MainActivity extends AppCompatActivity {
                             BaseStationGattController.TargetState target) {
 
 
-                        String message =
-                                target
-                                        == BaseStationGattController.TargetState.AWAKE
-                                        ? "Wake command sent"
-                                        : "Sleep command sent";
-
-
                         AppLog.d(
                                 "Manual power command sent"
                                         + " / device = "
                                         + device.getName()
                                         + " / target = "
                                         + target
-                        );
-
-
-                        runOnUiThread(() ->
-                                Toast.makeText(
-                                        MainActivity.this,
-                                        message,
-                                        Toast.LENGTH_SHORT
-                                ).show()
                         );
 
 
@@ -1008,15 +1073,6 @@ public class MainActivity extends AppCompatActivity {
                                         + device.getName()
                                         + " / reason = "
                                         + reason
-                        );
-
-
-                        runOnUiThread(() ->
-                                Toast.makeText(
-                                        MainActivity.this,
-                                        "Power command failed",
-                                        Toast.LENGTH_SHORT
-                                ).show()
                         );
 
 
