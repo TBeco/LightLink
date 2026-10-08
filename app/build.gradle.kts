@@ -18,6 +18,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    /*
+    * BuildConfig.java 자동 생성
+    *
+    * AppLog에서 BuilConfig.DEBUG를 사용하기 위해 필요
+     */
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
         release {
             optimization {

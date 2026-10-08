@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Log;
 
 import java.util.UUID;
 
@@ -29,8 +28,6 @@ import java.util.UUID;
  * - 전환 중 중복 명령 방지
  */
 public class BaseStationGattController {
-
-    private static final String TAG = "LightLink";
 
 
     // Base Station 2.0 Control Service
@@ -257,8 +254,7 @@ public class BaseStationGattController {
                 callback;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power command start"
                         + " / device = "
                         + device.getName()
@@ -368,8 +364,7 @@ public class BaseStationGattController {
                             == BluetoothProfile.STATE_CONNECTED) {
 
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "Power command GATT connected"
                         );
 
@@ -642,8 +637,7 @@ public class BaseStationGattController {
         }
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 String.format(
                         "Write power value: 0x%02X",
                         value & 0xFF
@@ -741,8 +735,7 @@ public class BaseStationGattController {
                 currentCallback;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power command sent"
                         + " / target = "
                         + target
@@ -821,8 +814,7 @@ public class BaseStationGattController {
         waitingForRead = true;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Checking actual power state..."
         );
 
@@ -879,8 +871,7 @@ public class BaseStationGattController {
                 != BluetoothGatt.GATT_SUCCESS) {
 
 
-            Log.d(
-                    TAG,
+            AppLog.d(
                     "Power state read failed: "
                             + status
             );
@@ -906,8 +897,7 @@ public class BaseStationGattController {
                 value[0] & 0xFF;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power state verification"
                         + " / value = 0x"
                         + String.format(
@@ -1069,8 +1059,7 @@ public class BaseStationGattController {
                 currentCallback;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power state confirmed"
                         + " / device = "
                         + device.getName()
@@ -1114,8 +1103,7 @@ public class BaseStationGattController {
                 currentCallback;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power state confirmation failed"
                         + " / reason = "
                         + reason
@@ -1156,8 +1144,7 @@ public class BaseStationGattController {
                 currentCallback;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power command failed"
                         + " / reason = "
                         + reason

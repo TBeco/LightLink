@@ -18,7 +18,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
@@ -47,9 +46,6 @@ import java.util.UUID;
 
 
 public class MainActivity extends AppCompatActivity {
-
-    // Logcat에서 사용할 태그
-    private static final String TAG = "LightLink";
 
 
     // BLE 검색 시간: 10초
@@ -215,8 +211,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power state read timeout"
         );
 
@@ -342,8 +337,7 @@ public class MainActivity extends AppCompatActivity {
                                     device.getStatus();
 
 
-                            Log.d(
-                                    TAG,
+                            AppLog.d(
                                     "Power button clicked"
                                             + " / name = "
                                             + device.getName()
@@ -368,8 +362,7 @@ public class MainActivity extends AppCompatActivity {
 
                             if (controller == null) {
 
-                                Log.d(
-                                        TAG,
+                                AppLog.d(
                                         "Power command ignored: controller unavailable"
                                 );
 
@@ -383,8 +376,7 @@ public class MainActivity extends AppCompatActivity {
                              */
                             if (controller.isBusy()) {
 
-                                Log.d(
-                                        TAG,
+                                AppLog.d(
                                         "Power command ignored: this device is already busy"
                                 );
 
@@ -551,8 +543,7 @@ public class MainActivity extends AppCompatActivity {
                             BaseStationGattController.TargetState target) {
 
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "Command sent successfully"
                                         + " / device = "
                                         + device.getName()
@@ -598,8 +589,7 @@ public class MainActivity extends AppCompatActivity {
                         );
 
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "Power state confirmed"
                                         + " / device = "
                                         + device.getName()
@@ -635,8 +625,7 @@ public class MainActivity extends AppCompatActivity {
                         );
 
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "Unable to confirm power state"
                                         + " / device = "
                                         + device.getName()
@@ -670,8 +659,7 @@ public class MainActivity extends AppCompatActivity {
                         );
 
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "Command failed"
                                         + " / device = "
                                         + device.getName()
@@ -845,8 +833,7 @@ public class MainActivity extends AppCompatActivity {
          */
         if (isAnyPowerControllerBusy()) {
 
-            Log.d(
-                    TAG,
+            AppLog.d(
                     "Scan ignored: power command in progress"
             );
 
@@ -943,8 +930,7 @@ public class MainActivity extends AppCompatActivity {
          */
         if (isAnyPowerControllerBusy()) {
 
-            Log.d(
-                    TAG,
+            AppLog.d(
                     "Scan ignored: power command in progress"
             );
 
@@ -1118,8 +1104,7 @@ public class MainActivity extends AppCompatActivity {
                      * 디버깅을 위해
                      * Logcat에는 주변 BLE 장치를 모두 출력
                      */
-                    Log.d(
-                            TAG,
+                    AppLog.d(
                             "Device"
                                     + " / deviceName = "
                                     + deviceName
@@ -1382,8 +1367,7 @@ public class MainActivity extends AppCompatActivity {
                 true;
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Connecting for status: "
                         + currentStatusDevice.getName()
                         + " / "
@@ -1430,8 +1414,7 @@ public class MainActivity extends AppCompatActivity {
 
         } catch (Exception e) {
 
-            Log.d(
-                    TAG,
+            AppLog.d(
                     "Status GATT connection error",
                     e
             );
@@ -1494,8 +1477,7 @@ public class MainActivity extends AppCompatActivity {
                      */
                     if (status != BluetoothGatt.GATT_SUCCESS) {
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "GATT connection failed: "
                                         + status
                         );
@@ -1523,8 +1505,7 @@ public class MainActivity extends AppCompatActivity {
                                         : "(unknown)";
 
 
-                        Log.d(
-                                TAG,
+                        AppLog.d(
                                 "GATT connected: "
                                         + deviceName
                         );
@@ -1793,8 +1774,7 @@ public class MainActivity extends AppCompatActivity {
                         : "(unknown)";
 
 
-        Log.d(
-                TAG,
+        AppLog.d(
                 "Power state: "
                         + deviceName
                         + " = 0x"
@@ -2020,8 +2000,7 @@ public class MainActivity extends AppCompatActivity {
                 );
 
 
-                Log.d(
-                        TAG,
+                AppLog.d(
                         "Status read retry scheduled"
                                 + " / device = "
                                 + finishedDevice.getName()
@@ -2114,8 +2093,7 @@ public class MainActivity extends AppCompatActivity {
             );
 
 
-            Log.d(
-                    TAG,
+            AppLog.d(
                     "Status read finished"
                             + " / device = "
                             + finishedDevice.getName()
