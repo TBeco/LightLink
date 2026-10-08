@@ -25,7 +25,8 @@ import java.util.UUID;
  * - Wake 명령 전송
  * - Sleep 명령 전송
  * - GATT 연결 실패 시 안전한 범위에서 자동 재시도
- * - 명령 후 실제 Power State 확인
+ * - READ 지원 장치는 명령 후 실제 Power State 확인
+ * - READ 미지원 장치는 Write 완료까지만 처리
  * - 전환 중 중복 명령 방지
  */
 public class BaseStationGattController {
@@ -119,6 +120,20 @@ public class BaseStationGattController {
 
     // 현재 전원 작업 중인지
     private boolean busy = false;
+
+
+    /*
+     * Wake / Sleep 명령 후
+     * 실제 Power State를 다시 READ해서 확인할지 여부.
+     *
+     * true:
+     * 일반 장치처럼 명령 후 실제 상태까지 확인한다.
+     *
+     * false:
+     * READ를 지원하지 않는 장치에서
+     * Write 완료까지만 확인하고 작업을 종료한다.
+     */
+    private boolean stateVerificationEnabled = true;
 
 
     /*
@@ -240,6 +255,26 @@ public class BaseStationGattController {
     public boolean isBusy() {
 
         return busy;
+    }
+
+
+    /*
+     * 다음 전원 명령에서
+     * 실제 Power State 확인을 수행할지 설정한다.
+     *
+     * Controller가 이미 작업 중이라면
+     * 현재 작업의 동작이 중간에 바뀌지 않도록 무시한다.
+     */
+    public void setStateVerificationEnabled(
+            boolean enabled) {
+
+        if (busy) {
+            return;
+        }
+
+
+        stateVerificationEnabled =
+                enabled;
     }
 
 
@@ -940,8 +975,21 @@ public class BaseStationGattController {
                      *
                      * Sleep:
                      * 0x01 → 0x00 완료
+                     *
+                     * READ를 지원하는 일반 장치는
+                     * 기존처럼 실제 상태까지 확인한다.
+                     *
+                     * READ를 지원하지 않는 수동 제어 장치는
+                     * Write 완료까지만 확인하고 종료한다.
                      */
-                    beginStateVerification();
+                    if (stateVerificationEnabled) {
+
+                        beginStateVerification();
+
+                    } else {
+
+                        finishCommandWithoutVerification();
+                    }
                 }
 
 
@@ -1090,6 +1138,71 @@ public class BaseStationGattController {
          */
         powerWriteStarted =
                 true;
+    }
+
+
+    /*
+     * Power State READ를 지원하지 않는 장치용.
+     *
+     * Wake / Sleep에 필요한 Write가 모두 정상적으로 끝났으므로
+     * 명령 전송 자체는 성공으로 처리한다.
+     *
+     * 다만 실제 Base Station이 목표 상태에 도달했는지는
+     * 확인할 수 없으므로 onStateConfirmed()는 호출하지 않는다.
+     */
+    private void finishCommandWithoutVerification() {
+
+        if (!busy) {
+            return;
+        }
+
+
+        BleDeviceItem device =
+                currentDevice;
+
+        TargetState target =
+                currentTarget;
+
+        CommandCallback callback =
+                currentCallback;
+
+
+        AppLog.d(
+                "Power command completed without state verification"
+                        + " / device = "
+                        + (device != null
+                        ? device.getName()
+                        : "(unknown)")
+                        + " / target = "
+                        + target
+        );
+
+
+        /*
+         * 현재 GATT 작업을 먼저 정리한다.
+         *
+         * cleanupOperation()은 Controller를 다시 사용 가능한
+         * 기본 상태로 되돌린다.
+         */
+        cleanupOperation();
+
+
+        /*
+         * MainActivity에는
+         * Write가 정상적으로 끝났다는 사실만 전달한다.
+         *
+         * 실제 Awake / Sleep 상태가 확인됐다는 의미는 아니다.
+         */
+        handler.post(() -> {
+
+            if (callback != null) {
+
+                callback.onCommandSent(
+                        device,
+                        target
+                );
+            }
+        });
     }
 
 
@@ -1632,6 +1745,14 @@ public class BaseStationGattController {
 
         verifyDeadline =
                 0;
+
+
+        /*
+         * 다음 일반 명령에 이전 수동 제어 설정이
+         * 남지 않도록 기본값으로 복구한다.
+         */
+        stateVerificationEnabled =
+                true;
 
 
         if (gatt != null) {

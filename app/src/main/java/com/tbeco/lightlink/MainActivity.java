@@ -20,10 +20,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -55,10 +57,10 @@ public class MainActivity extends AppCompatActivity {
     private static final long SCAN_TIME = 10000;
 
     /*
-    * 최근 검색 시간을 화면에 표시할 형식
-    *
-    * 예:
-    * 2026-10-08 15:32:14
+     * 최근 검색 시간을 화면에 표시할 형식
+     *
+     * 예:
+     * 2026-10-08 15:32:14
      */
     private static final DateTimeFormatter LAST_SCAN_TIME_FORMAT =
             DateTimeFormatter.ofPattern(
@@ -97,6 +99,17 @@ public class MainActivity extends AppCompatActivity {
      * 잠깐 쉬었다가 다시 시도한다.
      */
     private static final long STATUS_RETRY_DELAY = 1200;
+
+
+    /*
+     * READ 미지원 장치에서 수동 Wake / Sleep 명령이 끝난 뒤
+     * 같은 전원 버튼을 다시 사용할 수 있게 하기 전의 짧은 대기 시간.
+     *
+     * 실제 상태를 READ해서 확인할 수 없는 장치이므로
+     * Write 완료 직후 반대 명령을 연속으로 보내는 것을 줄인다.
+     */
+    private static final long MANUAL_POWER_REENABLE_DELAY_MS =
+            1500;
 
 
     /*
@@ -403,6 +416,25 @@ public class MainActivity extends AppCompatActivity {
 
 
                             /*
+                             * Power State READ는 지원하지 않지만
+                             * WRITE는 가능한 장치.
+                             *
+                             * 현재 상태를 추측해서 반대 명령을 보내지 않고,
+                             * 사용자가 Wake / Sleep을 직접 선택하도록 한다.
+                             */
+                            if (device.isStateReadUnsupported()
+                                    && device.isManualPowerControlAvailable()) {
+
+                                showManualPowerDialog(
+                                        controller,
+                                        device
+                                );
+
+                                return;
+                            }
+
+
+                            /*
                              * 검색이나 다른 Base Station의 초기 상태 조회가
                              * 진행 중이어도 이 장치의 상태가 Awake / Sleep으로
                              * 확정되어 있다면 전원 명령을 허용한다.
@@ -540,6 +572,15 @@ public class MainActivity extends AppCompatActivity {
          * 검색 중이 아니라면 아래 setPowerState() 호출 뒤
          * updateScanButton()이 전원 작업 상태를 보고 Search만 잠근다.
          */
+
+
+        /*
+         * 정상적으로 Power State READ가 가능한 장치는
+         * 기존처럼 명령 후 실제 상태까지 다시 확인한다.
+         */
+        controller.setStateVerificationEnabled(
+                true
+        );
 
 
         controller.setPowerState(
@@ -709,6 +750,319 @@ public class MainActivity extends AppCompatActivity {
          * - 검색 중 아님: 전원 작업이 끝날 때까지 새 Search만 비활성화
          */
         updateScanButton();
+    }
+
+
+    /*
+     * Power State READ를 지원하지 않는 장치에서
+     * 사용자가 Wake / Sleep 목표 상태를 직접 선택한다.
+     *
+     * 현재 상태를 알 수 없으므로
+     * 하나의 토글 버튼처럼 반대 상태를 추측하지 않는다.
+     */
+    private void showManualPowerDialog(
+            BaseStationGattController controller,
+            BleDeviceItem device) {
+
+
+        new AlertDialog.Builder(this)
+                .setTitle(
+                        "수동 전원 제어"
+                )
+                .setMessage(
+                        "현재 Base Station의 전원 상태를 읽을 수 없습니다.\n\n"
+                                + "일부 이전 버전의 Base Station 펌웨어에서 "
+                                + "발생할 수 있습니다.\n"
+                                + "원하는 전원 상태를 직접 선택해주세요."
+                )
+                .setPositiveButton(
+                        "Wake",
+                        (dialog, which) ->
+                                sendManualPowerCommand(
+                                        controller,
+                                        device,
+                                        BaseStationGattController.TargetState.AWAKE
+                                )
+                )
+                .setNegativeButton(
+                        "Sleep",
+                        (dialog, which) ->
+                                sendManualPowerCommand(
+                                        controller,
+                                        device,
+                                        BaseStationGattController.TargetState.SLEEP
+                                )
+                )
+                .setNeutralButton(
+                        "취소",
+                        null
+                )
+                .show();
+    }
+
+
+    /*
+     * Power State READ가 지원되지 않는 장치에
+     * 사용자가 선택한 Wake / Sleep 명령을 전송한다.
+     *
+     * 이 경우에는 실제 상태를 다시 READ할 수 없으므로
+     * BLE Write 완료까지만 확인한다.
+     *
+     * 따라서 명령 성공 후에도
+     * Awake / Sleep이라고 확정해서 표시하지 않는다.
+     */
+    private void sendManualPowerCommand(
+            BaseStationGattController controller,
+            BleDeviceItem device,
+            BaseStationGattController.TargetState target) {
+
+
+        if (controller == null
+                || controller.isBusy()) {
+
+            return;
+        }
+
+
+        /*
+         * 버튼 중복 입력을 막기 위해
+         * 명령 처리 중에는 Checking...으로 표시한다.
+         *
+         * stateReadUnsupported 플래그는 그대로 유지되므로
+         * 마지막 상태 확인 문구는 "지원되지 않음"으로 유지된다.
+         */
+        device.setStatus(
+                "Checking..."
+        );
+
+
+        updateDeviceRow(
+                device
+        );
+
+
+        /*
+         * 이 장치는 Power State READ 자체를 지원하지 않으므로
+         * Write 뒤의 상태 검증 단계를 사용하지 않는다.
+         */
+        controller.setStateVerificationEnabled(
+                false
+        );
+
+
+        controller.setPowerState(
+                device,
+                target,
+
+                new BaseStationGattController.CommandCallback() {
+
+
+                    /*
+                     * Wake 또는 Sleep Write가 정상적으로 완료됨.
+                     *
+                     * 실제 목표 상태를 READ해서 확인한 것은 아니므로
+                     * Awake / Sleep으로 확정하지 않는다.
+                     *
+                     * 또한 Write 직후 바로 같은 버튼을 다시 누르지 못하도록
+                     * 잠깐 Checking... 상태를 유지한 뒤
+                     * 다시 수동 제어 가능 상태로 되돌린다.
+                     */
+                    @Override
+                    public void onCommandSent(
+                            BleDeviceItem device,
+                            BaseStationGattController.TargetState target) {
+
+
+                        String message =
+                                target
+                                        == BaseStationGattController.TargetState.AWAKE
+                                        ? "Wake command sent"
+                                        : "Sleep command sent";
+
+
+                        AppLog.d(
+                                "Manual power command sent"
+                                        + " / device = "
+                                        + device.getName()
+                                        + " / target = "
+                                        + target
+                        );
+
+
+                        runOnUiThread(() ->
+                                Toast.makeText(
+                                        MainActivity.this,
+                                        message,
+                                        Toast.LENGTH_SHORT
+                                ).show()
+                        );
+
+
+                        scheduleManualPowerControlRestore(
+                                device
+                        );
+
+
+                        restoreSearchButton();
+                    }
+
+
+                    /*
+                     * 수동 제어에서는 실제 상태 검증을 하지 않으므로
+                     * 정상적으로는 호출되지 않는다.
+                     *
+                     * 예외적으로 호출되더라도 실제 상태를 추측하지 않는다.
+                     */
+                    @Override
+                    public void onStateConfirmed(
+                            BleDeviceItem device,
+                            BaseStationGattController.TargetState target) {
+
+
+                        scheduleManualPowerControlRestore(
+                                device
+                        );
+
+
+                        restoreSearchButton();
+                    }
+
+
+                    /*
+                     * 수동 제어에서는 상태 검증 단계를 사용하지 않으므로
+                     * 정상적으로는 호출되지 않는다.
+                     */
+                    @Override
+                    public void onStateConfirmationFailed(
+                            BleDeviceItem device,
+                            String reason) {
+
+
+                        scheduleManualPowerControlRestore(
+                                device
+                        );
+
+
+                        AppLog.d(
+                                "Manual power state confirmation unexpectedly failed"
+                                        + " / device = "
+                                        + device.getName()
+                                        + " / reason = "
+                                        + reason
+                        );
+
+
+                        restoreSearchButton();
+                    }
+
+
+                    /*
+                     * BLE 연결 또는 Write 자체가 실패한 경우.
+                     *
+                     * 상태는 여전히 읽을 수 없으므로
+                     * State read unsupported 상태를 유지한다.
+                     */
+                    @Override
+                    public void onCommandFailed(
+                            BleDeviceItem device,
+                            String reason) {
+
+
+                        scheduleManualPowerControlRestore(
+                                device
+                        );
+
+
+                        AppLog.d(
+                                "Manual power command failed"
+                                        + " / device = "
+                                        + device.getName()
+                                        + " / reason = "
+                                        + reason
+                        );
+
+
+                        runOnUiThread(() ->
+                                Toast.makeText(
+                                        MainActivity.this,
+                                        "Power command failed",
+                                        Toast.LENGTH_SHORT
+                                ).show()
+                        );
+
+
+                        restoreSearchButton();
+                    }
+                }
+        );
+
+
+        /*
+         * Controller가 busy 상태가 된 뒤
+         * Search / Stop 버튼 상태를 다시 계산한다.
+         */
+        updateScanButton();
+    }
+
+
+    /*
+     * READ 미지원 장치의 수동 전원 명령이 끝난 뒤
+     * 짧은 재입력 방지 시간을 거쳐
+     * 주황색 수동 제어 버튼을 다시 사용할 수 있게 한다.
+     *
+     * 명령이 진행되는 동안과 이 대기 시간 동안에는
+     * status가 Checking...이므로 Adapter에서 버튼이
+     * 회색 + 비활성 상태로 유지된다.
+     */
+    private void scheduleManualPowerControlRestore(
+            BleDeviceItem device) {
+
+
+        handler.postDelayed(
+                () -> {
+
+                    /*
+                     * 그 사이 새 Search가 시작되어
+                     * 이전 장치가 목록에서 사라졌다면 아무것도 하지 않는다.
+                     */
+                    if (!deviceList.contains(
+                            device
+                    )) {
+
+                        return;
+                    }
+
+
+                    /*
+                     * 다른 처리에서 상태가 이미 바뀌었다면
+                     * 오래된 지연 작업으로 덮어쓰지 않는다.
+                     */
+                    if (!"Checking...".equals(
+                            device.getStatus()
+                    )) {
+
+                        return;
+                    }
+
+
+                    device.setStatus(
+                            "State read unsupported"
+                    );
+
+
+                    updateDeviceRow(
+                            device
+                    );
+
+
+                    AppLog.d(
+                            "Manual power control re-enabled"
+                                    + " / device = "
+                                    + device.getName()
+                    );
+                },
+                MANUAL_POWER_REENABLE_DELAY_MS
+        );
     }
 
 
@@ -1068,7 +1422,7 @@ public class MainActivity extends AppCompatActivity {
         /*
          * 이번 BLE 검색이 시작된 시간을 기록
          */
-         updateLastScanTime();
+        updateLastScanTime();
 
 
         /*
@@ -1648,16 +2002,103 @@ public class MainActivity extends AppCompatActivity {
 
 
                     /*
-                     * 현재 Base Station Firmware에서
-                     * Power State READ를 지원하는지 확인
+                     * 현재 Base Station의 Power State Characteristic이
+                     * 어떤 기능을 지원하는지 확인한다.
+                     *
+                     * READ:
+                     * 현재 Power State 확인 가능.
+                     *
+                     * WRITE:
+                     * 응답이 있는 일반 Write 가능.
+                     * 현재 LightLink의 Wake / Sleep 제어는
+                     * 이 방식을 기준으로 사용한다.
+                     *
+                     * WRITE_NO_RESPONSE:
+                     * 응답 없는 Write 지원 여부.
+                     * 진단용으로만 기록하고,
+                     * 현재 수동 제어 가능 판정에는 사용하지 않는다.
                      */
+                    int properties =
+                            powerState.getProperties();
+
+
                     boolean readable =
                             (
-                                    powerState.getProperties()
+                                    properties
                                             & BluetoothGattCharacteristic.PROPERTY_READ
                             ) != 0;
 
 
+                    boolean writable =
+                            (
+                                    properties
+                                            & BluetoothGattCharacteristic.PROPERTY_WRITE
+                            ) != 0;
+
+
+                    boolean writableWithoutResponse =
+                            (
+                                    properties
+                                            & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
+                            ) != 0;
+
+
+                    /*
+                     * 진단용 로그
+                     *
+                     * 실제 장치에서 READ / WRITE 지원 형태를
+                     * 나중에 확인할 수 있도록 남긴다.
+                     */
+                    AppLog.d(
+                            "Power State properties"
+                                    + " / device = "
+                                    + (
+                                    currentStatusDevice != null
+                                            ? currentStatusDevice.getName()
+                                            : "(unknown)"
+                            )
+                                    + " / properties = 0x"
+                                    + Integer.toHexString(properties).toUpperCase()
+                                    + " / READ = "
+                                    + readable
+                                    + " / WRITE = "
+                                    + writable
+                                    + " / WRITE_NO_RESPONSE = "
+                                    + writableWithoutResponse
+                    );
+
+
+                    /*
+                     * 장치별 Capability를 BleDeviceItem에 저장한다.
+                     *
+                     * READ가 없다는 사실과,
+                     * READ는 없지만 일반 WRITE가 가능해서
+                     * 수동 Wake / Sleep을 사용할 수 있다는 사실을
+                     * 서로 따로 보관한다.
+                     */
+                    if (currentStatusDevice != null) {
+
+                        currentStatusDevice.setStateReadUnsupported(
+                                !readable
+                        );
+
+
+                        currentStatusDevice.setManualPowerControlAvailable(
+                                !readable && writable
+                        );
+                    }
+
+
+                    /*
+                     * Power State Characteristic은 존재하지만
+                     * READ 기능 자체가 없는 경우.
+                     *
+                     * 단순한 연결 실패나 Read 실패와 구분하며,
+                     * 이 경우에는 상태 조회를 재시도하지 않는다.
+                     *
+                     * WRITE를 지원한다면 Adapter에서
+                     * 주황색 수동 전원 버튼을 사용할 수 있다.
+                     */
                     if (!readable) {
 
                         finishStatusRead(

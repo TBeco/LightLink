@@ -39,6 +39,13 @@ public class BleDeviceAdapter
     private static final int POWER_COLOR_SLEEP =
             Color.parseColor("#4285F4");
 
+    /*
+     * 현재 Power State는 읽을 수 없지만
+     * 수동 Wake / Sleep 명령은 보낼 수 있는 상태.
+     */
+    private static final int POWER_COLOR_MANUAL =
+            Color.parseColor("#FB8C00");
+
     private static final int POWER_COLOR_UNAVAILABLE =
             Color.parseColor("#616161");
 
@@ -211,6 +218,10 @@ public class BleDeviceAdapter
     /*
      * 마지막 상태 확인 시간을 표시한다.
      *
+     * Power State READ 자체가 지원되지 않는 경우에는
+     * 일반적인 상태 확인 실패와 구분하여
+     * "지원되지 않음"을 표시한다.
+     *
      * 아직 한 번도 실제 Power State 확인에
      * 성공하지 못했다면 현재 상태에 따라
      * "확인 중..." 또는 "확인되지 않음"을 표시한다.
@@ -223,6 +234,25 @@ public class BleDeviceAdapter
             DeviceViewHolder holder,
             BleDeviceItem device,
             String status) {
+
+
+        /*
+         * Power State characteristic은 존재하지만
+         * READ 기능 자체가 지원되지 않는 경우.
+         *
+         * 단순한 연결 실패나 Read 실패와는 다르므로
+         * "확인되지 않음"이 아니라
+         * "지원되지 않음"으로 따로 표시한다.
+         */
+        if (device.isStateReadUnsupported()) {
+
+            holder.textLastStateChecked.setText(
+                    "마지막 상태 확인 | 지원되지 않음"
+            );
+
+
+            return;
+        }
 
 
         LocalDateTime lastStateCheckedAt =
@@ -288,6 +318,39 @@ public class BleDeviceAdapter
 
 
         /*
+         * 현재 BLE 명령 처리 중.
+         *
+         * READ 미지원 장치도 수동 명령을 보내는 동안에는
+         * Checking... 상태가 되므로 반드시 가장 먼저 확인한다.
+         *
+         * 이 분기가 수동 제어 분기보다 먼저 있어야
+         * 명령 처리 중 주황색 버튼이 다시 활성화되지 않는다.
+         */
+        if ("Checking...".equals(status)) {
+
+            holder.buttonPower.setEnabled(
+                    false
+            );
+
+
+            holder.buttonPower.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                            POWER_COLOR_UNAVAILABLE
+                    )
+            );
+
+
+            holder.buttonPower.setContentDescription(
+                    device.getName()
+                            + " power command in progress"
+            );
+
+
+            return;
+        }
+
+
+        /*
          * Awake
          *
          * Base Station이 정상적으로 작동 중.
@@ -348,16 +411,52 @@ public class BleDeviceAdapter
 
 
         /*
+         * Power State READ는 지원하지 않지만
+         * 일반 WRITE는 가능한 장치.
+         *
+         * 현재 Awake / Sleep 상태를 알 수 없으므로
+         * 일반 토글처럼 반대 상태를 추측하지 않는다.
+         *
+         * 주황색 버튼을 누르면 MainActivity에서
+         * Wake / Sleep을 사용자가 직접 선택한다.
+         */
+        if (device.isStateReadUnsupported()
+                && device.isManualPowerControlAvailable()) {
+
+            holder.buttonPower.setEnabled(
+                    true
+            );
+
+
+            holder.buttonPower.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                            POWER_COLOR_MANUAL
+                    )
+            );
+
+
+            holder.buttonPower.setContentDescription(
+                    device.getName()
+                            + " manual power control"
+            );
+
+
+            return;
+        }
+
+
+        /*
          * 그 외 모든 상태
          *
-         * Checking...
          * Unknown
          * Timeout
          * Connection failed
          * Standby
+         * READ 미지원 + WRITE 미지원
          * 기타 알 수 없는 상태
          *
-         * 현재 상태를 확실하게 알 수 없으므로
+         * 현재 상태를 확실하게 알 수 없거나
+         * 안전하게 전원 명령을 보낼 수 없으므로
          * 전원 버튼을 비활성화한다.
          */
         holder.buttonPower.setEnabled(

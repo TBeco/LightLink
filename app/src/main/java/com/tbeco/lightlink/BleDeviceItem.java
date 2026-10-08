@@ -30,6 +30,7 @@ public class BleDeviceItem {
      * Sleep
      * Standby
      * Unknown
+     * State read unsupported
      */
     private String status;
 
@@ -41,6 +42,37 @@ public class BleDeviceItem {
      * 아직 상태를 한 번도 확인하지 못했다면 null.
      */
     private LocalDateTime lastStateCheckedAt;
+
+
+    /*
+     * 이 Base Station의 Power State characteristic이
+     * READ 기능을 지원하지 않는지 여부.
+     *
+     * false:
+     * 아직 확인되지 않았거나 READ를 지원함.
+     *
+     * true:
+     * Power State characteristic은 존재하지만
+     * PROPERTY_READ가 없어 상태 읽기가 지원되지 않음.
+     *
+     * 단순한 GATT 연결 실패나 Read 실패와는 구분한다.
+     */
+    private boolean stateReadUnsupported;
+
+
+    /*
+     * 현재 Power State를 읽을 수는 없지만
+     * Power State WRITE는 가능한지 여부.
+     *
+     * true:
+     * 현재 상태 확인은 불가능하지만
+     * Wake / Sleep 명령을 수동으로 보낼 수 있음.
+     *
+     * false:
+     * 아직 확인되지 않았거나
+     * 수동 전원 제어를 지원하지 않음.
+     */
+    private boolean manualPowerControlAvailable;
 
 
     public BleDeviceItem(
@@ -75,6 +107,22 @@ public class BleDeviceItem {
          */
         this.lastStateCheckedAt =
                 null;
+
+
+        /*
+         * 발견 직후에는 아직 Power State READ 지원 여부를
+         * 확인하지 않았으므로 false로 시작한다.
+         */
+        this.stateReadUnsupported =
+                false;
+
+
+        /*
+         * 발견 직후에는 아직 Power State WRITE 지원 여부도
+         * 확인하지 않았으므로 false로 시작한다.
+         */
+        this.manualPowerControlAvailable =
+                false;
     }
 
 
@@ -128,5 +176,48 @@ public class BleDeviceItem {
 
         this.lastStateCheckedAt =
                 lastStateCheckedAt;
+    }
+
+
+    /*
+     * Power State READ가 지원되지 않는지 확인
+     */
+    public boolean isStateReadUnsupported() {
+
+        return stateReadUnsupported;
+    }
+
+
+    /*
+     * Power State characteristic에
+     * PROPERTY_READ가 없을 때 true로 설정한다.
+     */
+    public void setStateReadUnsupported(
+            boolean stateReadUnsupported) {
+
+        this.stateReadUnsupported =
+                stateReadUnsupported;
+    }
+
+
+    /*
+     * 현재 상태 확인 없이
+     * 수동 Wake / Sleep 제어가 가능한지 확인
+     */
+    public boolean isManualPowerControlAvailable() {
+
+        return manualPowerControlAvailable;
+    }
+
+
+    /*
+     * Power State READ는 지원하지 않지만
+     * WRITE는 가능한 경우 true로 설정한다.
+     */
+    public void setManualPowerControlAvailable(
+            boolean manualPowerControlAvailable) {
+
+        this.manualPowerControlAvailable =
+                manualPowerControlAvailable;
     }
 }
