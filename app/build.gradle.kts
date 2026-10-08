@@ -14,8 +14,8 @@ android {
         minSdk = 26
         targetSdk = 37
 
-        versionCode = 2
-        versionName = "0.5.0-beta.2"
+        versionCode = 3
+        versionName = "0.5.0-beta.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,10 +30,29 @@ android {
     }
 
     buildTypes {
+        /*
+         * 개발 / 테스트용
+         *
+         * Release 앱과 동시에 설치할 수 있도록
+         * 별도의 Application ID를 사용한다.
+         */
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+
+
+        /*
+         * 실제 배포용
+         */
         release {
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
+                packageScope = setOf(
+                    "androidx.**",
+                    "kotlin.**",
+                    "kotlinx.**"
+                )
             }
         }
     }

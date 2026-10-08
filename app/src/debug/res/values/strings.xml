@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <!--
+        Debug 빌드에서만 사용하는 앱 이름.
+        Release에서는 src/main의 app_name을 그대로 사용한다.
+    -->
+    <string name="app_name">LightLink Debug</string>
+
+</resources>
