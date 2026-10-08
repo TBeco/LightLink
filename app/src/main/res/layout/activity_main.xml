@@ -71,26 +71,29 @@
 
 
     <!--
-        Base Station 목록 영역 제목
+        현재 LightLink 앱 버전
 
-        현재는 임시로 Test 사용.
-        나중에 실제 제목으로 변경 예정.
+        실제 버전 문자열은 MainActivity에서
+        BuildConfig.VERSION_NAME을 읽어 표시한다.
+
+        tools:text는 Android Studio Preview에서만 표시된다.
     -->
     <TextView
-        android:id="@+id/textStationHeader"
+        android:id="@+id/textAppVersion"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
 
         android:layout_marginStart="16dp"
         android:layout_marginTop="20dp"
 
-        android:text="Test"
         android:textColor="@color/white"
         android:textSize="18sp"
         android:textStyle="bold"
 
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/topDivider" />
+        app:layout_constraintTop_toBottomOf="@id/topDivider"
+
+        tools:text="v0.5.0-beta.1" />
 
 
     <!--
@@ -111,7 +114,7 @@
 
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textStationHeader"
+        app:layout_constraintTop_toBottomOf="@id/textAppVersion"
         app:layout_constraintBottom_toTopOf="@id/textLastScan"
 
         tools:listitem="@layout/item_ble_device" />

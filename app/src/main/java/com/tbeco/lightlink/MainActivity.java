@@ -344,6 +344,13 @@ public class MainActivity extends AppCompatActivity {
         recyclerBaseStations =
                 findViewById(R.id.recyclerBaseStations);
 
+        TextView textAppVersion =
+                findViewById(R.id.textAppVersion);
+
+        textAppVersion.setText(
+                "v" + BuildConfig.VERSION_NAME
+        );
+
 
         /*
          * RecyclerView 설정
@@ -352,6 +359,28 @@ public class MainActivity extends AppCompatActivity {
          */
         recyclerBaseStations.setLayoutManager(
                 new LinearLayoutManager(this)
+        );
+
+        /*
+         * Debug 빌드에서는 UI 테스트용
+         * 가상 Base Station을 목록에 추가한다.
+         *
+         * Release 빌드에서는
+         * DebugMockDevices의 빈 구현이 사용되므로
+         * 아무 장치도 추가되지 않는다.
+         */
+        DebugMockDevices.addMockDevices(
+                deviceList
+        );
+
+        /*
+         * 장치가 하나라도 있으면
+         * 빈 목록 안내 문구를 숨긴다.
+         */
+        textEmpty.setVisibility(
+                deviceList.isEmpty()
+                        ? View.VISIBLE
+                        : View.GONE
         );
 
 
