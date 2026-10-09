@@ -3,10 +3,8 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-
     android:orientation="horizontal"
     android:padding="12dp">
 
@@ -14,15 +12,15 @@
     <!--
         왼쪽: Base Station 정보
 
-        장치 이름
-        현재 전원 상태
-        MAC 주소 / RSSI
-        마지막 상태 확인 시간
+        1. 장치 이름
+        2. 현재 전원 상태
+        3. MAC 주소
+        4. 채널 / Bluetooth 신호 강도
+        5. 마지막 상태 확인 시간
     -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -40,7 +38,12 @@
             tools:text="LHB-XXXX" />
 
 
-        <!-- 현재 Base Station 전원 상태 -->
+        <!--
+            현재 Base Station 전원 상태
+
+            장치 정보 중 가장 중요한 정보이므로
+            다른 보조 정보보다 조금 더 크게 표시한다.
+        -->
         <TextView
             android:id="@+id/textDeviceStatus"
             android:layout_width="wrap_content"
@@ -49,12 +52,13 @@
             android:layout_marginTop="4dp"
 
             android:textColor="#AAAAAA"
-            android:textSize="14sp"
+            android:textSize="15sp"
+            android:textStyle="bold"
 
             tools:text="Awake" />
 
 
-        <!-- MAC 주소와 RSSI -->
+        <!-- Bluetooth MAC 주소 -->
         <TextView
             android:id="@+id/textDeviceInfo"
             android:layout_width="wrap_content"
@@ -65,7 +69,29 @@
             android:textColor="#777777"
             android:textSize="12sp"
 
-            tools:text="XX:XX:XX:XX:XX:XX  •  -52 dBm" />
+            tools:text="XX:XX:XX:XX:XX:XX" />
+
+
+        <!--
+            Base Station 채널과 Bluetooth 신호 강도
+
+            예:
+            채널 3 | 신호 강함 · -54 dBm
+
+            채널 기능이 아직 구현되지 않은 동안에는
+            Adapter에서 신호 정보만 표시해도 된다.
+        -->
+        <TextView
+            android:id="@+id/textDeviceRadioInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="4dp"
+
+            android:textColor="#777777"
+            android:textSize="12sp"
+
+            tools:text="채널 3 | 신호 강함 · -54 dBm" />
 
 
         <!--
@@ -93,17 +119,21 @@
     <!--
         오른쪽: Base Station 전원 버튼
 
+        정보가 5줄로 늘어났으므로
+        기존 56dp보다 조금 크게 만든다.
+
         왼쪽 정보 영역 전체를 기준으로
         세로 가운데에 배치한다.
     -->
     <ImageButton
         android:id="@+id/buttonPower"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
 
         android:layout_gravity="center_vertical"
 
-        android:padding="14dp"
+        android:padding="12dp"
+        android:scaleType="center"
 
         android:background="@drawable/bg_power_button"
         android:contentDescription="Power"

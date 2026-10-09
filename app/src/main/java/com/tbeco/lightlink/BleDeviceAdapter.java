@@ -51,6 +51,30 @@ public class BleDeviceAdapter
 
 
     /*
+     * Bluetooth RSSI를 사용자에게 보여줄 때 사용하는
+     * 간단한 3단계 기준.
+     *
+     * RSSI는 주변 환경과 휴대폰 방향에 따라 계속 흔들릴 수 있으므로
+     * 너무 많은 단계로 세분화하지 않고
+     * 강함 / 보통 / 약함 세 단계만 사용한다.
+     *
+     * 강함:
+     * -65 dBm 이상
+     *
+     * 보통:
+     * -66 ~ -78 dBm
+     *
+     * 약함:
+     * -79 dBm 이하
+     */
+    private static final int SIGNAL_STRONG_RSSI =
+            -65;
+
+    private static final int SIGNAL_NORMAL_RSSI =
+            -78;
+
+
+    /*
      * 마지막 상태 확인 시간을
      * 화면에 표시할 형식
      *
@@ -157,16 +181,29 @@ public class BleDeviceAdapter
 
 
         /*
-         * MAC 주소 + RSSI
+         * Bluetooth MAC 주소
          *
-         * 예:
-         * AA:BB:CC:DD:EE:FF    -52 dBm
+         * RSSI는 아래의 별도 Radio 정보 줄에 표시한다.
          */
         holder.textDeviceInfo.setText(
                 device.getAddress()
-                        + "    "
-                        + device.getRssi()
-                        + " dBm"
+        );
+
+
+        /*
+         * Bluetooth 신호 강도 표시
+         *
+         * 현재:
+         * 신호 강함 · -54 dBm
+         *
+         * 추후 Base Station 채널 READ 기능이 추가되면
+         * 같은 줄을 다음과 같이 확장할 수 있다.
+         *
+         * 채널 3 | 신호 강함 · -54 dBm
+         */
+        configureDeviceRadioInfo(
+                holder,
+                device
         );
 
 
@@ -212,6 +249,90 @@ public class BleDeviceAdapter
                 );
             }
         });
+    }
+
+
+    /*
+     * Base Station의 RF Channel과 Bluetooth RSSI를
+     * 한 줄에 함께 표시한다.
+     *
+     * RSSI는 0에 가까울수록 강하고,
+     * 음수 값이 더 작아질수록 약하다.
+     *
+     * 예:
+     * 채널 3 | 신호 강함 · -54 dBm
+     * 채널 8 | 신호 보통 · -70 dBm
+     * 채널 - | 신호 약함 · -83 dBm
+     *
+     * 채널이 null이면 아직 확인하지 못했거나
+     * 해당 장치에서 Mode Characteristic READ를
+     * 사용할 수 없는 상태이므로 "-"로 표시한다.
+     */
+    private void configureDeviceRadioInfo(
+            DeviceViewHolder holder,
+            BleDeviceItem device) {
+
+
+        int rssi =
+                device.getRssi();
+
+
+        String signalText;
+
+
+        if (rssi >= SIGNAL_STRONG_RSSI) {
+
+            signalText =
+                    "강함";
+
+        } else if (rssi >= SIGNAL_NORMAL_RSSI) {
+
+            signalText =
+                    "보통";
+
+        } else {
+
+            signalText =
+                    "약함";
+        }
+
+
+        /*
+         * MainActivity에서 Mode Characteristic READ에 성공하면
+         * 1~16 범위의 채널 번호가 저장된다.
+         *
+         * 아직 확인되지 않았다면 null이다.
+         */
+        Integer channel =
+                device.getChannel();
+
+
+        String channelText;
+
+
+        if (channel != null) {
+
+            channelText =
+                    String.valueOf(
+                            channel
+                    );
+
+        } else {
+
+            channelText =
+                    "-";
+        }
+
+
+        holder.textDeviceRadioInfo.setText(
+                "채널 "
+                        + channelText
+                        + " | 신호 "
+                        + signalText
+                        + " · "
+                        + rssi
+                        + " dBm"
+        );
     }
 
 
@@ -499,6 +620,7 @@ public class BleDeviceAdapter
         TextView textDeviceName;
         TextView textDeviceStatus;
         TextView textDeviceInfo;
+        TextView textDeviceRadioInfo;
         TextView textLastStateChecked;
 
         ImageButton buttonPower;
@@ -525,6 +647,12 @@ public class BleDeviceAdapter
             textDeviceInfo =
                     itemView.findViewById(
                             R.id.textDeviceInfo
+                    );
+
+
+            textDeviceRadioInfo =
+                    itemView.findViewById(
+                            R.id.textDeviceRadioInfo
                     );
 
 

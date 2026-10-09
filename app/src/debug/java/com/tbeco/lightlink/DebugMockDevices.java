@@ -20,6 +20,12 @@ import java.util.List;
  * Checking...
  * Unknown
  * State read unsupported + WRITE 불가
+ *
+ * 추가로 다음 UI도 함께 확인한다.
+ *
+ * RF Channel 표시
+ * Channel 미확인 표시
+ * Bluetooth 신호 강함 / 보통 / 약함 표시
  */
 public final class DebugMockDevices {
 
@@ -70,9 +76,17 @@ public final class DebugMockDevices {
          * 실제 Power State READ에 성공하여
          * Base Station이 현재 작동 중인 상황.
          *
+         * Channel READ도 정상적으로 성공한 상태.
+         *
+         * RSSI:
+         * -48 dBm → 강함
+         *
          * 예상 UI:
          *
+         * LHB-MOCK-AWAKE
          * Awake
+         * 00:00:00:00:00:01
+         * 채널 1 | 신호 강함 · -48 dBm
          * 마지막 상태 확인 | 시간
          * 초록색 전원 버튼
          */
@@ -86,6 +100,11 @@ public final class DebugMockDevices {
 
         awakeDevice.setStatus(
                 "Awake"
+        );
+
+
+        awakeDevice.setChannel(
+                1
         );
 
 
@@ -107,9 +126,17 @@ public final class DebugMockDevices {
          * 실제 Power State READ에 성공하여
          * Base Station이 Sleep 상태인 상황.
          *
+         * Channel READ도 정상적으로 성공한 상태.
+         *
+         * RSSI:
+         * -55 dBm → 강함
+         *
          * 예상 UI:
          *
+         * LHB-MOCK-SLEEP
          * Sleep
+         * 00:00:00:00:00:02
+         * 채널 2 | 신호 강함 · -55 dBm
          * 마지막 상태 확인 | 시간
          * 파란색 전원 버튼
          */
@@ -123,6 +150,11 @@ public final class DebugMockDevices {
 
         sleepDevice.setStatus(
                 "Sleep"
+        );
+
+
+        sleepDevice.setChannel(
+                2
         );
 
 
@@ -147,9 +179,19 @@ public final class DebugMockDevices {
          * 실제 구형 Base Station에서 확인한
          * 수동 전원 제어 상태를 재현한다.
          *
+         * Power State READ는 불가능하지만
+         * Mode / Channel READ는 가능할 수도 있는 경우를
+         * 재현하기 위해 Channel 3을 설정한다.
+         *
+         * RSSI:
+         * -62 dBm → 강함
+         *
          * 예상 UI:
          *
+         * LHB-MOCK-READLESS
          * State read unsupported
+         * 00:00:00:00:00:03
+         * 채널 3 | 신호 강함 · -62 dBm
          * 마지막 상태 확인 | 지원되지 않음
          * 주황색 전원 버튼
          *
@@ -166,6 +208,11 @@ public final class DebugMockDevices {
 
         readUnsupportedDevice.setStatus(
                 "State read unsupported"
+        );
+
+
+        readUnsupportedDevice.setChannel(
+                3
         );
 
 
@@ -192,9 +239,18 @@ public final class DebugMockDevices {
          * 현재 Power State를 확인하고 있거나
          * 전원 명령을 처리하고 있는 중인 상황.
          *
+         * Channel은 이전에 정상적으로 확인된 값이
+         * 이미 존재하는 상황도 테스트한다.
+         *
+         * RSSI:
+         * -67 dBm → 보통
+         *
          * 예상 UI:
          *
+         * LHB-MOCK-CHECKING
          * Checking...
+         * 00:00:00:00:00:04
+         * 채널 4 | 신호 보통 · -67 dBm
          * 마지막 상태 확인 | 확인 중...
          * 회색 전원 버튼
          * 버튼 비활성화
@@ -212,6 +268,11 @@ public final class DebugMockDevices {
         );
 
 
+        checkingDevice.setChannel(
+                4
+        );
+
+
         deviceList.add(
                 checkingDevice
         );
@@ -225,9 +286,17 @@ public final class DebugMockDevices {
          * Power State 확인을 시도했지만
          * 실제 상태를 확정하지 못한 상황.
          *
+         * Channel은 별도로 확인된 상태를 재현한다.
+         *
+         * RSSI:
+         * -73 dBm → 보통
+         *
          * 예상 UI:
          *
+         * LHB-MOCK-UNKNOWN
          * Unknown
+         * 00:00:00:00:00:05
+         * 채널 8 | 신호 보통 · -73 dBm
          * 마지막 상태 확인 | 확인되지 않음
          * 회색 전원 버튼
          * 버튼 비활성화
@@ -245,6 +314,11 @@ public final class DebugMockDevices {
         );
 
 
+        unknownDevice.setChannel(
+                8
+        );
+
+
         deviceList.add(
                 unknownDevice
         );
@@ -252,23 +326,37 @@ public final class DebugMockDevices {
 
         /*
          * -------------------------------------------------
-         * 6. READ 불가 + WRITE 불가 Mock
+         * 6. READ 불가 + WRITE 불가 + 약한 신호 Mock
          * -------------------------------------------------
          *
          * Power State READ도 지원하지 않고
          * 현재 LightLink에서 사용할 수 있는
          * WRITE 방식도 확인되지 않은 상황.
          *
-         * READ가 불가능하다는 점은
-         * 주황색 Mock과 동일하지만,
+         * Channel도 확인하지 못한 상태를 재현하기 위해
+         * setChannel()을 호출하지 않는다.
          *
-         * manualPowerControlAvailable = false
+         * BleDeviceItem의 기본 Channel 값은 null이므로
+         * Adapter에서는 다음과 같이 표시된다.
          *
-         * 이므로 전원 버튼은 활성화되지 않는다.
+         * 채널 -
+         *
+         * RSSI:
+         * -88 dBm → 약함
+         *
+         * 따라서 이 Mock은 다음을 한 번에 확인한다.
+         *
+         * Power State READ 불가
+         * 수동 전원 제어 불가
+         * Channel 미확인
+         * Bluetooth 신호 약함
          *
          * 예상 UI:
          *
+         * LHB-MOCK-READLESS-NOWRITE
          * State read unsupported
+         * 00:00:00:00:00:06
+         * 채널 - | 신호 약함 · -88 dBm
          * 마지막 상태 확인 | 지원되지 않음
          * 회색 전원 버튼
          * 버튼 비활성화
@@ -277,7 +365,7 @@ public final class DebugMockDevices {
                 new BleDeviceItem(
                         "LHB-MOCK-READLESS-NOWRITE",
                         "00:00:00:00:00:06",
-                        -78
+                        -88
                 );
 
 
@@ -301,6 +389,14 @@ public final class DebugMockDevices {
                 .setManualPowerControlAvailable(
                         false
                 );
+
+
+        /*
+         * Channel은 일부러 설정하지 않는다.
+         *
+         * channel == null 상태를 유지해서
+         * Adapter의 "채널 -" 표시를 테스트한다.
+         */
 
 
         deviceList.add(

@@ -27,6 +27,9 @@ import java.util.UUID;
  * - GATT 연결 실패 시 안전한 범위에서 자동 재시도
  * - READ 지원 장치는 명령 후 실제 Power State 확인
  * - READ 미지원 장치는 Write 완료까지만 처리
+ * - 전원 명령이 끝날 때마다 가능한 경우 RF Channel을 다시 확인
+ * - 전원 명령 완료 시 가능한 경우 최신 RSSI도 다시 확인
+ * - Channel / RSSI 확인 실패가 전원 명령 결과를 바꾸지 않도록 분리 처리
  * - 전환 중 중복 명령 방지
  */
 public class BaseStationGattController {
@@ -43,6 +46,19 @@ public class BaseStationGattController {
     private static final UUID POWER_STATE_UUID =
             UUID.fromString(
                     "00001525-1212-EFDE-1523-785FEABCD124"
+            );
+
+
+    /*
+     * Base Station 2.0 Mode / RF Channel Characteristic.
+     *
+     * 현재는 채널 변경에는 사용하지 않고,
+     * Wake / Sleep 작업이 끝날 때 현재 채널을 다시 READ해서
+     * BleDeviceItem의 표시 값을 최신 상태로 갱신하는 데만 사용한다.
+     */
+    private static final UUID MODE_UUID =
+            UUID.fromString(
+                    "00001524-1212-EFDE-1523-785FEABCD124"
             );
 
 
@@ -99,6 +115,32 @@ public class BaseStationGattController {
             20000;
 
 
+    /*
+     * 전원 명령의 본래 결과가 결정된 뒤
+     * RF Channel READ만 기다리는 최대 시간.
+     *
+     * Channel은 Power State와 별개의 부가 정보이므로
+     * 이 시간이 지나도 이미 확인된 Wake / Sleep 결과를
+     * 실패로 바꾸지 않는다.
+     *
+     * Timeout이 나면 기존 Channel 값을 유지하고
+     * 다음 부가 정보인 RSSI 확인으로 넘어간다.
+     */
+    private static final long CHANNEL_TIMEOUT_MS =
+            2000;
+
+
+    /*
+     * 전원 명령 자체가 끝난 뒤
+     * 최신 RSSI 확인만 기다리는 최대 시간.
+     *
+     * RSSI는 부가 정보이므로 이 시간이 지나면
+     * 기존 RSSI를 유지하고 전원 명령 결과는 그대로 완료한다.
+     */
+    private static final long RSSI_TIMEOUT_MS =
+            2000;
+
+
     private final Context context;
     private final BluetoothAdapter bluetoothAdapter;
 
@@ -110,6 +152,15 @@ public class BaseStationGattController {
     private BluetoothGatt currentGatt;
 
     private BluetoothGattCharacteristic currentPowerCharacteristic;
+
+    /*
+     * 현재 Power 명령용 GATT 연결에서 발견한
+     * Mode / RF Channel Characteristic.
+     *
+     * 장치가 Characteristic을 제공하지 않으면 null이며,
+     * 이 경우 Channel 갱신만 생략하고 전원 명령은 정상 진행한다.
+     */
+    private BluetoothGattCharacteristic currentModeCharacteristic;
 
     private BleDeviceItem currentDevice;
 
@@ -158,6 +209,47 @@ public class BaseStationGattController {
 
     // 현재 Power State READ 결과를 기다리는지
     private boolean waitingForRead = false;
+
+
+    /*
+     * 전원 명령의 본래 결과가 결정된 뒤
+     * Mode / RF Channel READ 결과를 기다리고 있는지 여부.
+     *
+     * Channel은 부가 정보이므로 실패하거나 Timeout이 나도
+     * 이미 성공한 Write / 상태 확인 결과를 실패로 바꾸지 않는다.
+     */
+    private boolean waitingForChannel = false;
+
+
+    /*
+     * Wake / Sleep 처리가 사실상 끝난 뒤
+     * 최신 RSSI 결과만 기다리고 있는지 여부.
+     *
+     * RSSI는 부가 정보이므로 실패하거나 Timeout이 나도
+     * 이미 성공한 Write / 상태 확인 결과를 실패로 바꾸지 않는다.
+     */
+    private boolean waitingForRssi = false;
+
+
+    /*
+     * Channel / RSSI 갱신이 모두 끝난 뒤
+     * 어떤 종류의 완료 Callback으로 이어져야 하는지 구분한다.
+     *
+     * CONFIRMED:
+     * Power State READ로 실제 목표 상태까지 확인한 일반 장치.
+     *
+     * WRITE_ONLY:
+     * Power State READ 미지원으로 Write 완료까지만 확인한 장치.
+     */
+    private enum OptionalCompletionType {
+        NONE,
+        CONFIRMED,
+        WRITE_ONLY
+    }
+
+
+    private OptionalCompletionType optionalCompletionType =
+            OptionalCompletionType.NONE;
 
 
     /*
@@ -329,6 +421,14 @@ public class BaseStationGattController {
         commandWritten = false;
         powerWriteStarted = false;
         waitingForRead = false;
+        waitingForChannel = false;
+        waitingForRssi = false;
+
+        optionalCompletionType =
+                OptionalCompletionType.NONE;
+
+        currentModeCharacteristic =
+                null;
 
         connectRetryCount = 0;
 
@@ -608,8 +708,28 @@ public class BaseStationGattController {
         currentPowerCharacteristic =
                 null;
 
+        currentModeCharacteristic =
+                null;
+
         waitingForRead =
                 false;
+
+        waitingForChannel =
+                false;
+
+        waitingForRssi =
+                false;
+
+        optionalCompletionType =
+                OptionalCompletionType.NONE;
+
+        handler.removeCallbacks(
+                channelTimeoutRunnable
+        );
+
+        handler.removeCallbacks(
+                rssiTimeoutRunnable
+        );
 
         sleepWriteStep =
                 0;
@@ -675,6 +795,26 @@ public class BaseStationGattController {
                      */
                     if (status
                             != BluetoothGatt.GATT_SUCCESS) {
+
+
+                        /*
+                         * 전원 명령 결과는 이미 결정됐고
+                         * 부가 정보인 RSSI만 확인하던 중이라면
+                         * 연결 오류를 전원 명령 실패로 바꾸지 않는다.
+                         */
+                        if (waitingForChannel
+                                || waitingForRssi) {
+
+                            AppLog.d(
+                                    "Optional device info refresh interrupted by GATT error: "
+                                            + status
+                            );
+
+
+                            completeAfterOptionalInfo();
+
+                            return;
+                        }
 
 
                         /*
@@ -765,6 +905,27 @@ public class BaseStationGattController {
 
 
                         if (!busy) {
+                            return;
+                        }
+
+
+                        /*
+                         * 전원 처리 결과는 이미 결정됐고
+                         * RSSI만 기다리던 중 연결이 끊긴 경우.
+                         *
+                         * RSSI는 갱신하지 못하지만
+                         * 전원 명령 자체는 기존 결과대로 완료한다.
+                         */
+                        if (waitingForChannel
+                                || waitingForRssi) {
+
+                            AppLog.d(
+                                    "Optional device info refresh interrupted by disconnect"
+                            );
+
+
+                            completeAfterOptionalInfo();
+
                             return;
                         }
 
@@ -865,6 +1026,77 @@ public class BaseStationGattController {
                         );
 
                         return;
+                    }
+
+
+                    /*
+                     * Mode / RF Channel Characteristic도 같이 찾아둔다.
+                     *
+                     * 채널은 전원 제어 자체에 필수 정보가 아니므로
+                     * Characteristic이 없거나 READ를 지원하지 않아도
+                     * Wake / Sleep Write는 그대로 진행한다.
+                     *
+                     * 실제 Channel READ는 전원 명령의 결과가 결정된 뒤
+                     * 같은 GATT 연결을 닫기 직전에 한 번 실행한다.
+                     */
+                    currentModeCharacteristic =
+                            controlService.getCharacteristic(
+                                    MODE_UUID
+                            );
+
+
+                    if (currentModeCharacteristic != null) {
+
+                        int modeProperties =
+                                currentModeCharacteristic.getProperties();
+
+
+                        boolean modeReadable =
+                                (
+                                        modeProperties
+                                                & BluetoothGattCharacteristic.PROPERTY_READ
+                                ) != 0;
+
+
+                        boolean modeWritable =
+                                (
+                                        modeProperties
+                                                & BluetoothGattCharacteristic.PROPERTY_WRITE
+                                ) != 0;
+
+
+                        boolean modeNotifiable =
+                                (
+                                        modeProperties
+                                                & BluetoothGattCharacteristic.PROPERTY_NOTIFY
+                                ) != 0;
+
+
+                        AppLog.d(
+                                "Power command Mode properties"
+                                        + " / device = "
+                                        + (currentDevice != null
+                                        ? currentDevice.getName()
+                                        : "(unknown)")
+                                        + " / properties = 0x"
+                                        + Integer.toHexString(modeProperties).toUpperCase()
+                                        + " / READ = "
+                                        + modeReadable
+                                        + " / WRITE = "
+                                        + modeWritable
+                                        + " / NOTIFY = "
+                                        + modeNotifiable
+                        );
+
+                    } else {
+
+                        AppLog.d(
+                                "Power command Mode characteristic not found"
+                                        + " / device = "
+                                        + (currentDevice != null
+                                        ? currentDevice.getName()
+                                        : "(unknown)")
+                        );
                     }
 
 
@@ -1037,6 +1269,67 @@ public class BaseStationGattController {
                             status
                     );
                 }
+
+
+                /*
+                 * 전원 명령 완료 직전, Channel 갱신 다음 단계로 요청한
+                 * 최신 RSSI 확인 결과.
+                 */
+                @Override
+                public void onReadRemoteRssi(
+                        BluetoothGatt gatt,
+                        int rssi,
+                        int status) {
+
+
+                    if (gatt != currentGatt
+                            || !busy
+                            || !waitingForRssi) {
+
+                        return;
+                    }
+
+
+                    /*
+                     * RSSI 확인 성공.
+                     *
+                     * BleDeviceItem에는 검색 당시 값 대신
+                     * 현재 GATT 연결에서 확인한 최신 값을 저장한다.
+                     */
+                    if (status == BluetoothGatt.GATT_SUCCESS
+                            && currentDevice != null) {
+
+
+                        currentDevice.setRssi(
+                                rssi
+                        );
+
+
+                        AppLog.d(
+                                "Power command RSSI updated"
+                                        + " / device = "
+                                        + currentDevice.getName()
+                                        + " / RSSI = "
+                                        + rssi
+                                        + " dBm"
+                        );
+
+                    } else {
+
+                        /*
+                         * RSSI 실패는 부가 정보 실패일 뿐이다.
+                         * 이미 성공한 Wake / Sleep 결과에는 영향을 주지 않는다.
+                         */
+                        AppLog.d(
+                                "Power command RSSI read failed"
+                                        + " / status = "
+                                        + status
+                        );
+                    }
+
+
+                    completeAfterOptionalInfo();
+                }
             };
 
 
@@ -1157,6 +1450,48 @@ public class BaseStationGattController {
         }
 
 
+        AppLog.d(
+                "Power command completed without state verification"
+                        + " / device = "
+                        + (currentDevice != null
+                        ? currentDevice.getName()
+                        : "(unknown)")
+                        + " / target = "
+                        + currentTarget
+        );
+
+
+        /*
+         * 실제 Power State는 확인할 수 없지만 필요한 Write는 끝났다.
+         *
+         * GATT를 닫기 전에 가능한 경우
+         * Channel → RSSI 순서로 부가 정보를 최신화한다.
+         *
+         * 3002 같은 READ 미지원 장치라도
+         * Power State READ와 Mode READ는 서로 다른 Capability이므로
+         * Mode READ가 가능하다면 Channel은 정상적으로 갱신될 수 있다.
+         *
+         * Channel / RSSI 실패는 Write 성공 결과를 바꾸지 않는다.
+         */
+        beginOptionalInfoRefresh(
+                OptionalCompletionType.WRITE_ONLY
+        );
+    }
+
+
+    /*
+     * READ 미지원 장치의 최종 완료 처리.
+     *
+     * 이 메서드가 호출되는 시점에는
+     * Channel / RSSI 확인도 끝났거나 생략 / 실패 / Timeout 처리된 상태다.
+     */
+    private void completeWriteOnlyOperation() {
+
+        if (!busy) {
+            return;
+        }
+
+
         BleDeviceItem device =
                 currentDevice;
 
@@ -1167,23 +1502,6 @@ public class BaseStationGattController {
                 currentCallback;
 
 
-        AppLog.d(
-                "Power command completed without state verification"
-                        + " / device = "
-                        + (device != null
-                        ? device.getName()
-                        : "(unknown)")
-                        + " / target = "
-                        + target
-        );
-
-
-        /*
-         * 현재 GATT 작업을 먼저 정리한다.
-         *
-         * cleanupOperation()은 Controller를 다시 사용 가능한
-         * 기본 상태로 되돌린다.
-         */
         cleanupOperation();
 
 
@@ -1302,7 +1620,9 @@ public class BaseStationGattController {
         }
 
 
-        if (waitingForRead) {
+        if (waitingForRead
+                || waitingForChannel
+                || waitingForRssi) {
             return;
         }
 
@@ -1356,15 +1676,69 @@ public class BaseStationGattController {
 
         if (gatt != currentGatt
                 || !busy
-                || !commandWritten
-                || !waitingForRead) {
+                || characteristic == null) {
 
             return;
         }
 
 
-        if (!POWER_STATE_UUID.equals(
-                characteristic.getUuid())) {
+        UUID characteristicUuid =
+                characteristic.getUuid();
+
+
+        /*
+         * 전원 명령 후 실제 목표 상태를 확인하기 위한
+         * Power State READ 결과.
+         */
+        if (POWER_STATE_UUID.equals(
+                characteristicUuid)) {
+
+
+            handlePowerStateVerificationRead(
+                    gatt,
+                    value,
+                    status
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * 전원 명령의 본래 결과가 이미 결정된 뒤 실행한
+         * Mode / RF Channel READ 결과.
+         */
+        if (MODE_UUID.equals(
+                characteristicUuid)) {
+
+
+            handleOptionalChannelRead(
+                    gatt,
+                    value,
+                    status
+            );
+        }
+    }
+
+
+    /*
+     * Power State READ 결과 처리.
+     *
+     * 이 READ는 단순 정보 갱신이 아니라
+     * Wake / Sleep 명령이 실제 목표 상태에 도달했는지
+     * 확인하기 위한 핵심 검증 단계다.
+     */
+    private void handlePowerStateVerificationRead(
+            BluetoothGatt gatt,
+            byte[] value,
+            int status) {
+
+
+        if (gatt != currentGatt
+                || !busy
+                || !commandWritten
+                || !waitingForRead) {
 
             return;
         }
@@ -1421,7 +1795,7 @@ public class BaseStationGattController {
 
 
         /*
-         * 목표 상태에 실제로 도달했는지 확인
+         * 목표 상태에 실제로 도달했는지 확인.
          */
         if (isTargetStateReached(
                 powerValue
@@ -1435,10 +1809,117 @@ public class BaseStationGattController {
 
 
         /*
-         * 아직 기동 중이거나
-         * 이전 상태라면 잠시 기다렸다가 재확인
+         * 아직 기동 중이거나 이전 상태라면
+         * 잠시 기다렸다가 Power State만 다시 확인한다.
+         *
+         * 이 반복 검증 중에는 Channel을 매번 읽지 않는다.
+         * 최종 목표 상태가 확인된 시점에 Channel을 한 번 읽는다.
          */
         scheduleNextVerification();
+    }
+
+
+    /*
+     * 전원 명령 완료 뒤 실행한 Mode / RF Channel READ 결과 처리.
+     *
+     * 사용자가 LightLink 밖의 SteamVR 또는 다른 도구에서
+     * 채널을 바꿨을 가능성도 있으므로 전원 버튼 작업이 끝날 때마다
+     * 가능한 경우 현재 값을 다시 읽어서 덮어쓴다.
+     *
+     * Channel은 부가 정보이므로 실패해도
+     * Wake / Sleep 성공 결과를 실패로 바꾸지 않는다.
+     */
+    private void handleOptionalChannelRead(
+            BluetoothGatt gatt,
+            byte[] value,
+            int status) {
+
+
+        if (gatt != currentGatt
+                || !busy
+                || !waitingForChannel) {
+
+            return;
+        }
+
+
+        waitingForChannel =
+                false;
+
+
+        handler.removeCallbacks(
+                channelTimeoutRunnable
+        );
+
+
+        if (status == BluetoothGatt.GATT_SUCCESS
+                && value != null
+                && value.length > 0) {
+
+
+            int channel =
+                    value[0] & 0xFF;
+
+
+            AppLog.d(
+                    "Power command Channel read"
+                            + " / device = "
+                            + (currentDevice != null
+                            ? currentDevice.getName()
+                            : "(unknown)")
+                            + " / raw = "
+                            + channel
+            );
+
+
+            /*
+             * Base Station 2.0의 정상 RF Channel 범위만 저장한다.
+             *
+             * 이상한 값이 들어오면 추측해서 보정하지 않고
+             * 기존 Channel 값을 유지한다.
+             */
+            if (channel >= 1
+                    && channel <= 16
+                    && currentDevice != null) {
+
+
+                currentDevice.setChannel(
+                        channel
+                );
+
+
+                AppLog.d(
+                        "Power command Channel updated"
+                                + " / device = "
+                                + currentDevice.getName()
+                                + " / channel = "
+                                + channel
+                );
+
+            } else {
+
+                AppLog.d(
+                        "Power command Channel value ignored"
+                                + " / raw = "
+                                + channel
+                );
+            }
+
+        } else {
+
+            AppLog.d(
+                    "Power command Channel read failed"
+                            + " / status = "
+                            + status
+            );
+        }
+
+
+        /*
+         * Channel 성공 여부와 관계없이
+         * 마지막 부가 정보인 RSSI 갱신으로 이어간다.
+         */
+        beginOptionalRssiRead();
     }
 
 
@@ -1484,7 +1965,9 @@ public class BaseStationGattController {
     private void scheduleNextVerification() {
 
         if (!busy
-                || !commandWritten) {
+                || !commandWritten
+                || waitingForChannel
+                || waitingForRssi) {
 
             return;
         }
@@ -1526,7 +2009,9 @@ public class BaseStationGattController {
             () -> {
 
                 if (busy
-                        && !commandWritten) {
+                        && !commandWritten
+                        && !waitingForChannel
+                        && !waitingForRssi) {
 
 
                     failCommand(
@@ -1543,7 +2028,9 @@ public class BaseStationGattController {
             () -> {
 
                 if (busy
-                        && commandWritten) {
+                        && commandWritten
+                        && !waitingForChannel
+                        && !waitingForRssi) {
 
 
                     failConfirmation(
@@ -1563,6 +2050,47 @@ public class BaseStationGattController {
         }
 
 
+        AppLog.d(
+                "Power state confirmed"
+                        + " / device = "
+                        + (currentDevice != null
+                        ? currentDevice.getName()
+                        : "(unknown)")
+                        + " / target = "
+                        + currentTarget
+        );
+
+
+        /*
+         * 목표 상태까지 확인했으므로 전원 명령은 이미 성공이다.
+         *
+         * GATT를 닫기 전에 Channel → RSSI 순서로
+         * 현재 장치 정보를 한 번 더 최신화한다.
+         *
+         * 사용자가 SteamVR 등에서 Channel을 바꿨더라도
+         * 다음 전원 버튼 동작이 끝날 때 LightLink 표시가 따라잡을 수 있다.
+         *
+         * Channel / RSSI 실패가 이 성공 결과를 바꾸지는 않는다.
+         */
+        beginOptionalInfoRefresh(
+                OptionalCompletionType.CONFIRMED
+        );
+    }
+
+
+    /*
+     * 실제 상태 확인까지 성공한 장치의 최종 완료 처리.
+     *
+     * Channel / RSSI 확인 성공 여부와 관계없이
+     * 기존 onStateConfirmed() 의미를 그대로 유지한다.
+     */
+    private void completeConfirmedOperation() {
+
+        if (!busy) {
+            return;
+        }
+
+
         BleDeviceItem device =
                 currentDevice;
 
@@ -1571,15 +2099,6 @@ public class BaseStationGattController {
 
         CommandCallback callback =
                 currentCallback;
-
-
-        AppLog.d(
-                "Power state confirmed"
-                        + " / device = "
-                        + device.getName()
-                        + " / target = "
-                        + target
-        );
 
 
         cleanupOperation();
@@ -1596,6 +2115,386 @@ public class BaseStationGattController {
             }
         });
     }
+
+
+    /*
+     * 전원 명령의 본래 결과가 결정된 뒤
+     * GATT 연결을 닫기 전에 최신 RSSI를 한 번 확인한다.
+     *
+     * completionType은 RSSI 확인 뒤 이어갈 완료 종류:
+     * - CONFIRMED : 실제 Power State까지 확인 성공
+     * - WRITE_ONLY: READ 미지원으로 Write 완료만 확인
+     */
+    @SuppressLint("MissingPermission")
+    private void beginOptionalInfoRefresh(
+            OptionalCompletionType completionType) {
+
+
+        if (!busy
+                || completionType == null
+                || completionType == OptionalCompletionType.NONE) {
+
+            return;
+        }
+
+
+        /*
+         * 여기부터는 Power 명령 자체의 성공 여부가 이미 결정됐다.
+         *
+         * 따라서 기존 Command / Verification Timeout이
+         * Channel 또는 RSSI를 기다리는 동안
+         * 이미 결정된 성공 결과를 실패로 덮지 못하도록 제거한다.
+         */
+        handler.removeCallbacks(
+                commandTimeoutRunnable
+        );
+
+        handler.removeCallbacks(
+                verificationTimeoutRunnable
+        );
+
+        handler.removeCallbacks(
+                verifyRunnable
+        );
+
+
+        waitingForRead =
+                false;
+
+        waitingForChannel =
+                false;
+
+        waitingForRssi =
+                false;
+
+        optionalCompletionType =
+                completionType;
+
+
+        /*
+         * GATT가 이미 없다면 추가 정보를 읽을 수 없다.
+         * 이 경우에는 원래 결정된 Power 명령 결과대로 바로 완료한다.
+         */
+        if (currentGatt == null) {
+
+            AppLog.d(
+                    "Optional device info refresh skipped: GATT unavailable"
+            );
+
+
+            completeAfterOptionalInfo();
+
+            return;
+        }
+
+
+        /*
+         * Mode Characteristic이 없으면 Channel만 생략하고
+         * RSSI 확인은 계속 시도한다.
+         */
+        if (currentModeCharacteristic == null) {
+
+            AppLog.d(
+                    "Power command Channel refresh skipped: characteristic unavailable"
+            );
+
+
+            beginOptionalRssiRead();
+
+            return;
+        }
+
+
+        int modeProperties =
+                currentModeCharacteristic.getProperties();
+
+
+        boolean modeReadable =
+                (
+                        modeProperties
+                                & BluetoothGattCharacteristic.PROPERTY_READ
+                ) != 0;
+
+
+        /*
+         * Mode Characteristic이 있어도 READ Capability가 없다면
+         * 기존 Channel 값을 유지하고 RSSI 단계로 넘어간다.
+         *
+         * 특히 구형 펌웨어에서는 Characteristic별 Capability가
+         * 서로 다를 수 있으므로 Power State READ 여부만 보고
+         * Channel READ 가능 여부를 추측하지 않는다.
+         */
+        if (!modeReadable) {
+
+            AppLog.d(
+                    "Power command Channel refresh skipped: READ unsupported"
+            );
+
+
+            beginOptionalRssiRead();
+
+            return;
+        }
+
+
+        waitingForChannel =
+                true;
+
+
+        boolean started;
+
+
+        try {
+
+            started =
+                    currentGatt.readCharacteristic(
+                            currentModeCharacteristic
+                    );
+
+        } catch (Exception e) {
+
+            AppLog.d(
+                    "Power command Channel read start error",
+                    e
+            );
+
+
+            started =
+                    false;
+        }
+
+
+        /*
+         * Bluetooth Stack이 Channel READ 요청 자체를
+         * 시작하지 못했더라도 Power 결과에는 영향이 없다.
+         * 바로 RSSI 확인으로 넘어간다.
+         */
+        if (!started) {
+
+            waitingForChannel =
+                    false;
+
+
+            AppLog.d(
+                    "Power command Channel read could not start"
+            );
+
+
+            beginOptionalRssiRead();
+
+            return;
+        }
+
+
+        handler.removeCallbacks(
+                channelTimeoutRunnable
+        );
+
+
+        handler.postDelayed(
+                channelTimeoutRunnable,
+                CHANNEL_TIMEOUT_MS
+        );
+    }
+
+
+    /*
+     * Channel 확인이 끝났거나 생략된 뒤
+     * 같은 GATT 연결에서 최신 RSSI를 한 번 확인한다.
+     *
+     * RSSI 역시 부가 정보이므로
+     * 실패 / 시작 실패 / Timeout이 발생해도
+     * 이미 결정된 Power 명령 결과는 그대로 유지한다.
+     */
+    @SuppressLint("MissingPermission")
+    private void beginOptionalRssiRead() {
+
+
+        if (!busy
+                || optionalCompletionType == OptionalCompletionType.NONE) {
+
+            return;
+        }
+
+
+        waitingForChannel =
+                false;
+
+        handler.removeCallbacks(
+                channelTimeoutRunnable
+        );
+
+
+        waitingForRssi =
+                true;
+
+
+        if (currentGatt == null) {
+
+            AppLog.d(
+                    "Power command RSSI skipped: GATT unavailable"
+            );
+
+
+            completeAfterOptionalInfo();
+
+            return;
+        }
+
+
+        boolean started;
+
+
+        try {
+
+            started =
+                    currentGatt.readRemoteRssi();
+
+        } catch (Exception e) {
+
+            AppLog.d(
+                    "Power command RSSI read start error",
+                    e
+            );
+
+
+            started =
+                    false;
+        }
+
+
+        if (!started) {
+
+            AppLog.d(
+                    "Power command RSSI read could not start"
+            );
+
+
+            completeAfterOptionalInfo();
+
+            return;
+        }
+
+
+        handler.removeCallbacks(
+                rssiTimeoutRunnable
+        );
+
+
+        handler.postDelayed(
+                rssiTimeoutRunnable,
+                RSSI_TIMEOUT_MS
+        );
+    }
+
+
+    /*
+     * Channel / RSSI 확인 성공, 실패, 시작 실패, 연결 종료, Timeout 후
+     * 원래 예정되어 있던 전원 명령 완료 처리를 이어간다.
+     *
+     * Channel과 RSSI는 어디까지나 부가 정보이므로
+     * 여기서는 전원 명령의 성공 종류를 바꾸지 않는다.
+     */
+    private void completeAfterOptionalInfo() {
+
+        if (!busy) {
+            return;
+        }
+
+
+        OptionalCompletionType completionType =
+                optionalCompletionType;
+
+
+        /*
+         * Channel / RSSI Timeout과 실제 Callback이
+         * 거의 동시에 들어와도 완료 처리가 두 번 실행되지 않도록
+         * 먼저 모든 부가 정보 대기 상태를 지운다.
+         */
+        waitingForChannel =
+                false;
+
+        waitingForRssi =
+                false;
+
+        optionalCompletionType =
+                OptionalCompletionType.NONE;
+
+
+        handler.removeCallbacks(
+                channelTimeoutRunnable
+        );
+
+        handler.removeCallbacks(
+                rssiTimeoutRunnable
+        );
+
+
+        if (completionType == OptionalCompletionType.CONFIRMED) {
+
+            completeConfirmedOperation();
+
+        } else if (completionType == OptionalCompletionType.WRITE_ONLY) {
+
+            completeWriteOnlyOperation();
+        }
+    }
+
+
+    /*
+     * Channel은 부가 정보이므로 오래 기다리지 않는다.
+     *
+     * Timeout이 나면 기존 Channel 값을 유지한 채
+     * RSSI 갱신 단계로 넘어간다.
+     */
+    private final Runnable channelTimeoutRunnable =
+            () -> {
+
+                if (!busy
+                        || !waitingForChannel
+                        || optionalCompletionType == OptionalCompletionType.NONE) {
+
+                    return;
+                }
+
+
+                AppLog.d(
+                        "Power command Channel read timeout"
+                );
+
+
+                waitingForChannel =
+                        false;
+
+
+                beginOptionalRssiRead();
+            };
+
+
+    /*
+     * RSSI는 부가 정보이므로 오래 기다리지 않는다.
+     *
+     * Timeout이 나면 기존 RSSI를 유지한 채
+     * 이미 결정된 Wake / Sleep 결과대로 완료한다.
+     */
+    private final Runnable rssiTimeoutRunnable =
+            () -> {
+
+                if (!busy
+                        || !waitingForRssi
+                        || optionalCompletionType == OptionalCompletionType.NONE) {
+
+                    return;
+                }
+
+
+                AppLog.d(
+                        "Power command RSSI read timeout"
+                );
+
+
+                completeAfterOptionalInfo();
+            };
 
 
     /*
@@ -1703,6 +2602,14 @@ public class BaseStationGattController {
                 verifyRunnable
         );
 
+        handler.removeCallbacks(
+                channelTimeoutRunnable
+        );
+
+        handler.removeCallbacks(
+                rssiTimeoutRunnable
+        );
+
 
         BluetoothGatt gatt =
                 currentGatt;
@@ -1712,6 +2619,9 @@ public class BaseStationGattController {
                 null;
 
         currentPowerCharacteristic =
+                null;
+
+        currentModeCharacteristic =
                 null;
 
         currentDevice =
@@ -1735,6 +2645,15 @@ public class BaseStationGattController {
 
         waitingForRead =
                 false;
+
+        waitingForChannel =
+                false;
+
+        waitingForRssi =
+                false;
+
+        optionalCompletionType =
+                OptionalCompletionType.NONE;
 
 
         connectRetryCount =

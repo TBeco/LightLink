@@ -129,6 +129,15 @@ public class MainActivity extends AppCompatActivity {
             );
 
 
+    /*
+     * Base Station 2.0 Mode / RF Channel Characteristic
+     */
+    private static final UUID MODE_UUID =
+            UUID.fromString(
+                    "00001524-1212-EFDE-1523-785FEABCD124"
+            );
+
+
     // Android Bluetooth 기능
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothLeScanner bleScanner;
@@ -211,6 +220,42 @@ public class MainActivity extends AppCompatActivity {
     // 현재 연결되어 있는 GATT
     private BluetoothGatt currentGatt;
 
+
+    /*
+     * 현재 상태 조회용 GATT 연결에서 찾은
+     * Base Station Mode / RF Channel Characteristic.
+     *
+     * 채널 READ가 지원되지 않거나 Characteristic이 없으면 null이다.
+     */
+    private BluetoothGattCharacteristic currentModeCharacteristic;
+
+
+    /*
+     * Power State 확인은 끝났지만
+     * 최신 RSSI 확인을 기다리고 있을 때 보관하는 상태값.
+     *
+     * 예:
+     * Awake
+     * Sleep
+     * Standby
+     * State read unsupported
+     *
+     * RSSI 확인이 실패해도 이 상태값은 그대로 사용한다.
+     */
+    private String pendingStatusAfterRssiRead;
+
+
+    /*
+     * Power State 확인은 끝났지만
+     * 채널 READ 결과를 기다리고 있을 때
+     * 이미 확인한 Power State 결과를 임시 보관한다.
+     *
+     * 채널은 부가 정보이므로
+     * 채널 READ가 실패해도 Power State 결과는 유지한다.
+     */
+    private String pendingStatusAfterChannelRead;
+
+
     /*
      * Base Station별 전원 제어 Controller.
      *
@@ -238,15 +283,88 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        /*
+         * Power State 확인은 이미 끝났고
+         * RSSI 결과만 기다리던 중이었다면,
+         *
+         * RSSI Timeout 때문에 이미 확인한
+         * Power State 결과까지 버리지 않는다.
+         */
+        if (pendingStatusAfterRssiRead != null) {
+
+
+            String confirmedStatus =
+                    pendingStatusAfterRssiRead;
+
+
+            pendingStatusAfterRssiRead =
+                    null;
+
+
+            AppLog.d(
+                    "RSSI read timeout"
+                            + " / keeping status = "
+                            + confirmedStatus
+            );
+
+
+            finishStatusRead(
+                    currentGatt,
+                    confirmedStatus
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * Power State 확인은 끝났고
+         * Channel READ 결과만 기다리던 중이라면,
+         *
+         * 채널은 부가 정보이므로
+         * 이미 확인한 Power State 결과를 유지하고 종료한다.
+         *
+         * 전체 상태 조회 Timeout에 이미 도달했으므로
+         * 이 경우에는 RSSI READ를 새로 시작하지 않는다.
+         */
+        if (pendingStatusAfterChannelRead != null) {
+
+
+            String confirmedStatus =
+                    pendingStatusAfterChannelRead;
+
+
+            pendingStatusAfterChannelRead =
+                    null;
+
+
+            AppLog.d(
+                    "Channel read timeout"
+                            + " / keeping status = "
+                            + confirmedStatus
+            );
+
+
+            finishStatusRead(
+                    currentGatt,
+                    confirmedStatus
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * 아직 Power State 자체를 확인하지 못한 상태에서
+         * Timeout이 발생한 경우.
+         */
         AppLog.d(
                 "Power state read timeout"
         );
 
 
-        /*
-         * currentGatt가 null인 예외적인 상황에서도
-         * 현재 상태 조회 작업을 끝내서 Queue가 멈추지 않게 한다.
-         */
         finishStatusRead(
                 currentGatt,
                 "Timeout"
@@ -2087,6 +2205,78 @@ public class MainActivity extends AppCompatActivity {
 
 
                     /*
+                     * Base Station Mode / RF Channel Characteristic 찾기.
+                     *
+                     * Power State와 달리 채널은 부가 정보이므로
+                     * Characteristic이 없더라도 전체 상태 조회를
+                     * 실패로 처리하지 않는다.
+                     */
+                    currentModeCharacteristic =
+                            controlService.getCharacteristic(
+                                    MODE_UUID
+                            );
+
+
+                    if (currentModeCharacteristic != null) {
+
+                        int modeProperties =
+                                currentModeCharacteristic.getProperties();
+
+
+                        boolean modeReadable =
+                                (
+                                        modeProperties
+                                                & BluetoothGattCharacteristic.PROPERTY_READ
+                                ) != 0;
+
+
+                        boolean modeWritable =
+                                (
+                                        modeProperties
+                                                & BluetoothGattCharacteristic.PROPERTY_WRITE
+                                ) != 0;
+
+
+                        boolean modeNotifiable =
+                                (
+                                        modeProperties
+                                                & BluetoothGattCharacteristic.PROPERTY_NOTIFY
+                                ) != 0;
+
+
+                        AppLog.d(
+                                "Mode properties"
+                                        + " / device = "
+                                        + (
+                                        currentStatusDevice != null
+                                                ? currentStatusDevice.getName()
+                                                : "(unknown)"
+                                )
+                                        + " / properties = 0x"
+                                        + Integer.toHexString(modeProperties).toUpperCase()
+                                        + " / READ = "
+                                        + modeReadable
+                                        + " / WRITE = "
+                                        + modeWritable
+                                        + " / NOTIFY = "
+                                        + modeNotifiable
+                        );
+
+                    } else {
+
+                        AppLog.d(
+                                "Mode characteristic not found"
+                                        + " / device = "
+                                        + (
+                                        currentStatusDevice != null
+                                                ? currentStatusDevice.getName()
+                                                : "(unknown)"
+                                )
+                        );
+                    }
+
+
+                    /*
                      * 현재 Base Station의 Power State Characteristic이
                      * 어떤 기능을 지원하는지 확인한다.
                      *
@@ -2186,7 +2376,12 @@ public class MainActivity extends AppCompatActivity {
                      */
                     if (!readable) {
 
-                        finishStatusRead(
+                        /*
+                         * Power State READ는 지원하지 않더라도
+                         * Mode / RF Channel READ는 별도 Capability이므로
+                         * 채널 확인을 먼저 시도한 뒤 RSSI를 확인한다.
+                         */
+                        readChannelThenRssiAndFinish(
                                 gatt,
                                 "State read unsupported"
                         );
@@ -2261,6 +2456,103 @@ public class MainActivity extends AppCompatActivity {
                             status
                     );
                 }
+
+                /*
+                 * 현재 GATT 연결의 RSSI 확인 완료
+                 *
+                 * readRemoteRssi()의 결과가 이 Callback으로 들어온다.
+                 */
+                @Override
+                public void onReadRemoteRssi(
+                        BluetoothGatt gatt,
+                        int rssi,
+                        int status) {
+
+
+                    /*
+                     * 이미 종료된 이전 GATT 연결의 Callback이면 무시한다.
+                     */
+                    if (gatt != currentGatt) {
+
+                        return;
+                    }
+
+
+                    /*
+                     * 현재 RSSI 결과를 기다리고 있지 않다면
+                     * 예상하지 않은 Callback이므로 무시한다.
+                     */
+                    if (pendingStatusAfterRssiRead == null) {
+
+                        return;
+                    }
+
+
+                    /*
+                     * RSSI 확인 전에 이미 알아낸
+                     * Power State 결과를 임시 변수에 보관한다.
+                     */
+                    String statusText =
+                            pendingStatusAfterRssiRead;
+
+
+                    /*
+                     * 이제 RSSI Callback을 받았으므로
+                     * 대기 상태를 먼저 해제한다.
+                     */
+                    pendingStatusAfterRssiRead =
+                            null;
+
+
+                    /*
+                     * RSSI 확인 성공
+                     */
+                    if (status == BluetoothGatt.GATT_SUCCESS
+                            && currentStatusDevice != null) {
+
+
+                        /*
+                         * 검색 당시 RSSI를
+                         * 현재 GATT 연결에서 측정한 최신 RSSI로 교체한다.
+                         */
+                        currentStatusDevice.setRssi(
+                                rssi
+                        );
+
+
+                        AppLog.d(
+                                "RSSI updated"
+                                        + " / device = "
+                                        + currentStatusDevice.getName()
+                                        + " / RSSI = "
+                                        + rssi
+                                        + " dBm"
+                        );
+
+                    } else {
+
+                        /*
+                         * RSSI는 부가 정보이므로
+                         * 실패했다고 Power State까지 실패로 만들지 않는다.
+                         */
+                        AppLog.d(
+                                "RSSI read failed"
+                                        + " / status = "
+                                        + status
+                        );
+                    }
+
+
+                    /*
+                     * RSSI 성공 여부와 관계없이
+                     * 앞에서 이미 확인한 Power State 결과로
+                     * 이번 상태 조회를 정상 종료한다.
+                     */
+                    finishStatusRead(
+                            gatt,
+                            statusText
+                    );
+                }
             };
 
 
@@ -2275,16 +2567,62 @@ public class MainActivity extends AppCompatActivity {
             int status) {
 
 
-        if (gatt != currentGatt) {
+        if (gatt != currentGatt
+                || characteristic == null) {
+
+            return;
+        }
+
+
+        UUID characteristicUuid =
+                characteristic.getUuid();
+
+
+        /*
+         * Power State READ 결과
+         */
+        if (POWER_STATE_UUID.equals(
+                characteristicUuid)) {
+
+
+            handlePowerStateCharacteristicRead(
+                    gatt,
+                    value,
+                    status
+            );
+
+
             return;
         }
 
 
         /*
-         * 우리가 요청한 Power State가 아니면 무시
+         * Mode / RF Channel READ 결과
          */
-        if (!POWER_STATE_UUID.equals(
-                characteristic.getUuid())) {
+        if (MODE_UUID.equals(
+                characteristicUuid)) {
+
+
+            handleChannelCharacteristicRead(
+                    gatt,
+                    value,
+                    status
+            );
+        }
+    }
+
+
+    /*
+     * Power State Characteristic READ 결과 처리
+     */
+    private void handlePowerStateCharacteristicRead(
+            BluetoothGatt gatt,
+            byte[] value,
+            int status) {
+
+
+        if (gatt != currentGatt
+                || !readingStatus) {
 
             return;
         }
@@ -2326,6 +2664,7 @@ public class MainActivity extends AppCompatActivity {
                         powerValue
                 );
 
+
         /*
          * 실제 Power State가 확정된 경우
          * 이 Base Station의 마지막 상태 확인 시간을 갱신한다.
@@ -2362,10 +2701,338 @@ public class MainActivity extends AppCompatActivity {
         );
 
 
-        finishStatusRead(
+        /*
+         * Power State 확인이 끝났으므로
+         * 같은 GATT 연결에서 채널을 확인한 뒤
+         * 마지막으로 RSSI를 확인한다.
+         */
+        readChannelThenRssiAndFinish(
                 gatt,
                 powerState
         );
+    }
+
+
+    /*
+     * Mode / RF Channel Characteristic READ 결과 처리
+     *
+     * 채널 정보는 부가 정보이므로
+     * 실패하더라도 Power State 결과는 그대로 유지한다.
+     */
+    private void handleChannelCharacteristicRead(
+            BluetoothGatt gatt,
+            byte[] value,
+            int status) {
+
+
+        if (gatt != currentGatt
+                || !readingStatus) {
+
+            return;
+        }
+
+
+        /*
+         * 현재 Channel READ 결과를 기다리던 상태가 아니라면
+         * 늦게 도착한 Callback 등으로 보고 무시한다.
+         */
+        if (pendingStatusAfterChannelRead == null) {
+
+            return;
+        }
+
+
+        String statusText =
+                pendingStatusAfterChannelRead;
+
+
+        pendingStatusAfterChannelRead =
+                null;
+
+
+        if (status == BluetoothGatt.GATT_SUCCESS
+                && value != null
+                && value.length > 0) {
+
+
+            /*
+             * Mode Characteristic의 첫 byte를
+             * 현재 RF Channel 번호로 해석한다.
+             */
+            int channel =
+                    value[0] & 0xFF;
+
+
+            String deviceName =
+                    currentStatusDevice != null
+                            ? currentStatusDevice.getName()
+                            : "(unknown)";
+
+
+            AppLog.d(
+                    "Channel read"
+                            + " / device = "
+                            + deviceName
+                            + " / raw = "
+                            + channel
+            );
+
+
+            /*
+             * Base Station 2.0 RF Channel의 정상 범위만 저장한다.
+             *
+             * 범위를 벗어난 값은 추측해서 보정하지 않고
+             * 로그만 남기며 기존 채널 값을 유지한다.
+             */
+            if (channel >= 1
+                    && channel <= 16
+                    && currentStatusDevice != null) {
+
+
+                currentStatusDevice.setChannel(
+                        channel
+                );
+
+
+                AppLog.d(
+                        "Channel updated"
+                                + " / device = "
+                                + currentStatusDevice.getName()
+                                + " / channel = "
+                                + channel
+                );
+
+            } else {
+
+                AppLog.d(
+                        "Channel value ignored"
+                                + " / raw = "
+                                + channel
+                );
+            }
+
+        } else {
+
+            AppLog.d(
+                    "Channel read failed"
+                            + " / status = "
+                            + status
+            );
+        }
+
+
+        /*
+         * Channel READ 성공 여부와 관계없이
+         * 마지막 부가 정보인 RSSI 확인으로 이어간다.
+         */
+        readRssiThenFinishStatus(
+                gatt,
+                statusText
+        );
+    }
+
+
+    /*
+     * Power State 확인이 끝난 뒤
+     * Mode / RF Channel을 한 번 읽고,
+     * 그 다음 RSSI 확인으로 이어간다.
+     *
+     * Mode Characteristic이 없거나 READ를 지원하지 않는 경우,
+     * 또는 READ 요청 시작에 실패한 경우에는
+     * 채널 때문에 전체 상태 조회를 실패시키지 않고
+     * 곧바로 RSSI 확인으로 넘어간다.
+     */
+    @SuppressLint("MissingPermission")
+    private void readChannelThenRssiAndFinish(
+            BluetoothGatt gatt,
+            String statusText) {
+
+
+        if (!readingStatus
+                || gatt != currentGatt) {
+
+            return;
+        }
+
+
+        BluetoothGattCharacteristic modeCharacteristic =
+                currentModeCharacteristic;
+
+
+        /*
+         * Mode Characteristic 자체가 없는 장치.
+         */
+        if (modeCharacteristic == null) {
+
+            AppLog.d(
+                    "Channel read skipped: characteristic unavailable"
+            );
+
+
+            readRssiThenFinishStatus(
+                    gatt,
+                    statusText
+            );
+
+
+            return;
+        }
+
+
+        int properties =
+                modeCharacteristic.getProperties();
+
+
+        boolean readable =
+                (
+                        properties
+                                & BluetoothGattCharacteristic.PROPERTY_READ
+                ) != 0;
+
+
+        /*
+         * Mode Characteristic은 존재하지만
+         * READ를 지원하지 않는 장치.
+         */
+        if (!readable) {
+
+            AppLog.d(
+                    "Channel read skipped: READ unsupported"
+            );
+
+
+            readRssiThenFinishStatus(
+                    gatt,
+                    statusText
+            );
+
+
+            return;
+        }
+
+
+        /*
+         * Channel READ 결과가 돌아올 때까지
+         * 이미 확인한 Power State 결과를 임시 보관한다.
+         */
+        pendingStatusAfterChannelRead =
+                statusText;
+
+
+        boolean started;
+
+
+        try {
+
+            started =
+                    gatt.readCharacteristic(
+                            modeCharacteristic
+                    );
+
+        } catch (Exception e) {
+
+            AppLog.d(
+                    "Channel read start error",
+                    e
+            );
+
+
+            started =
+                    false;
+        }
+
+
+        /*
+         * Channel READ 요청 자체를 시작하지 못했다면
+         * Power State 결과는 유지하고 RSSI 단계로 넘어간다.
+         */
+        if (!started) {
+
+            pendingStatusAfterChannelRead =
+                    null;
+
+
+            readRssiThenFinishStatus(
+                    gatt,
+                    statusText
+            );
+        }
+    }
+
+
+
+    /*
+     * Power State 확인이 끝난 뒤
+     * 현재 GATT 연결의 RSSI를 한 번 더 확인한다.
+     *
+     * RSSI는 부가 정보이므로,
+     * RSSI 읽기를 시작하지 못하더라도
+     * 이미 확인한 Power State 결과까지 실패로 처리하지 않는다.
+     */
+    @SuppressLint("MissingPermission")
+    private void readRssiThenFinishStatus(
+            BluetoothGatt gatt,
+            String statusText) {
+
+
+        /*
+         * 이미 끝난 연결의 늦은 Callback 등은 무시한다.
+         */
+        if (!readingStatus
+                || gatt != currentGatt) {
+
+            return;
+        }
+
+
+        /*
+         * RSSI 결과가 돌아올 때까지
+         * 이미 확인한 Power State 결과를 임시 보관한다.
+         */
+        pendingStatusAfterRssiRead =
+                statusText;
+
+
+        boolean started;
+
+
+        try {
+
+            /*
+             * 현재 연결된 Base Station의
+             * 최신 RSSI 확인 요청.
+             */
+            started =
+                    gatt.readRemoteRssi();
+
+        } catch (Exception e) {
+
+            AppLog.d(
+                    "RSSI read start error",
+                    e
+            );
+
+
+            started =
+                    false;
+        }
+
+
+        /*
+         * RSSI 요청 자체를 시작하지 못했다면
+         * 기존 Power State 결과를 그대로 사용해 종료한다.
+         */
+        if (!started) {
+
+            pendingStatusAfterRssiRead =
+                    null;
+
+
+            finishStatusRead(
+                    gatt,
+                    statusText
+            );
+        }
     }
 
 
@@ -2469,6 +3136,17 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        /*
+         * 이번 상태 조회가 끝나므로
+         * Channel / RSSI 결과를 기다릴 때 사용한
+         * 임시 상태도 함께 정리한다.
+         */
+        pendingStatusAfterChannelRead =
+                null;
+
+        pendingStatusAfterRssiRead =
+                null;
+
 
         // 이번 상태 조회의 Timeout 취소
         handler.removeCallbacks(
@@ -2495,6 +3173,9 @@ public class MainActivity extends AppCompatActivity {
                 false;
 
         currentStatusDevice =
+                null;
+
+        currentModeCharacteristic =
                 null;
 
         currentGatt =
@@ -2739,6 +3420,15 @@ public class MainActivity extends AppCompatActivity {
                 null;
 
         currentStatusDevice =
+                null;
+
+        currentModeCharacteristic =
+                null;
+
+        pendingStatusAfterChannelRead =
+                null;
+
+        pendingStatusAfterRssiRead =
                 null;
 
         readingStatus =

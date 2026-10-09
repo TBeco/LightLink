@@ -17,8 +17,30 @@ public class BleDeviceItem {
     private final String address;
 
 
-    // 검색 당시 RSSI
-    private final int rssi;
+    /*
+     * 가장 최근에 확인한 Bluetooth RSSI
+     *
+     * 처음에는 BLE 검색 결과의 RSSI를 저장하고,
+     * 이후 상태 확인용 GATT 연결에서 RSSI를 다시 읽으면
+     * 최신 값으로 갱신한다.
+     */
+    private int rssi;
+
+
+    /*
+     * Base Station 2.0의 현재 RF Channel.
+     *
+     * null:
+     * 아직 채널을 확인하지 못했거나
+     * Mode Characteristic READ를 지원하지 않음.
+     *
+     * 1 ~ 16:
+     * 정상적으로 확인된 RF Channel.
+     *
+     * 채널 READ 실패만으로 전원 상태까지
+     * 실패한 것으로 취급하지 않는다.
+     */
+    private Integer channel;
 
 
     /*
@@ -94,6 +116,14 @@ public class BleDeviceItem {
 
 
         /*
+         * 발견 직후에는 아직 Mode Characteristic을
+         * 읽지 않았으므로 채널은 알 수 없다.
+         */
+        this.channel =
+                null;
+
+
+        /*
          * 발견 직후에는 아직 실제 Power State를
          * 읽지 않았으므로 Checking... 상태로 시작한다.
          */
@@ -141,6 +171,44 @@ public class BleDeviceItem {
     public int getRssi() {
 
         return rssi;
+    }
+
+
+    /*
+     * Base Station의 RSSI를 새로 확인했을 때
+     * 가장 최근 값으로 갱신한다.
+     */
+    public void setRssi(
+            int rssi) {
+
+        this.rssi =
+                rssi;
+    }
+
+
+    /*
+     * 현재 확인된 Base Station RF Channel.
+     *
+     * 아직 확인되지 않았다면 null을 반환한다.
+     */
+    public Integer getChannel() {
+
+        return channel;
+    }
+
+
+    /*
+     * Mode Characteristic READ에 성공했을 때
+     * 확인된 RF Channel을 저장한다.
+     *
+     * 정상 범위 검증은 실제 BLE 값을 해석하는
+     * MainActivity에서 수행한다.
+     */
+    public void setChannel(
+            Integer channel) {
+
+        this.channel =
+                channel;
     }
 
 
