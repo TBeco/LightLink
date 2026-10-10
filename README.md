@@ -20,9 +20,9 @@ LightLink is still in beta, and compatibility may vary between devices.
 
 ## Screenshots / 스크린샷
 
-| Main Screen / 메인 화면 | Manual Power Control / 수동 전원 제어 | Permission Dialog / 권한 안내창 |
-|:---:|:---:|:---:|
-| ![Main Screen](screenshots/main.jpg) | ![Manual Power Control](screenshots/device-control.jpg) | ![Permission Dialog](screenshots/permission.jpg) |
+|                     Main Screen /<br/>메인 화면                     |                       Manual Power Control /<br/>수동 전원 제어                        |                       Permission Dialog /<br/>권한 안내창                       |
+|:--------------------------------------------------------------:|:---------------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
+| <img src="screenshots/main.jpg" width="220" alt="Main Screen"> | <img src="screenshots/device-control.jpg" width="220" alt="Manual Power Control"> | <img src="screenshots/permission.jpg" width="220" alt="Permission Dialog"> |
 
 ## Why I Made LightLink / 개발 배경
 
