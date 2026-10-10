@@ -1,3 +1,32 @@
+/*
+ * LightLink - MainActivity
+ *
+ * 역할
+ * 1. Android 런타임 권한 및 Bluetooth/위치 설정 확인
+ * 2. 주변 Base Station 2.0(LHB- 이름)의 BLE 광고 검색 및 화면 표시
+ * 3. 검색된 장치의 Power State/채널/RSSI 조회(장치별 순차 처리)
+ * 4. BaseStationGattController를 통한 장치별 Wake/Sleep 명령
+ *
+ * 설계상 주의사항
+ * - BLE 검색과 초기 상태 조회는 별도의 단계다. 발견 직후 상태 조회가 진행된다.
+ * - 전원 명령은 장치별 Controller가 담당하며, 초기 상태 조회 GATT와 분리된다.
+ * - Android 8 이상 모든 지원 버전에서 현재 LightLink는 정확한 위치(FINE)를 요구한다.
+ *   Android 12 이상에서는 BLUETOOTH_SCAN/CONNECT도 필요하다.
+ * - 정확한 위치 '권한'과 휴대전화 전체의 위치 '서비스 ON/OFF'는 별개다.
+ *   현재의 위치 기반 BLE 스캔 구성(neverForLocation 미사용)은 둘 다 확인한다.
+ * - 검색 시작 직전뿐 아니라 화면 복귀 및 위치 서비스 변경 시에도 상태를 확인한다.
+ *   위치 서비스가 꺼져 있으면 진행 중인 광고 검색만 중단하고 GATT는 임의로 끊지 않는다.
+ * - '대략적인 위치'만 허용했을 때 Base Station 검색에 실패한 사례가 있다.
+ *   이 결과는 해당 테스트 환경에 한정되며 모든 단말의 동작을 뜻하지 않는다.
+ * - Android Settings의 앱 정보 화면 '권한' 항목에는 비공개 인자를 통해
+ *   Ripple 강조를 요청한다. 일부 Galaxy에서 동작했지만 모든 기기에서 보장되지는 않는다.
+ * - 스마트폰 전체 위치 서비스 설정은 공개 Intent로 이동한다.
+ *   효과가 확인되지 않은 위치 스위치 Ripple 실험 코드는 사용하지 않는다.
+ * - 앱 내부의 안내창은 dialog_settings_action.xml 하나로 스타일을 통일한다.
+ *   Android OS 자체의 런타임 권한/Bluetooth 승인창은 시스템 UI를 사용한다.
+ *
+ * 이 파일의 사용자 문구는 추후 다국어 지원 시 strings.xml로 이관하는 것이 좋다.
+ */
 package com.tbeco.lightlink;
 
 import android.Manifest;
@@ -13,7 +42,14 @@ import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.location.LocationManager;
+import android.provider.Settings;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +62,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -52,7 +89,7 @@ import java.time.format.DateTimeFormatter;
 public class MainActivity extends AppCompatActivity {
 
 
-    // BLE 검색 시간: 10초
+    // 하나의 BLE 광고 검색 세션은 최대 10초 동안 유지한다(단위: ms).
     private static final long SCAN_TIME = 10000;
 
     /*
@@ -138,12 +175,99 @@ public class MainActivity extends AppCompatActivity {
             );
 
 
-    // Android Bluetooth 기능
+    /*
+     * Android Bluetooth 객체.
+     * Adapter는 Bluetooth 활성 상태/원격 장치 접근에 사용하고,
+     * Scanner는 현재 BLE 광고 수신 세션을 시작·종료할 때 사용한다.
+     */
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothLeScanner bleScanner;
 
+    /*
+     * 권한 요청 이력 저장용 키 접두사.
+     * shouldShowRequestPermissionRationale()은 최초 요청 전과 재요청 차단 상태에서
+     * 모두 false를 반환할 수 있어, 최초 요청 여부를 별도로 저장한다.
+     * 단, 이 이력은 시스템 권한 상태를 대신하지 않는다.
+     */
+    private static final String PERMISSION_PREF_PREFIX = "requested_permission_";
 
-    // 화면의 View
+    /*
+     * Android Settings의 '항목 강조' 내부 인자.
+     * 공식 공개 API가 아니므로 삼성 One UI/Android 버전에 따라 무시될 수 있다.
+     * Intent를 실행하는 기능과 강조 애니메이션은 서로 별개다.
+     */
+    private static final String SETTINGS_FRAGMENT_ARG_KEY =
+            ":settings:fragment_args_key";
+    private static final String SETTINGS_SHOW_FRAGMENT_ARGS =
+            ":settings:show_fragment_args";
+
+    /*
+     * 예전 AOSP 앱 정보 화면의 '권한' 항목 키.
+     * 제조사·OS에 따라 항목 키나 화면 구현이 다를 수 있다.
+     */
+    private static final String SETTINGS_PERMISSION_ITEM_KEY =
+            "permission_settings";
+
+    /*
+     * 시스템 Bluetooth ON/OFF 전환 방송 수신.
+     * OFF 전환 중에는 과거 검색 결과와 GATT가 더 이상 유효하지 않으므로 정리한다.
+     * ON이 된 사실만으로 사용자의 의사 없이 자동 검색을 시작하지는 않는다.
+     */
+    private boolean bluetoothReceiverRegistered = false;
+    private final BroadcastReceiver bluetoothStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction())) {
+                return;
+            }
+
+            int state = intent.getIntExtra(
+                    BluetoothAdapter.EXTRA_STATE,
+                    BluetoothAdapter.ERROR
+            );
+
+            if (state == BluetoothAdapter.STATE_TURNING_OFF
+                    || state == BluetoothAdapter.STATE_OFF) {
+                handleBluetoothTurnedOff();
+            } else if (state == BluetoothAdapter.STATE_ON) {
+                if (!scanning && deviceList.isEmpty()) {
+                    textEmpty.setVisibility(View.VISIBLE);
+                    textEmpty.setText("Bluetooth is ON. Tap Search to scan.");
+                }
+                updateScanButton();
+            }
+        }
+    };
+
+
+    /*
+     * 기기 전체 위치 서비스 스위치가 바뀌면 실행되는 Android 시스템 방송 수신기.
+     * MODE_CHANGED_ACTION은 Android 4.4(API 19)부터 제공되어 최소 지원 8.0에서도 사용 가능하다.
+     *
+     * 방송은 Activity가 보일 때만 수신한다. 설정 앱으로 이동한 동안의 변경은
+     * onResume()에서 별도로 확인하므로 방송 누락에 의존하지 않는다.
+     */
+    private boolean locationReceiverRegistered = false;
+    private final BroadcastReceiver locationStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!LocationManager.MODE_CHANGED_ACTION.equals(intent.getAction())) {
+                return;
+            }
+            handleLocationServiceStateChanged();
+        }
+    };
+
+    /*
+     * 사용자가 Search에서 위치 설정 화면을 연 경우에만 복귀 후 검색을 이어가기 위한 플래그.
+     * 단순히 위치 기능을 수동으로 켰다는 이유만으로 무작정 자동 검색하지 않는다.
+     * Fold 등의 화면 회전 중에도 유지하도록 onSaveInstanceState()에 저장한다.
+     */
+    private static final String STATE_WAITING_FOR_LOCATION_SETTINGS =
+            "waiting_for_location_settings";
+    private boolean waitingForLocationSettings = false;
+
+    // 화면 요소: 검색 버튼, 비어 있는 목록 안내, 최근 검색 시간, 장치 목록.
     private MaterialButton buttonScan;
     private TextView textEmpty;
     private TextView textLastScan;
@@ -160,6 +284,7 @@ public class MainActivity extends AppCompatActivity {
             new ArrayList<>();
 
 
+    // 장치 모델(deviceList)을 RecyclerView 각 행에 연결하고 상태 변화를 반영한다.
     private BleDeviceAdapter deviceAdapter;
 
 
@@ -201,6 +326,7 @@ public class MainActivity extends AppCompatActivity {
     private int statusReadGeneration = 0;
 
 
+    // 타임아웃·재시도·UI 예약 작업은 메인 Looper에 등록한다.
     private final Handler handler =
             new Handler(Looper.getMainLooper());
 
@@ -373,48 +499,56 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
-     * Bluetooth / 위치 권한 요청 결과
+     * 런타임 권한 요청 결과 콜백.
+     * 반환 Map만으로 판단하지 않고 현재 OS가 부여한 권한을 다시 조회한다.
+     * 필요한 권한이 모두 충족되면 같은 검색 진입점으로 돌아가며,
+     * 부족한 권한이 남으면 화면에 재요청/설정 이동 안내를 표시한다.
      */
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.RequestMultiplePermissions(),
                     result -> {
-
-                        boolean allGranted = true;
-
-
-                        // 요청한 권한 중 하나라도 거부됐는지 확인
-                        for (Boolean granted : result.values()) {
-
-                            if (!granted) {
-
-                                allGranted = false;
-                                break;
-                            }
-                        }
-
-
-                        if (allGranted) {
-
-                            // 모든 권한이 있으면 검색 시작
-                            startBleScan();
-
+                        if (getMissingPermissions().isEmpty()) {
+                            checkPermissionAndScan();
                         } else {
-
-                            textEmpty.setVisibility(View.VISIBLE);
-
-                            textEmpty.setText(
-                                    "Bluetooth permission required"
-                            );
+                            showPermissionRequiredMessage();
                         }
                     }
             );
 
+    /*
+     * Bluetooth 활성화용 Android 시스템 확인창의 결과.
+     * 사용자가 동의한 경우에만 권한·위치 조건을 다시 확인하고 BLE 검색을 시도한다.
+     * Activity가 임의로 Bluetooth를 강제 활성화하지는 않는다.
+     */
+    private final ActivityResultLauncher<Intent> bluetoothEnableLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK) {
+                            checkPermissionAndScan();
+                        } else {
+                            textEmpty.setVisibility(View.VISIBLE);
+                            textEmpty.setText("Bluetooth is OFF. Tap Search to enable it.");
+                            updateScanButton();
+                        }
+                    }
+            );
 
+    /*
+     * Activity 첫 생성 시 뷰를 연결하고 어댑터, 검색 버튼 및 장치 제어 콜백을 구성한다.
+     * 실제 BLE 검색은 자동 시작하지 않고 사용자가 Search를 누르면 시작한다.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // 설정 화면으로 이동한 사이 Activity가 재생성되더라도 검색 재개 의도를 복원한다.
+        if (savedInstanceState != null) {
+            waitingForLocationSettings = savedInstanceState.getBoolean(
+                    STATE_WAITING_FOR_LOCATION_SETTINGS, false
+            );
+        }
 
         EdgeToEdge.enable(this);
 
@@ -1407,103 +1541,493 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * Android 버전에 맞는 권한 확인
+     * 현재 LightLink의 BLE 검색/연결에 필요한 권한 가운데 미허용 항목만 반환한다.
+     *
+     * Android 12 이상 : BLUETOOTH_SCAN, BLUETOOTH_CONNECT, ACCESS_FINE_LOCATION
+     * Android 8~11   : ACCESS_FINE_LOCATION (구형 Bluetooth 권한은 Manifest에 선언)
+     *
+     * Android 12 이상의 '대략적인 위치(COARSE)'는 현재 FINE 요구를 대신하지 못한다.
+     * 이 메서드는 자체 권한 사전 검사이며, 실제 startScan()의 성공까지 보장하지 않는다.
+     * neverForLocation으로 정책을 바꾸려면 Manifest와 실제 Base Station 검색을
+     * 별도로 검증해야 한다. 단순히 검사 권한만 낮추지 않는다.
+     */
+    private List<String> getMissingPermissions() {
+        List<String> missing = new ArrayList<>();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.BLUETOOTH_SCAN)
+                    != PackageManager.PERMISSION_GRANTED) {
+                missing.add(Manifest.permission.BLUETOOTH_SCAN);
+            }
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.BLUETOOTH_CONNECT)
+                    != PackageManager.PERMISSION_GRANTED) {
+                missing.add(Manifest.permission.BLUETOOTH_CONNECT);
+            }
+        }
+
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            missing.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+        return missing;
+    }
+
+    /*
+     * 해당 권한을 이전에 요청한 적이 있는지 앱 로컬 기록을 조회한다.
+     * OS가 현재 권한을 허용했는지는 이 값으로 판단하지 않는다.
+     */
+    private boolean wasPermissionRequested(String permission) {
+        return getPreferences(MODE_PRIVATE).getBoolean(
+                PERMISSION_PREF_PREFIX + permission, false
+        );
+    }
+
+    /*
+     * 아직 부여되지 않은 런타임 권한만 Android 시스템 다이얼로그로 요청한다.
+     *
+     * Android 12 이상에서 FINE 요청에는 COARSE를 함께 포함해야 한다.
+     * 권한 요청 직전 요청 이력을 저장하여 반복 거부 후 설정 안내에 사용한다.
+     */
+    private void requestMissingPermissions(List<String> missing) {
+        List<String> toRequest = new ArrayList<>(missing);
+
+        // Android 12+: 정확한 위치를 요청한다면 대략적 위치도 함께 요청해야 한다.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && toRequest.contains(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            toRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+
+        android.content.SharedPreferences.Editor editor =
+                getPreferences(MODE_PRIVATE).edit();
+        for (String permission : missing) {
+            editor.putBoolean(PERMISSION_PREF_PREFIX + permission, true);
+        }
+        editor.apply();
+        permissionLauncher.launch(toRequest.toArray(new String[0]));
+    }
+
+    /*
+     * 시스템 권한 팝업 대신 앱 설정 안내가 필요한지 판단한다.
+     *
+     * 과거 요청 이력이 있고 rationale을 표시할 수 없는 권한을 감지한다.
+     * Android의 권한 응답/정책은 OS별로 차이가 있으므로 이는 보수적인 휴리스틱이며,
+     * 반드시 시스템이 '영구 거부' 상태라는 증명은 아니다.
+     */
+    private boolean mustOpenSettingsForPermission(List<String> missing) {
+        for (String permission : missing) {
+            if (wasPermissionRequested(permission)
+                    && !ActivityCompat.shouldShowRequestPermissionRationale(
+                    this, permission)) {
+                // 최초 요청 전에는 false가 나오므로 위에서 요청 이력도 확인한다.
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /*
+     * 권한 부족으로 검색을 시작하지 못했을 때 빈 목록 영역에 이유를 표시한다.
+     * Search 버튼은 다시 눌러 권한 요청 또는 앱 설정 안내를 확인할 수 있도록 유지한다.
+     */
+    private void showPermissionRequiredMessage() {
+        boolean settingsRequired = mustOpenSettingsForPermission(
+                getMissingPermissions()
+        );
+        textEmpty.setVisibility(View.VISIBLE);
+        textEmpty.setText(settingsRequired
+                ? "권한이 제한되어 있습니다. 검색 버튼을 눌러 앱 설정을 여세요."
+                : "블루투스 또는 정확한 위치 권한이 필요합니다. 검색 버튼을 눌러 다시 요청하세요.");
+        updateScanButton();
+    }
+
+    /*
+     * 권한을 앱 설정 화면에서 직접 변경해야 하는 경우 보여 주는 안내창.
+     *
+     * Android 12 이상에서 대략적인 위치(COARSE)만 승인한 경우에는
+     * 정확한 위치(FINE)가 필요한 이유와 설정 경로를 구체적으로 안내한다.
+     * 나머지 권한 부족은 공통 문구를 사용한다.
+     *
+     * UI는 showStyledActionDialog()를 통해 수동 전원 제어 팝업과 동일한
+     * 배경/버튼 drawable을 사용한다. 시스템 설정의 '권한' 항목 Ripple 요청은
+     * 기존 openAppSettingsWithHighlight()에서 별도로 처리한다.
+     */
+    private void showAppPermissionSettingsDialog() {
+        boolean approximateOnly =
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                        && ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                        && ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED;
+
+        String title;
+        String message;
+
+        if (approximateOnly) {
+            title = "정확한 위치 권한 필요";
+            message = "현재 대략적인 위치만 허용되어 있습니다.\n\n"
+                    + "LightLink에서 베이스스테이션을 검색하려면 "
+                    + "정확한 위치 권한이 필요합니다.\n\n"
+                    + "앱 정보 → 권한 → 위치에서 '정확한 위치 사용'을 활성화해 주세요.";
+        } else {
+            title = "권한 설정 필요";
+            message = "LightLink에서 베이스스테이션을 검색하고 "
+                    + "제어하려면 필요한 권한을 허용해야 합니다.\n\n"
+                    + "앱 정보 → 권한 메뉴에서 필요한 권한을 허용해 주세요.";
+        }
+
+        showStyledActionDialog(
+                title,
+                message,
+                "설정 열기",
+                this::openAppSettingsWithHighlight
+        );
+    }
+
+    /*
+     * Android '앱 정보' 화면으로 이동하면서 가능한 경우 '권한' 항목을 강조한다.
+     *
+     * SETTINGS_FRAGMENT_ARG_KEY/SETTINGS_SHOW_FRAGMENT_ARGS는 Android Settings의
+     * 비공개 Intent 인자다. 일부 AOSP/One UI 구현에서는 항목으로 스크롤하거나
+     * Ripple 강조를 보여주지만, 제조사와 Android 버전에 따른 지원 여부는 알 수 없다.
+     *
+     * 1차: 앱 정보 화면 + 권한 항목 강조 힌트
+     * 2차: 앱 정보 화면(추가 인자 없음)
+     * 3차: 일반 Android 설정 화면
+     *
+     * 중요: startActivity() 성공은 Ripple이 표시됐다는 뜻이 아니다.
+     * 시스템이 강조 인자를 무시하더라도 화면만 정상적으로 열리면 성공으로 처리한다.
+     * 이 메서드로 '권한 → 위치 → 정확한 위치 사용'까지 자동 조작할 수는 없다.
+     */
+    private void openAppSettingsWithHighlight() {
+
+        // 현재 LightLink 패키지의 앱 정보 화면으로 이동한다.
+        Uri packageUri = Uri.parse("package:" + getPackageName());
+        Intent highlightedIntent = new Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                packageUri
+        );
+
+        // Settings 내부 구현에 '권한' 행을 강조해 달라는 힌트를 전달한다.
+        Bundle highlightArgs = new Bundle();
+        highlightArgs.putString(
+                SETTINGS_FRAGMENT_ARG_KEY,
+                SETTINGS_PERMISSION_ITEM_KEY
+        );
+        highlightedIntent.putExtra(
+                SETTINGS_FRAGMENT_ARG_KEY,
+                SETTINGS_PERMISSION_ITEM_KEY
+        );
+        highlightedIntent.putExtra(
+                SETTINGS_SHOW_FRAGMENT_ARGS,
+                highlightArgs
+        );
+
+        try {
+            startActivity(highlightedIntent);
+            return;
+        } catch (RuntimeException e) {
+            // 강조 Intent 자체를 열 수 없는 기기에서만 대체 경로로 이동한다.
+            AppLog.d("Highlighted app settings unavailable", e);
+        }
+
+        try {
+            // 추가 인자 없이 공식 앱 정보 화면을 다시 연다.
+            startActivity(new Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    packageUri
+            ));
+            return;
+        } catch (RuntimeException e) {
+            AppLog.d("App settings unavailable", e);
+        }
+
+        try {
+            // 매우 예외적인 경우에는 일반 Android 설정 화면이라도 연다.
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        } catch (RuntimeException e) {
+            AppLog.d("Android settings unavailable", e);
+        }
+    }
+
+    /*
+     * 시스템이 권한 재요청을 허용할 때 먼저 보여 주는 설명 창.
+     *
+     * 이 커스텀 창의 '권한 허용' 버튼을 눌러야 Android의 실제 시스템
+     * 권한 요청 창(permissionLauncher)이 열린다. 권한을 직접 부여하지 않는다.
+     * missing은 팝업을 연 시점의 미허용 권한 목록이다.
+     */
+    private void showPermissionExplanationDialog(List<String> missing) {
+        showStyledActionDialog(
+                "권한 허용 필요",
+                "LightLink에서 베이스스테이션을 검색하고 "
+                        + "제어하려면 블루투스 및 정확한 위치 권한이 필요합니다.\n\n"
+                        + "권한을 허용해야 장치를 검색할 수 있습니다.",
+                "권한 허용",
+                () -> requestMissingPermissions(missing)
+        );
+    }
+
+    /*
+     * 권한 안내/권한 설정 이동/위치 서비스 활성화 안내에서 공통으로 사용하는
+     * LightLink 스타일의 2버튼 다이얼로그.
+     *
+     * - res/layout/dialog_settings_action.xml에 제목, 본문, 취소/동작 버튼을 배치한다.
+     * - res/drawable/dialog_manual_power_background를 팝업 배경으로 재사용한다.
+     * - res/drawable/dialog_action_button_background를 두 버튼에 재사용한다.
+     *   버튼의 눌림/Ripple 효과는 해당 drawable 구현에 의해 결정된다.
+     * - Android 시스템 권한 요청창 또는 시스템 설정 화면에는 스타일을 적용하지 않는다.
+     *
+     * 버튼 동작:
+     * - 취소: 팝업만 닫고 아무 작업도 하지 않는다.
+     * - 동작: 팝업을 닫은 뒤 요청한 Runnable을 한 번 실행한다.
+     *
+     * 다른 장치와의 GATT 연결이나 BLE 검색 흐름은 변경하지 않는다.
+     */
+    private void showStyledActionDialog(
+            String title,
+            String message,
+            String positiveLabel,
+            Runnable positiveAction) {
+
+        View dialogView = getLayoutInflater().inflate(
+                R.layout.dialog_settings_action,
+                null
+        );
+
+        TextView textTitle = dialogView.findViewById(R.id.textSettingsDialogTitle);
+        TextView textMessage = dialogView.findViewById(R.id.textSettingsDialogMessage);
+        TextView buttonCancel = dialogView.findViewById(R.id.buttonSettingsDialogCancel);
+        TextView buttonAction = dialogView.findViewById(R.id.buttonSettingsDialogAction);
+
+        textTitle.setText(title);
+        textMessage.setText(message);
+        buttonAction.setText(positiveLabel);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+
+        buttonCancel.setOnClickListener(v -> dialog.dismiss());
+        buttonAction.setOnClickListener(v -> {
+            dialog.dismiss();
+            positiveAction.run();
+        });
+
+        dialog.show();
+
+        // 기본 AlertDialog 창 배경을 제거해야 XML에 정의한 둥근 모서리가 보인다.
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(
+                    android.R.color.transparent
+            );
+        }
+    }
+
+    /*
+     * 기기 전체의 위치 서비스(상단 빠른 설정 '위치') ON/OFF 여부를 확인한다.
+     * ACCESS_FINE_LOCATION 런타임 권한 허용 여부와는 독립적이다.
+     *
+     * Android 9(API 28) 이상: isLocationEnabled()로 전체 스위치를 조회한다.
+     * Android 8(API 26~27)   : GPS/네트워크 위치 공급자의 활성 여부로 판단한다.
+     * 서비스 조회에 실패하면 검색을 무조건 시작하기보다 OFF로 취급한다.
+     *
+     * 현재 앱은 neverForLocation을 선언하지 않았으므로 OS 버전과 무관하게
+     * BLE 광고 검색 시작 전에 위치 권한 + 기기 위치 서비스를 확인한다.
+     */
+    private boolean areLocationServicesEnabled() {
+        LocationManager locationManager =
+                (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager == null) {
+            return false;
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return locationManager.isLocationEnabled();
+            }
+            return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                    || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /*
+     * 위치 서비스가 꺼져 있을 때 검색 화면에 표시할 비차단 안내.
+     *
+     * 목록이 이미 있는 경우에는 장치 상태/전원 버튼 영역을 갑자기 덮지 않는다.
+     * 사용자는 Search 버튼을 다시 누르면 별도의 설정 안내창을 볼 수 있다.
+     */
+    private void showLocationServicesDisabledMessage() {
+        if (deviceList.isEmpty()) {
+            textEmpty.setVisibility(View.VISIBLE);
+            textEmpty.setText(
+                    "휴대전화 위치 기능이 꺼져 있습니다. 검색 버튼을 눌러 설정을 여세요."
+            );
+        }
+        updateScanButton();
+    }
+
+    /*
+     * 스마트폰 전체 위치 서비스가 OFF일 때 표시하는 LightLink 스타일 안내창.
+     *
+     * 앱의 위치 접근 권한(정확한 위치)과는 다른 설정이므로,
+     * '설정 열기'는 앱 정보 화면이 아닌 시스템의 전체 위치 설정을 연다.
+     * 이번 UI 변경에서는 공식 Intent만 사용하며, Fold2에서 효과가 없었던
+     * 위치 스위치용 실험 Ripple 인자는 전달하지 않는다.
+     */
+    private void showLocationServicesDisabledDialog() {
+        showStyledActionDialog(
+                "위치 서비스 비활성화",
+                "현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\n"
+                        + "LightLink에서 베이스스테이션을 검색하려면 "
+                        + "위치 기능을 활성화해 주세요.",
+                "설정 열기",
+                this::openDeviceLocationSettings
+        );
+    }
+
+    /*
+     * Android의 전체 '위치' 설정 화면을 연다.
+     *
+     * LightLink가 Search 후 이 화면을 열었다는 사실을 저장하여
+     * 설정에서 돌아왔을 때 onResume()이 위치 상태를 재검사하고
+     * 사용자가 켜 두었다면 요청했던 BLE 검색을 한 번 재개하도록 한다.
+     *
+     * 위치 설정 화면을 열 수 없으면 일반 Android 설정 화면을 연다.
+     * 두 화면 모두 열리지 않으면 검색 재개 대기 상태를 취소한다.
+     * 앱 정보 '권한' 화면의 Ripple 강조 로직과는 독립적이다.
+     */
+    private void openDeviceLocationSettings() {
+        waitingForLocationSettings = true;
+
+        try {
+            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+            return;
+        } catch (RuntimeException e) {
+            AppLog.d("Location settings unavailable", e);
+        }
+
+        try {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        } catch (RuntimeException e) {
+            waitingForLocationSettings = false;
+            AppLog.d("Android settings unavailable", e);
+        }
+    }
+
+    /*
+     * 위치 서비스 스위치 변경에 대응한다.
+     *
+     * OFF: 실행 중인 BLE 광고 스캔만 종료한다. 이미 발견한 Base Station의
+     *      초기 상태 조회/GATT 전원 제어까지 취소하면 원치 않는 동작이 생기므로 보존한다.
+     * ON : 앱이 자동으로 새 Scan을 시작하지 않는다. 사용자의 Search 입력을 기다린다.
+     *      단, LightLink가 연 위치 설정 화면에서 복귀한 경우는 onResume()에서 따로 처리한다.
+     */
+    private void handleLocationServiceStateChanged() {
+        if (!areLocationServicesEnabled()) {
+            if (scanning) {
+                AppLog.d("Location services disabled: stopping BLE advertisement scan");
+                stopBleScan();
+            }
+            showLocationServicesDisabledMessage();
+        } else if (deviceList.isEmpty() && !scanning
+                && getMissingPermissions().isEmpty()
+                && bluetoothAdapter != null && canCheckBluetoothState()) {
+            // Bluetooth가 켜진 상황에서만 위치 ON 안내로 갱신한다.
+            // BT OFF 상황에서 "Bluetooth OFF" 안내를 덮어쓰지 않도록 확인한다.
+            try {
+                if (bluetoothAdapter.isEnabled()) {
+                    textEmpty.setVisibility(View.VISIBLE);
+                    textEmpty.setText("위치 기능이 켜졌습니다. 검색 버튼을 눌러 장치를 검색하세요.");
+                }
+            } catch (SecurityException e) {
+                AppLog.d("Unable to check Bluetooth after location change", e);
+            }
+        }
+    }
+
+    /*
+     * Bluetooth가 OFF로 바뀐 사이 정확한 위치 권한까지 바뀌었더라도
+     * Android 12+ CONNECT 권한만 있으면 Bluetooth 전원 상태를 확인할 수 있다.
+     * Android 8~11의 일반 Bluetooth 권한은 Manifest에서 부여된다.
+     */
+    private boolean canCheckBluetoothState() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+                || ContextCompat.checkSelfPermission(this,
+                Manifest.permission.BLUETOOTH_CONNECT)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /*
+     * Search 버튼/권한 요청 결과/Bluetooth 활성화 결과/위치 설정 복귀에서
+     * 공통으로 호출하는 검색 시작 진입점.
+     *
+     * 검사 순서:
+     * 1) 진행 중인 장치 Wake/Sleep 작업 여부
+     * 2) Android 버전에 맞는 런타임 권한 (현재 정책은 항상 정확한 위치 필요)
+     * 3) Android 8~최신 버전 모두 기기 위치 서비스 ON/OFF 여부
+     * 4) BLE 스캐너 준비 및 Bluetooth 활성화 여부 (startBleScan 내부)
+     * 5) 실제 BLE 광고 검색
+     *
+     * 중요: 위치 권한(FINE 허용)과 위치 서비스(전체 스위치 ON)는 별개다.
+     *      Android 12 이상도 현재 Manifest 설정에서는 서비스 OFF를 건너뛰지 않는다.
+     *      앱은 위치 서비스를 강제로 켜지 않고 시스템 설정 화면으로 안내한다.
      */
     private void checkPermissionAndScan() {
-
-        /*
-         * 실제 Wake / Sleep 전환을 확인하는 동안에는
-         * 새로운 Scan을 시작하지 않는다.
-         */
         if (isAnyPowerControllerBusy()) {
-
-            AppLog.d(
-                    "Scan ignored: power command in progress"
-            );
-
+            AppLog.d("Scan ignored: power command in progress");
             return;
         }
 
-
-        /*
-         * Android 12 이상
-         */
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-
-            boolean scanPermission =
-                    ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.BLUETOOTH_SCAN
-                    ) == PackageManager.PERMISSION_GRANTED;
-
-
-            boolean connectPermission =
-                    ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.BLUETOOTH_CONNECT
-                    ) == PackageManager.PERMISSION_GRANTED;
-
-
-            boolean locationPermission =
-                    ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED;
-
-
-            /*
-             * 필요한 권한이 하나라도 없다면 요청
-             */
-            if (!scanPermission
-                    || !connectPermission
-                    || !locationPermission) {
-
-                permissionLauncher.launch(
-                        new String[]{
-                                Manifest.permission.BLUETOOTH_SCAN,
-                                Manifest.permission.BLUETOOTH_CONNECT,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                        }
-                );
-
+        List<String> missing = getMissingPermissions();
+        if (!missing.isEmpty()) {
+            if (mustOpenSettingsForPermission(missing)) {
+                showAppPermissionSettingsDialog();
                 return;
             }
 
-        } else {
-
-            /*
-             * Android 11 이하
-             *
-             * BLE 검색에 위치 권한 사용
-             */
-            boolean locationPermission =
-                    ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED;
-
-
-            if (!locationPermission) {
-
-                permissionLauncher.launch(
-                        new String[]{
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                        }
-                );
-
-                return;
+            boolean rationaleNeeded = false;
+            for (String permission : missing) {
+                if (ActivityCompat.shouldShowRequestPermissionRationale(
+                        this, permission)) {
+                    rationaleNeeded = true;
+                    break;
+                }
             }
+            if (rationaleNeeded) {
+                showPermissionExplanationDialog(missing);
+            } else {
+                requestMissingPermissions(missing);
+            }
+            return;
         }
 
+        /*
+         * Android 12 이상을 포함해 기기 위치 서비스도 항상 확인한다.
+         * 위치 권한이 허용됐더라도 서비스 스위치가 OFF일 수 있다.
+         * 위치 서비스가 OFF라면 검색을 시작하지 않고 위치 설정을 안내한다.
+         */
+        if (!areLocationServicesEnabled()) {
+            showLocationServicesDisabledDialog();
+            return;
+        }
 
-        // 필요한 권한이 이미 있음
         startBleScan();
     }
 
-
     /*
-     * BLE 검색 시작
+     * 실제 BLE 스캐너를 구성하고 10초간 주변 광고 패킷 수신을 시작한다.
+     * 새 검색을 시작할 때 이전 결과/상태 조회/전원 Controller를 초기화한다.
+     *
+     * 권한을 사전 검사하더라도 시스템 설정이 도중에 바뀔 수 있으므로
+     * BluetoothLeScanner 접근과 startScan()은 예외 처리를 유지한다.
      */
     @SuppressLint("MissingPermission")
     private void startBleScan() {
@@ -1523,6 +2047,21 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        // 권한 요청 도중 사용자가 Android 설정에서 권한을 변경했을 수 있다.
+        if (!getMissingPermissions().isEmpty()) {
+            showPermissionRequiredMessage();
+            return;
+        }
+
+        /*
+         * 1차 검사(checkPermissionAndScan) 직후 위치 서비스를 끈 경우의 마지막 방어선.
+         * 이 함수에서는 설정 다이얼로그를 연속으로 띄우지 않고 화면 안내만 갱신한다.
+         */
+        if (!areLocationServicesEnabled()) {
+            showLocationServicesDisabledMessage();
+            return;
+        }
+
         /*
          * Bluetooth 자체를 지원하지 않는 기기
          */
@@ -1539,10 +2078,11 @@ public class MainActivity extends AppCompatActivity {
          * Bluetooth가 꺼져 있음
          */
         if (!bluetoothAdapter.isEnabled()) {
-
             textEmpty.setVisibility(View.VISIBLE);
-            textEmpty.setText("Bluetooth is OFF");
-
+            textEmpty.setText("Bluetooth is OFF. Turn it on to scan.");
+            bluetoothEnableLauncher.launch(
+                    new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            );
             return;
         }
 
@@ -1550,8 +2090,15 @@ public class MainActivity extends AppCompatActivity {
         /*
          * BLE Scanner 가져오기
          */
-        bleScanner =
-                bluetoothAdapter.getBluetoothLeScanner();
+        try {
+            bleScanner = bluetoothAdapter.getBluetoothLeScanner();
+        } catch (SecurityException | IllegalStateException e) {
+            AppLog.d("BLE scanner unavailable", e);
+            textEmpty.setVisibility(View.VISIBLE);
+            textEmpty.setText("Bluetooth scanner unavailable. Check permissions.");
+            updateScanButton();
+            return;
+        }
 
 
         if (bleScanner == null) {
@@ -1617,9 +2164,17 @@ public class MainActivity extends AppCompatActivity {
         /*
          * 실제 BLE 검색 시작
          */
-        bleScanner.startScan(
-                scanCallback
-        );
+        try {
+            bleScanner.startScan(scanCallback);
+        } catch (SecurityException | IllegalStateException e) {
+            AppLog.d("BLE scan start failed", e);
+            scanning = false;
+            bleScanner = null;
+            textEmpty.setVisibility(View.VISIBLE);
+            textEmpty.setText("Unable to start BLE scan. Check Bluetooth permissions.");
+            updateScanButton();
+            return;
+        }
 
 
         /*
@@ -1647,7 +2202,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
-     * BLE 검색 결과
+     * BLE 스캔 콜백: 광고 이름을 얻어 LHB- 장치만 목록에 추가한다.
+     * 발견한 장치는 MAC 주소로 중복을 제거하고 초기 상태 조회 큐에 넣는다.
+     * Debug 빌드의 가상 장치와 달리 이 콜백은 실제 주변 BLE 광고를 처리한다.
      */
     private final ScanCallback scanCallback =
             new ScanCallback() {
@@ -1658,6 +2215,10 @@ public class MainActivity extends AppCompatActivity {
                         int callbackType,
                         ScanResult result) {
 
+                    // Bluetooth가 꺼진 직후 늦게 도착한 검색 결과를 무시한다.
+                    if (!scanning || !getMissingPermissions().isEmpty()) {
+                        return;
+                    }
 
                     /*
                      * BluetoothDevice가 알고 있는 이름
@@ -1815,6 +2376,11 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onScanFailed(int errorCode) {
 
+                    // OFF 또는 수동 종료 이후 도착한 오래된 콜백은 무시한다.
+                    if (!scanning) {
+                        return;
+                    }
+
                     scanning =
                             false;
 
@@ -1847,10 +2413,11 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
-     * BLE 검색 종료
+     * BLE 광고 검색 종료(수동 Stop 또는 자동 타임아웃).
      *
-     * 현재까지 발견한 Base Station 목록은
-     * 지우지 않는다.
+     * Scanner와 타임아웃만 정리하고 이미 발견한 Base Station 목록과
+     * 시작된 상태 조회 과정은 유지한다. Bluetooth 전원을 끈 경우에는
+     * handleBluetoothTurnedOff()에서 나머지 작업을 별도로 정리한다.
      */
     @SuppressLint("MissingPermission")
     private void stopBleScan() {
@@ -1912,8 +2479,29 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
-     * 상태 조회 Queue에서
-     * Base Station을 한 대씩 꺼내 처리
+     * 검색 도중 시스템 Bluetooth를 끄면 대기열/GATT와 검색 결과를 비운다.
+     * 과거 Awake/Sleep 결과로 버튼을 누르게 하지 않기 위한 처리다.
+     */
+    private void handleBluetoothTurnedOff() {
+        if (scanning) {
+            stopBleScan();
+        }
+        handler.removeCallbacks(scanTimeoutRunnable);
+        resetStatusReads();
+        clearPowerControllers();
+        bleScanner = null;
+        seenAddresses.clear();
+        deviceList.clear();
+        deviceAdapter.notifyDataSetChanged();
+        textEmpty.setVisibility(View.VISIBLE);
+        textEmpty.setText("Bluetooth is OFF. Tap Search to enable it.");
+        updateScanButton();
+    }
+
+    /*
+     * 초기 상태 확인 큐에서 Base Station을 하나씩 꺼내 GATT 연결을 시작한다.
+     * 여러 장치가 발견되어도 최초 상태 조회는 동시 연결하지 않고 순차 실행한다.
+     * 이 흐름은 Wake/Sleep 전용 BaseStationGattController와 별도다.
      */
     @SuppressLint("MissingPermission")
     private void processNextStatusRead() {
@@ -3437,8 +4025,115 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
-     * Activity 종료 시
-     * BLE 작업도 함께 정리
+     * Activity가 화면에 나타나면 Bluetooth 및 기기 위치 스위치 방송을 등록한다.
+     * 설정 앱이 열려 있는 동안에는 방송을 받지 않을 수 있으므로 onResume에서도
+     * 위치 서비스 상태를 재확인한다.
+     *
+     * Bluetooth가 설정 앱에서 꺼졌다면 지난 검색 결과/GATT를 정리한다.
+     * 이때 FINE 위치 권한은 Bluetooth 전원 상태를 읽는 데 필요하지 않다.
+     */
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        registerReceiver(
+                bluetoothStateReceiver,
+                new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        );
+        bluetoothReceiverRegistered = true;
+
+        registerReceiver(
+                locationStateReceiver,
+                new IntentFilter(LocationManager.MODE_CHANGED_ACTION)
+        );
+        locationReceiverRegistered = true;
+
+        // Bluetooth 연결 권한이 있으면 위치 권한 상태와 관계없이 전원을 확인한다.
+        if (bluetoothAdapter != null && canCheckBluetoothState()) {
+            try {
+                if (!bluetoothAdapter.isEnabled()) {
+                    handleBluetoothTurnedOff();
+                }
+            } catch (SecurityException e) {
+                showPermissionRequiredMessage();
+            }
+        }
+    }
+
+    /*
+     * 앱이 다시 전면으로 복귀할 때 위치 설정 변경 누락을 보완한다.
+     *
+     * - 검색 중에 위치 기능이 꺼졌다면 즉시 광고 검색을 중단한다.
+     * - LightLink가 위치 설정을 열었던 경우, 위치 기능을 켠 뒤 돌아오면
+     *   별도 Search 입력 없이 원래 사용자가 요청한 검색을 한 번만 재개한다.
+     * - 사용자가 위치 기능을 켜지 않았다면 팝업을 반복해서 띄우지 않는다.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (!areLocationServicesEnabled()) {
+            if (scanning) {
+                stopBleScan();
+            }
+            showLocationServicesDisabledMessage();
+        } else if (scanning && !getMissingPermissions().isEmpty()) {
+            // 설정 화면에서 검색 권한이 회수된 경우 지난 스캔을 계속하지 않는다.
+            stopBleScan();
+            showPermissionRequiredMessage();
+        }
+
+        if (waitingForLocationSettings) {
+            // 복귀 후에는 재진입을 막기 위해 대기 상태를 먼저 해제한다.
+            waitingForLocationSettings = false;
+
+            if (areLocationServicesEnabled()) {
+                if (getMissingPermissions().isEmpty()) {
+                    checkPermissionAndScan();
+                } else {
+                    showPermissionRequiredMessage();
+                }
+            }
+            // 여전히 위치 OFF라면 위의 화면 안내만 유지하고 다시 요청하지 않는다.
+        }
+    }
+
+    /*
+     * 위치 설정 화면에서 Activity가 재생성되는 경우에도
+     * '설정 후 검색 재개' 의도를 유지한다.
+     */
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(
+                STATE_WAITING_FOR_LOCATION_SETTINGS,
+                waitingForLocationSettings
+        );
+        super.onSaveInstanceState(outState);
+    }
+
+    /*
+     * Activity가 화면에서 사라지면 동적 시스템 방송 수신기를 해제한다.
+     * 다시 화면으로 돌아오면 onStart()에서 재등록한다.
+     * 검색/GATT 자체는 이 생명주기 콜백만으로 강제로 종료하지 않는다.
+     */
+    @Override
+    protected void onStop() {
+        if (bluetoothReceiverRegistered) {
+            unregisterReceiver(bluetoothStateReceiver);
+            bluetoothReceiverRegistered = false;
+        }
+        if (locationReceiverRegistered) {
+            unregisterReceiver(locationStateReceiver);
+            locationReceiverRegistered = false;
+        }
+        super.onStop();
+    }
+
+    /*
+     * Activity 완전 종료 시 BLE 스캔, 초기 상태 확인 GATT,
+     * 장치별 전원 Controller 및 Handler 예약 작업을 정리한다.
+     * 화면 이동(onStop)과 Activity 소멸(onDestroy)은 구분한다.
+     * 위치/Bluetooth 변경 방송 수신기는 onStop()에서 별도 해제한다.
      */
     @SuppressLint("MissingPermission")
     @Override
@@ -3530,9 +4225,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 마지막 BLE 검색 완료 시간을 화면에 표시한다.
+     * 마지막 검색 시도 시간을 표시한다.
      *
-     * 실제 BLE 검색이 시작된 직후 호출한다.
+     * 실제로 startScan() 호출에 예외가 발생하지 않은 직후 실행되므로
+     * '검색 완료 시간'이나 '장치를 발견한 시간'을 뜻하지 않는다.
      */
     private void updateLastScanTime() {
 

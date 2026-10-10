@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    LightLink 공통 안내창 UI.
+
+    사용처:
+      1. 권한 설정으로 이동해야 할 때
+      2. 런타임 권한을 다시 요청하기 전에 설명할 때
+      3. 스마트폰 전체 위치 서비스를 켜도록 안내할 때
+
+    dialog_manual_power.xml과 같은 둥근 팝업 배경과 버튼 배경을 사용한다.
+    본문 내용과 오른쪽 버튼 이름은 MainActivity에서 상황에 맞게 변경한다.
+    시스템 자체 권한 요청창은 Android가 표시하므로 이 스타일이 적용되지 않는다.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="24dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="20dp"
+    android:background="@drawable/dialog_manual_background">
+
+    <!-- 제목: MainActivity에서 상황별 한국어 문구를 지정한다. -->
+    <TextView
+        android:id="@+id/textSettingsDialogTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="설정 안내"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <!-- 안내 본문: 여러 문단과 설정 경로 표시를 위해 줄 간격을 넓힌다. -->
+    <TextView
+        android:id="@+id/textSettingsDialogMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="설정이 필요합니다."
+        android:textColor="#BDBDBD"
+        android:textSize="15sp"
+        android:lineSpacingExtra="3dp" />
+
+    <!--
+        하단 공통 버튼 영역.
+
+        수동 전원 제어창과 동일한 버튼 Drawable을 사용한다.
+        취소 버튼보다 실행 버튼에 더 넓은 공간을 할당하며,
+        두 버튼 사이에는 60dp의 간격을 둔다.
+
+        버튼의 눌림 효과와 배경 디자인은
+        dialog_action_button_background에서 공통으로 관리한다.
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="horizontal">
+
+        <!-- 작업 취소: 팝업만 닫는다. -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonSettingsDialogCancel"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="0.6"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:background="@drawable/dialog_action_button_background"
+            android:backgroundTint="@null"
+            android:text="취소"
+            android:textAllCaps="false"
+            android:textColor="#FF6B6B"
+            android:textSize="15sp" />
+
+        <!-- 권한 허용 / 설정 열기: 실제 작업은 MainActivity에서 전달한다. -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonSettingsDialogAction"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="60dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:background="@drawable/dialog_action_button_background"
+            android:backgroundTint="@null"
+            android:text="설정 열기"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+</LinearLayout>
