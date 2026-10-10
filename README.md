@@ -1,189 +1,146 @@
 # LightLink
 
-**A simple Android BLE power manager for SteamVR Base Station 2.0.**
+An Android app for controlling SteamVR Base Station 2.0 over Bluetooth Low Energy (BLE).
 
-**Current Version:** `v0.6.0-beta.1`
-**Development Status:** Beta
+LightLink는 Bluetooth Low Energy(BLE)를 이용해 SteamVR Base Station 2.0을 검색하고 전원을 제어하는 **Android 전용 앱**입니다.
 
-LightLink is an Android application for discovering SteamVR Base Station 2.0 devices over Bluetooth Low Energy (BLE), checking their current power state, and controlling Wake / Sleep states.
+**Version:** `v0.7.0-beta.1` · **Status:** Beta · **Android:** 8.0 (API 26)+
 
-LightLink는 Bluetooth Low Energy(BLE)를 이용하여 SteamVR Base Station 2.0을 검색하고, 전원 상태를 확인하거나 Wake / Sleep 상태를 제어할 수 있는 Android 앱입니다.
+## Download / 다운로드
 
-## Why LightLink?
+**[Download APK from GitHub Releases](https://github.com/TBeco/LightLink/releases)**
 
-LightLink started as a personal project to address device discovery issues I experienced while using an existing Base Station power management application.
+Download the `.apk` file from the **Assets** section of a release.
 
-Some Base Stations were occasionally missing from scan results, even after searching again.
+GitHub Releases에서 해당 버전의 **Assets**에 있는 `.apk` 파일을 다운로드하면 됩니다.
 
-I developed LightLink to improve device discovery reliability and provide a simple way to manage multiple Base Stations from an Android device.
+LightLink is still in beta, and compatibility may vary between devices.
 
-The initial discovery issue has been improved in my own environment, and further testing is ongoing to evaluate compatibility and reliability across different Android devices and Base Station firmware versions.
+현재 베타 버전으로, 기기에 따라 동작에 차이가 있을 수 있습니다.
 
-### 개발 배경
+## Screenshots / 스크린샷
 
-LightLink는 기존 Base Station 전원 관리 앱을 사용하면서 경험했던 장치 검색 문제를 해결하기 위해 시작한 개인 프로젝트입니다.
+| Main Screen / 메인 화면 | Manual Power Control / 수동 전원 제어 | Permission Dialog / 권한 안내창 |
+|:---:|:---:|:---:|
+| ![Main Screen](screenshots/main.jpg) | ![Manual Power Control](screenshots/device-control.jpg) | ![Permission Dialog](screenshots/permission.jpg) |
 
-일부 Base Station이 검색되지 않거나, 다시 검색해도 나타나지 않는 문제가 간헐적으로 발생했습니다.
+## Why I Made LightLink / 개발 배경
 
-이러한 검색 불안정성을 개선하고 여러 Base Station을 Android 기기에서 간편하게 관리하기 위해 LightLink를 개발했습니다.
+I started LightLink because the Base Station power management app I was using didn't always work well on my phone.
 
-현재 개인 사용 환경에서는 초기 검색 문제가 개선되었으며, 다양한 Android 기기와 Base Station 펌웨어에서의 호환성 및 안정성을 계속 검증하고 있습니다.
+Sometimes, it couldn't find some of my base stations, even after scanning again. I wanted something that would work reliably on the Android phone I already had, so I decided to try building my own app.
 
----
+That's how LightLink started.
 
-## Features
+The discovery issue has improved in my setup, and I'm still testing how well the app works on other Android devices and Base Station firmware versions.
 
-* Discover nearby SteamVR Base Station 2.0 devices
-* Read the current power state of supported base stations
-* Wake or Sleep base stations individually
-* Control multiple base stations independently
-* Manually start and stop device discovery
-* Display RF channel and Bluetooth signal strength (RSSI)
-* Display the last successful power state check time
-* Automatically retry temporary Bluetooth connection failures
-* Verify the actual power state after Wake / Sleep commands when supported
-* Provide manual Wake / Sleep control for some older firmware versions that do not support Power State READ
+기존 Base Station 전원 관리 앱을 사용하면서 제가 사용하던 스마트폰에서 일부 베이스스테이션이 검색되지 않는 문제를 겪었습니다.
 
-### 주요 기능
+다시 검색해도 나타나지 않는 경우가 있었고, 현재 사용 중인 스마트폰에서도 안정적으로 동작하는 앱을 직접 만들어 보고 싶었습니다.
 
-* 주변 SteamVR Base Station 2.0 검색
-* Power State READ를 지원하는 Base Station의 현재 전원 상태 확인
-* Base Station별 Wake / Sleep 제어
-* 여러 Base Station 독립 제어
-* 장치 검색 시작 및 중지
-* RF 채널 및 Bluetooth 신호 강도(RSSI) 표시
-* 마지막 전원 상태 확인 성공 시간 표시
-* 일시적인 Bluetooth 연결 실패 시 자동 재시도
-* Wake / Sleep 명령 후 지원되는 장치에서는 실제 전원 상태 재확인
-* Power State READ를 지원하지 않는 일부 이전 펌웨어에서 수동 Wake / Sleep 제어 지원
+그렇게 LightLink를 개발하기 시작했습니다.
 
----
+현재 제 사용 환경에서는 기존 검색 문제가 상당 부분 개선되었으며, 다른 Android 기기와 Base Station 펌웨어에서도 정상적으로 동작하는지 테스트하고 있습니다.
 
-## Supported Devices
+## Features / 주요 기능
 
-* **SteamVR Base Station 2.0**
+- Discover nearby Base Station 2.0 devices / 주변 베이스스테이션 검색
+- Read the power state when supported / 지원되는 장치의 현재 전원 상태 확인
+- Wake or Sleep each base station independently / 베이스스테이션별 전원 켜기(Wake) 및 절전(Sleep) 제어
+- Start and stop scanning manually / 검색 시작 및 중지
+- Show RF channel, Bluetooth signal strength (RSSI), and last successful state check time / 베이스스테이션 채널(RF Channel), 블루투스 신호 강도(RSSI), 마지막 상태 확인 시각 표시
+- Retry temporary Bluetooth connection failures / 일시적인 블루투스 연결 실패 시 재시도
+- Verify power state after Wake / Sleep commands when supported / 지원되는 장치에서 전원 명령 후 실제 상태 재확인
+- Allow manual Wake / Sleep control when older firmware does not support Power State READ / 일부 구형 펌웨어에서 상태 조회가 불가능할 때 수동 전원 제어
 
-Base Station 1.0 is currently not supported.
+## Planned Features / 개발 예정 기능
 
-LightLink is developed and tested primarily for SteamVR Base Station 2.0. Compatibility may vary depending on the Base Station firmware version.
+The following features are planned but are not available in the current version.
 
-현재 LightLink는 SteamVR Base Station 2.0을 대상으로 개발 및 테스트하고 있습니다.
+- **Language support:** Add Korean and English language options throughout the app.
+- **Base Station identification:** Identify a specific base station by selecting it in the app and making its LED blink white. This feature requires further testing of device and firmware support.
 
-Base Station 1.0은 지원하지 않으며, Base Station 펌웨어 버전에 따라 일부 기능의 지원 여부가 달라질 수 있습니다.
+다음 기능들은 현재 개발을 고려하고 있으며, 아직 구현되지 않았습니다.
 
----
+- **다국어 지원:** 앱의 화면과 안내 메시지에 한국어 및 영어 지원 추가
+- **베이스스테이션 식별:** 앱에서 특정 베이스스테이션을 선택하면 해당 장치의 LED가 흰색으로 점멸하여 실제 장치를 쉽게 구분할 수 있도록 하는 기능. 장치 및 펌웨어의 지원 여부를 추가 확인할 예정입니다.
 
-## Requirements
+These plans may change depending on testing results and technical limitations.
 
-* Android 8.0 (API 26) or later
-* Bluetooth Low Energy (BLE) support
-* Appropriate Bluetooth permissions for device discovery and connection
-* Location permission where required by the Android version
+개발 예정 기능은 테스트 결과나 기술적인 제약에 따라 변경될 수 있습니다.
 
-### 실행 환경
+## Compatibility / 호환성
 
-* Android 8.0 (API 26) 이상
-* Bluetooth Low Energy(BLE) 지원
-* 장치 검색 및 연결을 위한 Bluetooth 권한
-* Android 버전에 따라 필요한 위치 권한
+- **Supported / 지원:** SteamVR Base Station 2.0
+- **Not supported / 미지원:** SteamVR Base Station 1.0
 
----
+My main test setup uses Base Station 2.0 with firmware **3008**. Testers have also reported working results with firmware **3002**, although compatibility has not been fully verified across all features and devices.
 
-## Tested Android Devices
+주요 테스트 환경은 펌웨어 **3008**의 Base Station 2.0입니다. 테스터를 통해 **3002**에서도 동작을 확인했지만, 모든 기능과 환경에서의 호환성 검증이 끝난 것은 아닙니다.
 
-LightLink has currently been tested on the following Android devices:
+Some older firmware versions may not support Power State READ. If BLE write commands are available, LightLink can still send Wake / Sleep commands manually, but it cannot verify the resulting power state.
 
-* Samsung Galaxy S9
-* Samsung Galaxy A51 5G
-* Samsung Galaxy S23 Ultra
-* Samsung Galaxy S25 Edge
-* Samsung Galaxy Z Flip6
-* Samsung Galaxy Z Fold2
-* Samsung Galaxy Z Fold4
-* Samsung Galaxy Z Fold8
+일부 오래된 펌웨어에서는 전원 상태 읽기(Power State READ)를 지원하지 않을 수 있습니다.
 
-Testing on these devices does not mean that LightLink is limited to them.
+이 경우 BLE 쓰기(Write)가 가능하다면 수동으로 Wake / Sleep 명령을 보낼 수 있지만, 명령 실행 후 실제 전원 상태를 확인할 수는 없습니다.
 
-Compatibility with other Android devices may vary depending on the Bluetooth implementation, Android version, and device manufacturer.
+## Requirements / 실행 환경
 
-### 테스트한 Android 기기
+- Android 8.0 (API 26) or later / Android 8.0 이상
+- Bluetooth Low Energy (BLE) support / BLE 지원 기기
+- Required Bluetooth permissions / 필요한 블루투스 권한
+- Precise location permission / 정확한 위치 권한
+- Device location services enabled / 스마트폰 위치 기능 활성화
 
-위 Android 기기에서 LightLink의 동작을 테스트했습니다.
+These location requirements reflect LightLink's current BLE scanning setup.
 
-해당 기기에서 테스트했다는 것이 다른 Android 기기를 지원하지 않는다는 의미는 아닙니다.
+위치 관련 조건은 현재 LightLink의 BLE 검색 방식에 따른 요구 사항입니다.
 
-Android 버전, 제조사 및 Bluetooth 구현 방식에 따라 동작에 차이가 있을 수 있습니다.
+## Tested Android Devices / 테스트한 Android 기기
 
----
+- Samsung Galaxy S9
+- Samsung Galaxy A51 5G
+- Samsung Galaxy S23 Ultra
+- Samsung Galaxy S25 Edge
+- Samsung Galaxy Z Flip6
+- Samsung Galaxy Z Fold2
+- Samsung Galaxy Z Fold4
+- Samsung Galaxy Z Fold8
 
-## Development Status
+This list includes devices used for testing. It does not guarantee that every feature works identically on each model.
 
-LightLink is currently in beta development.
+위 목록은 테스트에 사용한 기기이며, 모든 모델에서 모든 기능이 동일하게 동작한다는 의미는 아닙니다.
 
-The core features, including Base Station discovery, power state reading, and individual Wake / Sleep control, have been implemented.
+## Privacy / 개인정보
 
-The initial device discovery issue that motivated this project has been improved in the developer's testing environment.
+LightLink does not require an account or cloud connection. Base station discovery and control happen locally over BLE.
 
-Further testing is ongoing to evaluate reliability and compatibility across different Android devices and Base Station firmware versions.
+계정이나 클라우드 연결 없이 사용할 수 있으며, 베이스스테이션 검색과 전원 제어는 기기 간 BLE 통신으로 이루어집니다.
 
-Some older Base Station firmware versions may not support Power State READ.
+## Development & Feedback / 개발 및 피드백
 
-In these cases, LightLink can provide manual Wake / Sleep control when the required BLE write capability is available.
+LightLink is a personal project that I'm currently developing on my own.
 
-**Note:** When Power State READ is unavailable, LightLink cannot independently verify the actual power state after sending a command.
+I'm not planning to accept code contributions for now, but bug reports and suggestions are welcome through [GitHub Issues](https://github.com/TBeco/LightLink/issues).
 
-### 개발 상태
+When reporting a problem, please include your Android device model, Android version, Base Station firmware version (if known), and how to reproduce the issue.
 
-LightLink는 현재 베타 개발 단계입니다.
+LightLink는 현재 혼자 개발하고 있는 개인 프로젝트입니다.
 
-Base Station 검색, 전원 상태 확인, 개별 Wake / Sleep 제어 등 핵심 기능이 구현되어 있습니다.
+당분간 외부 코드 기여를 받을 계획은 없지만, 버그 제보와 개선 의견은 [GitHub Issues](https://github.com/TBeco/LightLink/issues)를 통해 받고 있습니다.
 
-개발을 시작하게 된 원인인 장치 검색 문제는 개발자의 사용 환경에서 개선된 상태입니다.
+문제가 발생했다면 스마트폰 모델, Android 버전, 베이스스테이션 펌웨어 버전(확인 가능한 경우), 문제 발생 과정을 함께 알려주세요.
 
-현재는 다양한 Android 기기와 Base Station 펌웨어 환경에서의 안정성 및 호환성을 계속 검증하고 있습니다.
+## Reference / 참고자료
 
-일부 이전 Base Station 펌웨어에서는 Power State READ를 지원하지 않을 수 있습니다.
+The following reference was helpful when working with the Base Station 2.0 BLE GATT services, characteristics, and power control commands.
 
-이 경우 필요한 BLE Write 기능을 사용할 수 있다면 수동 Wake / Sleep 제어를 사용할 수 있습니다.
+Base Station 2.0의 BLE GATT 서비스, 특성(Characteristic), 전원 제어 명령을 구현하면서 아래 자료를 참고했습니다.
 
-**참고:** Power State READ를 지원하지 않는 장치에서는 명령 전송 후 실제 전원 상태를 독립적으로 확인할 수 없습니다.
+- [BenWoodford — Lighthouse 2.0 GATT Information](https://gist.github.com/BenWoodford/3a1e500a4ea2673525f5adb4120fd47c)
 
----
+## Disclaimer / 안내
 
-## Privacy
+LightLink is an independent, unofficial project and is not affiliated with or endorsed by Valve Corporation.
 
-LightLink does not require an account, server, or cloud connection.
-
-Base Station discovery and power control are performed locally over Bluetooth Low Energy (BLE).
-
-### 개인정보
-
-LightLink는 계정, 서버 또는 클라우드 연결을 필요로 하지 않습니다.
-
-Base Station 검색 및 전원 제어는 로컬 Bluetooth Low Energy(BLE) 통신을 통해 수행됩니다.
-
----
-
-## Feedback
-
-LightLink is a personal project currently undergoing beta testing.
-
-Bug reports, compatibility feedback, and suggestions are welcome through GitHub Issues.
-
-When reporting an issue, please include the Android device model, Android version, and Base Station firmware version if available.
-
-### 피드백
-
-LightLink는 현재 베타 테스트를 진행 중인 개인 프로젝트입니다.
-
-버그 제보, 호환성 문제 및 개선 제안은 GitHub Issues를 통해 전달할 수 있습니다.
-
-문제를 제보할 때 Android 기기 모델, Android 버전, Base Station 펌웨어 버전을 함께 알려주시면 문제를 분석하는 데 도움이 됩니다.
-
----
-
-## Disclaimer
-
-LightLink is an independent personal project and is not affiliated with or endorsed by Valve Corporation.
-
-LightLink는 Valve Corporation과 관계없는 독립적인 개인 개발 프로젝트이며, Valve의 공식 앱이 아닙니다.
+LightLink는 개인이 개발한 비공식 앱이며 Valve Corporation과 관계가 없습니다.
