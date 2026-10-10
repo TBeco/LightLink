@@ -128,6 +128,15 @@ public class MainActivity extends AppCompatActivity {
 
 
     /*
+     * Power State READ에서 0x01을 실제로 확인했을 때 표시하는 상태.
+     * 'Stuck'은 연속된 조회에서 0x01이 유지되었다는 앱의 판단이며,
+     * 장치 자체의 고장이나 공식 펌웨어 오류 코드를 확정하는 표현은 아니다.
+     */
+    private static final String STATUS_PROCESSING = "Processing (0x01)";
+    private static final String STATUS_STUCK = "Stuck (0x01)";
+
+
+    /*
      * 초기 상태 조회 재시도 사이의 대기 시간.
      *
      * 오래된 휴대폰이나 일시적으로 불안정한 GATT 연결이
@@ -316,6 +325,15 @@ public class MainActivity extends AppCompatActivity {
      * Value : 이미 실행한 추가 재시도 횟수
      */
     private final Map<String, Integer> statusRetryCounts =
+            new HashMap<>();
+
+
+    /*
+     * Base Station별 연속 0x01 수신 횟수.
+     * 단순 재시도 횟수가 아니라 성공적으로 0x01을 READ한 횟수만 센다.
+     * 다른 상태나 연결/READ 오류가 발생하면 연속 횟수는 초기화한다.
+     */
+    private final Map<String, Integer> consecutiveProcessingReadCounts =
             new HashMap<>();
 
 
@@ -3258,11 +3276,14 @@ public class MainActivity extends AppCompatActivity {
          * 이 Base Station의 마지막 상태 확인 시간을 갱신한다.
          *
          * Checking... 또는 Unknown 상태에서는 갱신하지 않는다.
+         * Processing (0x01)은 최종 전원 상태를 확정하지는 못했지만,
+         * READ 자체는 성공했으므로 마지막 상태 확인 시간을 갱신한다.
          */
         if (currentStatusDevice != null
                 && ("Awake".equals(powerState)
                 || "Sleep".equals(powerState)
-                || "Standby".equals(powerState))) {
+                || "Standby".equals(powerState)
+                || STATUS_PROCESSING.equals(powerState))) {
 
             currentStatusDevice.setLastStateCheckedAt(
                     LocalDateTime.now()
@@ -3649,12 +3670,13 @@ public class MainActivity extends AppCompatActivity {
 
 
             /*
-             * 일부 Awake / 기동 과정에서
-             * 관찰될 수 있는 값
+             * 0x01의 정확한 펌웨어 의미는 아직 확정되지 않았다.
+             * 최초 READ 성공 시 Processing으로 처리하고,
+             * 반복 판정은 finishStatusRead()에서 수행한다.
              */
             case 0x01:
 
-                return "Checking...";
+                return STATUS_PROCESSING;
 
 
             default:
@@ -3694,6 +3716,7 @@ public class MainActivity extends AppCompatActivity {
                 || "Read error".equals(statusText)
                 || "Unknown".equals(statusText)
                 || "Checking...".equals(statusText)
+                || STATUS_PROCESSING.equals(statusText)
                 || statusText.startsWith("Unknown (");
     }
 
@@ -3795,6 +3818,42 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        /*
+         * 0x01을 실제로 연속 수신한 횟수만 별도로 추적한다.
+         * GATT 연결 실패, Timeout 등은 0x01을 읽은 것이 아니므로
+         * Stuck 판정에 사용하지 않는다.
+         */
+        int consecutiveProcessingReads = 0;
+
+        if (finishedDevice != null) {
+
+            String address = finishedDevice.getAddress();
+
+            if (STATUS_PROCESSING.equals(statusText)) {
+
+                consecutiveProcessingReads =
+                        consecutiveProcessingReadCounts.getOrDefault(address, 0) + 1;
+
+                consecutiveProcessingReadCounts.put(
+                        address,
+                        consecutiveProcessingReads
+                );
+
+                AppLog.d(
+                        "Power state 0x01 observed"
+                                + " / device = "
+                                + finishedDevice.getName()
+                                + " / consecutive reads = "
+                                + consecutiveProcessingReads
+                );
+
+            } else {
+
+                consecutiveProcessingReadCounts.remove(address);
+            }
+        }
+
+
         boolean retryScheduled =
                 false;
 
@@ -3815,8 +3874,9 @@ public class MainActivity extends AppCompatActivity {
 
 
             /*
-             * 최대 재시도 횟수가 남아 있으면
-             * 실패를 확정하지 않고 Checking... 상태를 유지한다.
+             * 0x01을 읽었다면 첫 번째 성공 응답부터 Processing으로 보여준다.
+             * 최종 재시도가 끝날 때까지 전원 명령 없이 READ만 반복한다.
+             * 연결 및 READ 실패로 재시도할 때는 기존 Checking...을 사용한다.
              */
             if (retryCount < STATUS_MAX_RETRIES) {
 
@@ -3835,7 +3895,9 @@ public class MainActivity extends AppCompatActivity {
 
 
                 finishedDevice.setStatus(
-                        "Checking..."
+                        STATUS_PROCESSING.equals(statusText)
+                                ? STATUS_PROCESSING
+                                : "Checking..."
                 );
 
 
@@ -3911,20 +3973,27 @@ public class MainActivity extends AppCompatActivity {
                 && !retryScheduled) {
 
 
-            statusRetryCounts.remove(
-                    finishedDevice.getAddress()
-            );
+            String address = finishedDevice.getAddress();
+
+            statusRetryCounts.remove(address);
+            consecutiveProcessingReadCounts.remove(address);
 
 
             /*
-             * 0x01(Checking...)이 최대 재시도 후에도 계속되면
-             * 영원히 Checking...으로 보이지 않도록
-             * 최종적으로 Unknown으로 표시한다.
+             * 최초 1회 + 추가 재시도 3회, 총 4회 모두 연속 0x01일 때만
+             * Stuck (0x01)으로 표시한다. 이는 '연속 관찰된 상태'이지
+             * 펌웨어 오류 코드나 물리적인 정지를 확정하는 것은 아니다.
+             *
+             * 중간에 GATT 오류가 있었다면 연속 0x01 횟수를 초기화하므로
+             * 마지막에 0x01을 읽어도 Processing (0x01)을 유지한다.
              */
-            String finalStatus =
-                    "Checking...".equals(statusText)
-                            ? "Unknown"
-                            : statusText;
+            String finalStatus = statusText;
+
+            if (STATUS_PROCESSING.equals(statusText)
+                    && consecutiveProcessingReads >= STATUS_MAX_RETRIES + 1) {
+
+                finalStatus = STATUS_STUCK;
+            }
 
 
             finishedDevice.setStatus(
@@ -3978,6 +4047,7 @@ public class MainActivity extends AppCompatActivity {
         statusReadGeneration++;
 
         statusRetryCounts.clear();
+        consecutiveProcessingReadCounts.clear();
 
 
         handler.removeCallbacks(
