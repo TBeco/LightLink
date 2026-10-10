@@ -1,16 +1,37 @@
+# Android Studio
 *.iml
 .gradle
-/local.properties
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
+
+# Android Studio local device settings
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+
+# Local properties
+/local.properties
+local.properties
+
+# Build outputs
 /build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+
+# macOS
+.DS_Store
+
+# Android signing keys
+*.jks
+*.keystore
+
+# Signing configuration
+key.properties
+keystore.properties
+
+# Private development documents
 /docs
