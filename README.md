@@ -4,7 +4,7 @@ An Android app for controlling SteamVR Base Station 2.0 over Bluetooth Low Energ
 
 LightLink는 Bluetooth Low Energy(BLE)를 이용해 SteamVR Base Station 2.0을 검색하고 전원을 제어하는 **Android 전용 앱**입니다.
 
-**Version:** `v0.7.0-beta.1` · **Status:** Beta · **Android:** 8.0 (API 26)+
+**Version:** `v0.8.0-beta.1` · **Status:** Beta · **Android:** 8.0 (API 26)+
 
 ## Download / 다운로드
 
@@ -52,18 +52,19 @@ The discovery issue has improved in my setup, and I'm still testing how well the
 - Retry temporary Bluetooth connection failures / 일시적인 블루투스 연결 실패 시 재시도
 - Verify power state after Wake / Sleep commands when supported / 지원되는 장치에서 전원 명령 후 실제 상태 재확인
 - Allow manual Wake / Sleep control when older firmware does not support Power State READ / 일부 구형 펌웨어에서 상태 조회가 불가능할 때 수동 전원 제어
+- Open a device management panel for individual base stations / 베이스스테이션별 장치 관리 화면 제공
+- Identify a specific base station by making its LED blink white / 특정 베이스스테이션의 LED를 흰색으로 점멸시켜 장치 식별
+- Recheck the power state after identifying a sleeping base station when supported / 지원되는 장치에서 Sleep 상태의 베이스스테이션 식별 후 전원 상태 재확인
 
 ## Planned Features / 개발 예정 기능
 
-The following features are planned but are not available in the current version.
+The following features are being considered for future versions and are not available in the current release.
 
 - **Language support:** Add Korean and English language options throughout the app.
-- **Base Station identification:** Identify a specific base station by selecting it in the app and making its LED blink white. This feature requires further testing of device and firmware support.
 
-다음 기능들은 현재 개발을 고려하고 있으며, 아직 구현되지 않았습니다.
+다음 기능은 향후 버전에서 개발을 고려하고 있으며, 현재 버전에서는 지원하지 않습니다.
 
 - **다국어 지원:** 앱의 화면과 안내 메시지에 한국어 및 영어 지원 추가
-- **베이스스테이션 식별:** 앱에서 특정 베이스스테이션을 선택하면 해당 장치의 LED가 흰색으로 점멸하여 실제 장치를 쉽게 구분할 수 있도록 하는 기능. 장치 및 펌웨어의 지원 여부를 추가 확인할 예정입니다.
 
 These plans may change depending on testing results and technical limitations.
 
