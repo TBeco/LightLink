@@ -6,6 +6,7 @@
  * 2. 주변 Base Station 2.0(LHB- 이름)의 BLE 광고 검색 및 화면 표시
  * 3. 검색된 장치의 Power State/채널/RSSI 조회(장치별 순차 처리)
  * 4. BaseStationGattController를 통한 장치별 Wake/Sleep 명령
+ * 5. 장치 관리 Bottom Sheet와 Identify 명령
  *
  * 설계상 주의사항
  * - BLE 검색과 초기 상태 조회는 별도의 단계다. 발견 직후 상태 조회가 진행된다.
@@ -58,6 +59,7 @@ import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.os.SystemClock;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -247,6 +249,7 @@ public class MainActivity extends AppCompatActivity {
                     textEmpty.setText("Bluetooth is ON. Tap Search to scan.");
                 }
                 updateScanButton();
+                refreshIdentifyButton();
             }
         }
     };
@@ -298,6 +301,17 @@ public class MainActivity extends AppCompatActivity {
 
     // 장치 모델(deviceList)을 RecyclerView 각 행에 연결하고 상태 변화를 반영한다.
     private BleDeviceAdapter deviceAdapter;
+
+    /* Identify GATT와 장치별 3초 중복 입력 제한. */
+    private static final long IDENTIFY_COOLDOWN_MS = 3000L;
+    private final Map<String, BaseStationIdentifyController> identifyControllers =
+            new HashMap<>();
+    private final Map<String, Long> identifyCooldownUntil = new HashMap<>();
+
+    // 현재 열려 있는 장치 관리 시트. 장치 상태 변경 시 버튼만 갱신한다.
+    private BottomSheetDialog currentDeviceSheet;
+    private BleDeviceItem currentSheetDevice;
+    private View currentIdentifyButton;
 
 
     /*
@@ -664,6 +678,12 @@ public class MainActivity extends AppCompatActivity {
                         // 각 Base Station의 전원 버튼이 눌렸을 때 호출
                         device -> {
 
+                            // 같은 장치의 Identify 전송 중에는 Power 명령을 시작하지 않는다.
+                            if (isIdentifyBusy(device)) {
+                                AppLog.d("Power ignored: Identify GATT is busy");
+                                return;
+                            }
+
                             // 버튼을 누르기 직전의 상태 저장
                             String previousStatus =
                                     device.getStatus();
@@ -767,6 +787,7 @@ public class MainActivity extends AppCompatActivity {
                             device.setStatus(
                                     "Checking..."
                             );
+                            refreshIdentifyButtonFor(device);
 
 
                             // 변경된 장치의 위치 찾기
@@ -860,80 +881,156 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * Base Station 장치 관리 Bottom Sheet.
-     *
-     * 현재 단계에서는 UI만 확인한다.
-     * - 장치 정보 영역 선택 시 시트 표시
-     * - 닫기 버튼 또는 바깥 영역 터치 시 시트 닫기
-     * - 식별 버튼은 안내만 표시하며 BLE 명령을 전송하지 않음
-     *
-     * 실제 Identify 제어와 중복 입력 방지는 추후 구현한다.
+     * 장치 관리 Bottom Sheet. 식별 진행 타이머/진행 문구는 표시하지 않는다.
+     * 단순 상태 표시(버튼 어둡게/클릭 불가)만 장치 상태에 맞춰 관리한다.
      */
     private void showDeviceManagementSheet(BleDeviceItem device) {
+        if (currentDeviceSheet != null) currentDeviceSheet.dismiss();
 
-        BottomSheetDialog dialog =
-                new BottomSheetDialog(this);
-
-        View sheetView =
-                getLayoutInflater().inflate(
-                        R.layout.bottom_sheet_device,
-                        null
-                );
-
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_device, null);
         dialog.setContentView(sheetView);
 
-        TextView textDeviceName =
-                sheetView.findViewById(
-                        R.id.textSheetDeviceName
-                );
+        TextView deviceName = sheetView.findViewById(R.id.textSheetDeviceName);
+        View buttonClose = sheetView.findViewById(R.id.buttonSheetClose);
+        View buttonIdentify = sheetView.findViewById(R.id.buttonIdentify);
+        deviceName.setText(device.getName());
 
-        View buttonClose =
-                sheetView.findViewById(
-                        R.id.buttonSheetClose
-                );
+        currentDeviceSheet = dialog;
+        currentSheetDevice = device;
+        currentIdentifyButton = buttonIdentify;
+        buttonClose.setOnClickListener(v -> dialog.dismiss());
+        buttonIdentify.setOnClickListener(v -> startIdentify(device));
 
-        View buttonIdentify =
-                sheetView.findViewById(
-                        R.id.buttonIdentify
-                );
-
-        textDeviceName.setText(
-                device.getName()
-        );
-
-        buttonClose.setOnClickListener(v ->
-                dialog.dismiss()
-        );
-
-        // UI 테스트 전용: 실제 Identify Characteristic에는 쓰지 않는다.
-        buttonIdentify.setOnClickListener(v -> {
-
-            Toast.makeText(
-                    this,
-                    "식별 기능은 아직 연결되지 않았습니다.",
-                    Toast.LENGTH_SHORT
-            ).show();
-        });
-
-        // XML의 둥근 배경이 보이도록 기본 Bottom Sheet 배경을 제거한다.
-        dialog.setOnShowListener(d -> {
-
-            View bottomSheet =
-                    dialog.findViewById(
-                            com.google.android.material.R.id.design_bottom_sheet
-                    );
-
-            if (bottomSheet != null) {
-
-                bottomSheet.setBackgroundColor(
-                        Color.TRANSPARENT
-                );
+        dialog.setOnDismissListener(ignored -> {
+            if (currentDeviceSheet == dialog) {
+                currentDeviceSheet = null;
+                currentSheetDevice = null;
+                currentIdentifyButton = null;
             }
         });
+        dialog.setOnShowListener(ignored -> {
+            View bottomSheet = dialog.findViewById(
+                    com.google.android.material.R.id.design_bottom_sheet);
+            if (bottomSheet != null) bottomSheet.setBackgroundColor(Color.TRANSPARENT);
+        });
 
+        refreshIdentifyButton();
         dialog.show();
     }
 
+    /*
+     * 식별 허용: Awake, Sleep, State read unsupported(수동 Power WRITE 가능)만.
+     * Checking / Processing / Stuck / NOWRITE / Connection failed 등은 비활성.
+     * 실제 Identify Characteristic 지원 여부는 BLE 연결 후에 별도로 확인한다.
+     */
+    private boolean canIdentify(BleDeviceItem device) {
+        if (device == null || !deviceList.contains(device)
+                || bluetoothAdapter == null || !canCheckBluetoothState()) return false;
+        try {
+            if (!bluetoothAdapter.isEnabled()) return false;
+        } catch (SecurityException | IllegalStateException e) {
+            return false;
+        }
+        String status = device.getStatus();
+        boolean allowedState = "Awake".equals(status) || "Sleep".equals(status)
+                || ("State read unsupported".equals(status)
+                && device.isStateReadUnsupported()
+                && device.isManualPowerControlAvailable());
+        if (!allowedState || isIdentifyBusy(device)) return false;
+
+        BaseStationGattController powerController =
+                powerControllers.get(device.getAddress());
+        if (powerController != null && powerController.isBusy()) return false;
+        return SystemClock.elapsedRealtime() >= identifyCooldownUntil.getOrDefault(
+                device.getAddress(), 0L);
+    }
+
+    private void refreshIdentifyButton() {
+        if (currentIdentifyButton == null || currentSheetDevice == null) return;
+        boolean enabled = canIdentify(currentSheetDevice);
+        currentIdentifyButton.setEnabled(enabled);
+        // MaterialButton disabled 스타일에 더해 눈으로도 확실히 어둡게 보이게 한다.
+        currentIdentifyButton.setAlpha(enabled ? 1.0f : 0.43f);
+    }
+
+    private void refreshIdentifyButtonFor(BleDeviceItem device) {
+        if (device == currentSheetDevice) refreshIdentifyButton();
+    }
+
+    private boolean isIdentifyBusy(BleDeviceItem device) {
+        BaseStationIdentifyController controller =
+                identifyControllers.get(device.getAddress());
+        return controller != null && controller.isBusy();
+    }
+
+    private boolean isAnyIdentifyBusy() {
+        for (BaseStationIdentifyController controller : identifyControllers.values()) {
+            if (controller.isBusy()) return true;
+        }
+        return false;
+    }
+
+    /*
+     * Identify Characteristic(00008421...)에 0x01 한 바이트만 전송한다.
+     * 3초 쿨다운은 LED 점멸 시간과 별개로 중복 입력만 제한한다.
+     */
+    private void startIdentify(BleDeviceItem device) {
+        if (!canIdentify(device)) {
+            refreshIdentifyButton();
+            return; // 비활성 버튼 입력은 별도의 Toast 없이 무시.
+        }
+
+        final String address = device.getAddress();
+        final String previousStatus = device.getStatus();
+        BaseStationIdentifyController controller = identifyControllers.get(address);
+        if (controller == null) {
+            controller = new BaseStationIdentifyController(this, bluetoothAdapter);
+            identifyControllers.put(address, controller);
+        }
+
+        identifyCooldownUntil.put(address,
+                SystemClock.elapsedRealtime() + IDENTIFY_COOLDOWN_MS);
+        controller.identify(address, (success, reason) -> {
+            if (!deviceList.contains(device)) return; // 재검색으로 사라진 장치
+            AppLog.d((success ? "Identify sent" : "Identify failed")
+                    + " / " + device.getName() + " / " + reason);
+            if (!success) {
+                // 버튼 비활성 시에는 아무 메시지가 없지만 통신 실패는 표시한다.
+                Toast.makeText(this, "식별 명령 실패: " + reason,
+                        Toast.LENGTH_SHORT).show();
+            } else if ("Sleep".equals(previousStatus)
+                    && "Sleep".equals(device.getStatus())) {
+                // 실제 식별 명령으로 Sleep 장치가 깨어날 수 있으므로 다시 읽어 확인한다.
+                device.setStatus("Checking...");
+                updateDeviceRow(device);
+                final int generation = statusReadGeneration;
+                handler.postDelayed(() -> {
+                    if (generation != statusReadGeneration
+                            || !deviceList.contains(device)
+                            || !"Checking...".equals(device.getStatus())) return;
+                    statusQueue.offer(device);
+                    processNextStatusRead();
+                }, 2500L);
+            }
+            refreshIdentifyButtonFor(device);
+            updateScanButton();
+        });
+        AppLog.d("Identify requested / " + device.getName());
+        refreshIdentifyButtonFor(device);
+        updateScanButton();
+        handler.postDelayed(() -> refreshIdentifyButtonFor(device),
+                IDENTIFY_COOLDOWN_MS + 30L);
+    }
+
+    private void clearIdentifyControllers() {
+        for (BaseStationIdentifyController controller : identifyControllers.values()) {
+            controller.close();
+        }
+        identifyControllers.clear();
+        identifyCooldownUntil.clear();
+        refreshIdentifyButton();
+    }
 
     /*
      * Base Station 전원 명령 전송
@@ -943,6 +1040,11 @@ public class MainActivity extends AppCompatActivity {
             BleDeviceItem device,
             BaseStationGattController.TargetState target,
             String previousStatus) {
+
+        if (isIdentifyBusy(device)) {
+            AppLog.d("Power command ignored: Identify GATT is busy");
+            return;
+        }
 
 
         /*
@@ -1528,6 +1630,7 @@ public class MainActivity extends AppCompatActivity {
                         position
                 );
             }
+            refreshIdentifyButtonFor(device);
         });
     }
 
@@ -2081,7 +2184,7 @@ public class MainActivity extends AppCompatActivity {
      *      앱은 위치 서비스를 강제로 켜지 않고 시스템 설정 화면으로 안내한다.
      */
     private void checkPermissionAndScan() {
-        if (isAnyPowerControllerBusy()) {
+        if (isAnyPowerControllerBusy() || isAnyIdentifyBusy()) {
             AppLog.d("Scan ignored: power command in progress");
             return;
         }
@@ -2136,7 +2239,7 @@ public class MainActivity extends AppCompatActivity {
          * 권한 요청 화면을 거친 사이 전원 작업이 시작됐을 수도 있으므로
          * 실제 Scan 직전에도 한 번 더 확인한다.
          */
-        if (isAnyPowerControllerBusy()) {
+        if (isAnyPowerControllerBusy() || isAnyIdentifyBusy()) {
 
             AppLog.d(
                     "Scan ignored: power command in progress"
@@ -2225,6 +2328,7 @@ public class MainActivity extends AppCompatActivity {
          * 진행 중인 명령을 여기서 끊는 일은 없다.
          */
         clearPowerControllers();
+        clearIdentifyControllers();
 
 
         /*
@@ -2589,6 +2693,7 @@ public class MainActivity extends AppCompatActivity {
         handler.removeCallbacks(scanTimeoutRunnable);
         resetStatusReads();
         clearPowerControllers();
+        clearIdentifyControllers();
         bleScanner = null;
         seenAddresses.clear();
         deviceList.clear();
@@ -4309,6 +4414,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         clearPowerControllers();
+        clearIdentifyControllers();
 
 
         handler.removeCallbacksAndMessages(
@@ -4368,7 +4474,7 @@ public class MainActivity extends AppCompatActivity {
          * 단순 상태 조회 중에는 다시 검색 가능.
          */
         boolean powerBusy =
-                isAnyPowerControllerBusy();
+                isAnyPowerControllerBusy() || isAnyIdentifyBusy();
 
 
         buttonScan.setEnabled(
