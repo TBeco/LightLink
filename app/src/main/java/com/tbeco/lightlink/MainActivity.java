@@ -47,6 +47,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.location.LocationManager;
 import android.provider.Settings;
@@ -56,6 +57,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -71,6 +73,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -806,7 +809,10 @@ public class MainActivity extends AppCompatActivity {
                                         previousStatus
                                 );
                             }
-                        }
+                        },
+
+                        // 장치 정보 영역을 누르면 관리용 Bottom Sheet를 연다.
+                        this::showDeviceManagementSheet
                 );
 
 
@@ -852,6 +858,82 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    /*
+     * Base Station 장치 관리 Bottom Sheet.
+     *
+     * 현재 단계에서는 UI만 확인한다.
+     * - 장치 정보 영역 선택 시 시트 표시
+     * - 닫기 버튼 또는 바깥 영역 터치 시 시트 닫기
+     * - 식별 버튼은 안내만 표시하며 BLE 명령을 전송하지 않음
+     *
+     * 실제 Identify 제어와 중복 입력 방지는 추후 구현한다.
+     */
+    private void showDeviceManagementSheet(BleDeviceItem device) {
+
+        BottomSheetDialog dialog =
+                new BottomSheetDialog(this);
+
+        View sheetView =
+                getLayoutInflater().inflate(
+                        R.layout.bottom_sheet_device,
+                        null
+                );
+
+        dialog.setContentView(sheetView);
+
+        TextView textDeviceName =
+                sheetView.findViewById(
+                        R.id.textSheetDeviceName
+                );
+
+        View buttonClose =
+                sheetView.findViewById(
+                        R.id.buttonSheetClose
+                );
+
+        View buttonIdentify =
+                sheetView.findViewById(
+                        R.id.buttonIdentify
+                );
+
+        textDeviceName.setText(
+                device.getName()
+        );
+
+        buttonClose.setOnClickListener(v ->
+                dialog.dismiss()
+        );
+
+        // UI 테스트 전용: 실제 Identify Characteristic에는 쓰지 않는다.
+        buttonIdentify.setOnClickListener(v -> {
+
+            Toast.makeText(
+                    this,
+                    "식별 기능은 아직 연결되지 않았습니다.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        // XML의 둥근 배경이 보이도록 기본 Bottom Sheet 배경을 제거한다.
+        dialog.setOnShowListener(d -> {
+
+            View bottomSheet =
+                    dialog.findViewById(
+                            com.google.android.material.R.id.design_bottom_sheet
+                    );
+
+            if (bottomSheet != null) {
+
+                bottomSheet.setBackgroundColor(
+                        Color.TRANSPARENT
+                );
+            }
+        });
+
+        dialog.show();
+    }
+
 
     /*
      * Base Station 전원 명령 전송

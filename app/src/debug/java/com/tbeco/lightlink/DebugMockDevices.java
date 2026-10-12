@@ -13,22 +13,26 @@ import java.util.List;
  * 가상의 Base Station을 생성한다.
  *
  * 현재 테스트하는 상태:
- *
- * Awake
- * Sleep
- * State read unsupported + WRITE 가능
- * Checking...
- * Unknown
- * State read unsupported + WRITE 불가
+ * - Awake
+ * - Sleep
+ * - State read unsupported + WRITE 가능
+ * - Checking...
+ * - Unknown
+ * - State read unsupported + WRITE 불가
+ * - Processing (0x01)
+ * - Stuck (0x01)
  *
  * 추가로 다음 UI도 함께 확인한다.
+ * - RF Channel 표시
+ * - Channel 미확인 표시
+ * - Bluetooth 신호 강함 / 보통 / 약함 표시
  *
- * RF Channel 표시
- * Channel 미확인 표시
- * Bluetooth 신호 강함 / 보통 / 약함 표시
+ * 주의:
+ * 이 Mock은 지정한 상태를 화면에 표시하기 위한 것이다.
+ * 실제 GATT READ나 재시도를 실행하거나
+ * Processing에서 Stuck으로 자동 전환하지는 않는다.
  */
 public final class DebugMockDevices {
-
 
     /*
      * Mock 장치를 구분하기 위한 이름 Prefix.
@@ -56,13 +60,16 @@ public final class DebugMockDevices {
     public static void addMockDevices(
             List<BleDeviceItem> deviceList) {
 
-
         /*
          * Mock을 생성하는 순간의 시간을 저장한다.
          *
          * Awake / Sleep은 실제 Power State READ에
          * 성공한 상태를 재현하므로
          * 같은 마지막 확인 시간을 표시하도록 한다.
+         *
+         * Processing / Stuck 역시 Power State READ에 성공해
+         * 실제 0x01을 수신한 상황을 재현하므로
+         * 마지막 상태 확인 시간을 표시한다.
          */
         LocalDateTime mockCheckedAt =
                 LocalDateTime.now();
@@ -82,7 +89,6 @@ public final class DebugMockDevices {
          * -48 dBm → 강함
          *
          * 예상 UI:
-         *
          * LHB-MOCK-AWAKE
          * Awake
          * 00:00:00:00:00:01
@@ -97,21 +103,17 @@ public final class DebugMockDevices {
                         -48
                 );
 
-
         awakeDevice.setStatus(
                 "Awake"
         );
-
 
         awakeDevice.setChannel(
                 1
         );
 
-
         awakeDevice.setLastStateCheckedAt(
                 mockCheckedAt
         );
-
 
         deviceList.add(
                 awakeDevice
@@ -132,7 +134,6 @@ public final class DebugMockDevices {
          * -55 dBm → 강함
          *
          * 예상 UI:
-         *
          * LHB-MOCK-SLEEP
          * Sleep
          * 00:00:00:00:00:02
@@ -147,21 +148,17 @@ public final class DebugMockDevices {
                         -55
                 );
 
-
         sleepDevice.setStatus(
                 "Sleep"
         );
-
 
         sleepDevice.setChannel(
                 2
         );
 
-
         sleepDevice.setLastStateCheckedAt(
                 mockCheckedAt
         );
-
 
         deviceList.add(
                 sleepDevice
@@ -187,7 +184,6 @@ public final class DebugMockDevices {
          * -62 dBm → 강함
          *
          * 예상 UI:
-         *
          * LHB-MOCK-READLESS
          * State read unsupported
          * 00:00:00:00:00:03
@@ -205,26 +201,21 @@ public final class DebugMockDevices {
                         -62
                 );
 
-
         readUnsupportedDevice.setStatus(
                 "State read unsupported"
         );
-
 
         readUnsupportedDevice.setChannel(
                 3
         );
 
-
         readUnsupportedDevice.setStateReadUnsupported(
                 true
         );
 
-
         readUnsupportedDevice.setManualPowerControlAvailable(
                 true
         );
-
 
         deviceList.add(
                 readUnsupportedDevice
@@ -246,7 +237,6 @@ public final class DebugMockDevices {
          * -67 dBm → 보통
          *
          * 예상 UI:
-         *
          * LHB-MOCK-CHECKING
          * Checking...
          * 00:00:00:00:00:04
@@ -262,16 +252,13 @@ public final class DebugMockDevices {
                         -67
                 );
 
-
         checkingDevice.setStatus(
                 "Checking..."
         );
 
-
         checkingDevice.setChannel(
                 4
         );
-
 
         deviceList.add(
                 checkingDevice
@@ -292,7 +279,6 @@ public final class DebugMockDevices {
          * -73 dBm → 보통
          *
          * 예상 UI:
-         *
          * LHB-MOCK-UNKNOWN
          * Unknown
          * 00:00:00:00:00:05
@@ -308,16 +294,13 @@ public final class DebugMockDevices {
                         -73
                 );
 
-
         unknownDevice.setStatus(
                 "Unknown"
         );
 
-
         unknownDevice.setChannel(
                 8
         );
-
 
         deviceList.add(
                 unknownDevice
@@ -345,14 +328,12 @@ public final class DebugMockDevices {
          * -88 dBm → 약함
          *
          * 따라서 이 Mock은 다음을 한 번에 확인한다.
-         *
-         * Power State READ 불가
-         * 수동 전원 제어 불가
-         * Channel 미확인
-         * Bluetooth 신호 약함
+         * - Power State READ 불가
+         * - 수동 전원 제어 불가
+         * - Channel 미확인
+         * - Bluetooth 신호 약함
          *
          * 예상 UI:
-         *
          * LHB-MOCK-READLESS-NOWRITE
          * State read unsupported
          * 00:00:00:00:00:06
@@ -368,16 +349,13 @@ public final class DebugMockDevices {
                         -88
                 );
 
-
         readUnsupportedNoWriteDevice.setStatus(
                 "State read unsupported"
         );
 
-
         readUnsupportedNoWriteDevice.setStateReadUnsupported(
                 true
         );
-
 
         /*
          * false가 기본값이므로
@@ -390,7 +368,6 @@ public final class DebugMockDevices {
                         false
                 );
 
-
         /*
          * Channel은 일부러 설정하지 않는다.
          *
@@ -398,9 +375,114 @@ public final class DebugMockDevices {
          * Adapter의 "채널 -" 표시를 테스트한다.
          */
 
-
         deviceList.add(
                 readUnsupportedNoWriteDevice
+        );
+
+
+        /*
+         * -------------------------------------------------
+         * 7. Processing (0x01) 상태 Mock
+         * -------------------------------------------------
+         *
+         * Power State READ에 성공했지만
+         * 응답값이 0x01인 상황을 재현한다.
+         *
+         * LightLink가 아직 추가 상태 확인을 진행 중이므로
+         * Processing (0x01)으로 표시한다.
+         *
+         * 이 Mock은 Processing 상태를 고정해서 보여준다.
+         * 실제로 READ 재시도를 실행하거나 Stuck으로 바뀌지는 않는다.
+         *
+         * Channel READ에 성공한 상황을 가정하여 Channel 9를 표시한다.
+         *
+         * RSSI:
+         * -68 dBm → 보통
+         *
+         * 예상 UI:
+         * LHB-MOCK-PROCESSING
+         * Processing (0x01)
+         * 00:00:00:00:00:07
+         * 채널 9 | 신호 보통 · -68 dBm
+         * 마지막 상태 확인 | 시간
+         * 회색 전원 버튼
+         * 버튼 비활성화
+         */
+        BleDeviceItem processingDevice =
+                new BleDeviceItem(
+                        "LHB-MOCK-PROCESSING",
+                        "00:00:00:00:00:07",
+                        -68
+                );
+
+        processingDevice.setStatus(
+                "Processing (0x01)"
+        );
+
+        processingDevice.setChannel(
+                9
+        );
+
+        processingDevice.setLastStateCheckedAt(
+                mockCheckedAt
+        );
+
+        deviceList.add(
+                processingDevice
+        );
+
+
+        /*
+         * -------------------------------------------------
+         * 8. Stuck (0x01) 상태 Mock
+         * -------------------------------------------------
+         *
+         * Power State READ는 성공했지만
+         * 여러 번 연속 0x01이 반환되어
+         * 초기 상태 재시도가 끝난 상황을 재현한다.
+         *
+         * 실제 모터가 켜져 있는지/꺼져 있는지와는 별개로
+         * 현재 Power State가 정상적인 Awake/Sleep으로
+         * 확인되지 않았다는 의미다.
+         *
+         * 이 Mock은 Stuck 상태를 고정해서 보여준다.
+         * 실제 장치 장애나 펌웨어 고장을 재현하는 것은 아니다.
+         *
+         * Channel READ에 성공한 상황을 가정하여 Channel 11을 표시한다.
+         *
+         * RSSI:
+         * -73 dBm → 보통
+         *
+         * 예상 UI:
+         * LHB-MOCK-STUCK
+         * Stuck (0x01)
+         * 00:00:00:00:00:08
+         * 채널 11 | 신호 보통 · -73 dBm
+         * 마지막 상태 확인 | 시간
+         * 회색 전원 버튼
+         * 버튼 비활성화
+         */
+        BleDeviceItem stuckDevice =
+                new BleDeviceItem(
+                        "LHB-MOCK-STUCK",
+                        "00:00:00:00:00:08",
+                        -73
+                );
+
+        stuckDevice.setStatus(
+                "Stuck (0x01)"
+        );
+
+        stuckDevice.setChannel(
+                11
+        );
+
+        stuckDevice.setLastStateCheckedAt(
+                mockCheckedAt
+        );
+
+        deviceList.add(
+                stuckDevice
         );
     }
 
@@ -416,13 +498,11 @@ public final class DebugMockDevices {
     public static boolean isMockDevice(
             BleDeviceItem device) {
 
-
         if (device == null
                 || device.getName() == null) {
 
             return false;
         }
-
 
         return device
                 .getName()

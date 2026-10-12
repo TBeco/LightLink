@@ -3,6 +3,7 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
@@ -12,11 +13,17 @@
     <!--
         왼쪽: Base Station 정보
 
-        1. 장치 이름
+        1. 장치 이름 및 장치 관리
         2. 현재 전원 상태
         3. MAC 주소
-        4. 채널 / Bluetooth 신호 강도
+        4. RF 채널 / Bluetooth 신호 강도
         5. 마지막 상태 확인 시간
+
+        장치 이름 영역만 클릭할 수 있으며,
+        클릭하면 해당 Base Station의
+        장치 관리 Bottom Sheet를 표시한다.
+
+        나머지 상태 정보는 클릭할 수 없다.
     -->
     <LinearLayout
         android:layout_width="0dp"
@@ -25,17 +32,70 @@
         android:orientation="vertical">
 
 
-        <!-- Base Station 이름 -->
-        <TextView
-            android:id="@+id/textDeviceName"
-            android:layout_width="wrap_content"
+        <!--
+            Base Station 이름 및 장치 관리
+
+            장치 이름과 ⋯ 표시가 있는 첫 번째 줄만
+            Bottom Sheet를 여는 클릭 영역으로 사용한다.
+
+            오른쪽 전원 버튼과 클릭 영역은 분리한다.
+
+            Ripple 효과로 클릭 가능한 영역임을
+            시각적으로 알려준다.
+        -->
+        <LinearLayout
+            android:id="@+id/layoutDeviceInfo"
+
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
 
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
 
-            tools:text="LHB-XXXX" />
+
+            <!-- Base Station 이름 -->
+            <TextView
+                android:id="@+id/textDeviceName"
+
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+
+                android:maxLines="1"
+                android:ellipsize="end"
+
+                tools:text="LHB-94A66C14" />
+
+
+            <!--
+                장치 관리 표시
+
+                별도의 버튼이 아닌 표시용 TextView.
+
+                클릭 이벤트는 상위 layoutDeviceInfo가
+                처리하므로 별도 Listener가 필요하지 않다.
+
+                장치 이름 바로 오른쪽에 배치한다.
+            -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:layout_marginStart="8dp"
+
+                android:text="⋯"
+                android:textColor="#AAAAAA"
+                android:textSize="18sp"
+
+                android:importantForAccessibility="no" />
+
+        </LinearLayout>
 
 
         <!--
@@ -43,9 +103,12 @@
 
             장치 정보 중 가장 중요한 정보이므로
             다른 보조 정보보다 조금 더 크게 표시한다.
+
+            클릭 이벤트는 사용하지 않는다.
         -->
         <TextView
             android:id="@+id/textDeviceStatus"
+
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
 
@@ -58,9 +121,14 @@
             tools:text="Awake" />
 
 
-        <!-- Bluetooth MAC 주소 -->
+        <!--
+            Bluetooth MAC 주소
+
+            현재는 기본 카드에 그대로 표시한다.
+        -->
         <TextView
             android:id="@+id/textDeviceInfo"
+
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
 
@@ -73,16 +141,20 @@
 
 
         <!--
-            Base Station 채널과 Bluetooth 신호 강도
+            Base Station RF 채널과 Bluetooth 신호 강도
 
             예:
             채널 3 | 신호 강함 · -54 dBm
 
-            채널 기능이 아직 구현되지 않은 동안에는
-            Adapter에서 신호 정보만 표시해도 된다.
+            RF 채널을 정상적으로 읽을 수 있는 경우
+            채널 번호와 RSSI 정보를 함께 표시한다.
+
+            채널을 읽지 못한 경우에는
+            Bluetooth 신호 정보만 표시할 수 있다.
         -->
         <TextView
             android:id="@+id/textDeviceRadioInfo"
+
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
 
@@ -103,6 +175,7 @@
         -->
         <TextView
             android:id="@+id/textLastStateChecked"
+
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
 
@@ -119,14 +192,17 @@
     <!--
         오른쪽: Base Station 전원 버튼
 
-        정보가 5줄로 늘어났으므로
-        기존 56dp보다 조금 크게 만든다.
+        기존 Wake / Sleep 전원 제어 기능을 유지한다.
+
+        Bottom Sheet 클릭 영역과 독립적이므로
+        전원 버튼을 눌러도 장치 관리 화면은 열리지 않는다.
 
         왼쪽 정보 영역 전체를 기준으로
         세로 가운데에 배치한다.
     -->
     <ImageButton
         android:id="@+id/buttonPower"
+
         android:layout_width="70dp"
         android:layout_height="70dp"
 

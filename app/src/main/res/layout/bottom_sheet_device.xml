@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="28dp"
+
+    android:background="@drawable/bg_device_sheet">
+
+    <!-- Bottom Sheet 상단 손잡이 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+
+        android:text="━━━"
+        android:textColor="#777777"
+        android:textSize="18sp" />
+
+    <!-- 장치 이름 및 닫기 버튼 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="12dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textSheetDeviceName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+
+                android:text="LHB-94A66C14"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+
+                android:text="Base Station 2.0 · 장치 관리"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/buttonSheetClose"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="닫기"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="#AAAAAA" />
+
+    </LinearLayout>
+
+    <!-- 구분선 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="20dp"
+        android:background="#444444" />
+
+    <!-- 장치 식별 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+
+        android:text="장치 식별"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- 설명 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+
+        android:text="베이스스테이션의 LED를 약 20초간 흰색으로 점멸시켜 실제 설치된 장치를 찾습니다."
+        android:textColor="#BDBDBD"
+        android:textSize="14sp"
+        android:lineSpacingExtra="3dp" />
+
+    <!-- 주의사항 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+
+        android:text="※ Sleep 상태에서는 장치가 깨어날 수 있습니다."
+        android:textColor="#E6B96A"
+        android:textSize="12sp" />
+
+    <!-- 식별 버튼 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonIdentify"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+
+        android:minWidth="196dp"
+
+        android:text="식별하기"
+        android:textAllCaps="false"
+        android:textSize="15sp"
+        android:textColor="#FFFFFF"
+
+        app:backgroundTint="#4285F4"
+        app:cornerRadius="10dp" />
+
+    <!-- 구분선 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:background="#444444" />
+
+    <!-- 향후 기능 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+
+        android:text="채널 변경 · 추후 추가 가능"
+        android:textColor="#777777"
+        android:textSize="12sp" />
+
+</LinearLayout>

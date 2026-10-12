@@ -30,8 +30,8 @@ public class BleDeviceAdapter
      * Sleep:
      * Base Station 절전 상태 → 파란색
      *
-     * Checking / Unknown / 오류:
-     * 상태를 확정할 수 없음 → 회색
+     * Checking / Processing / Stuck / Unknown / 오류:
+     * 상태를 확정할 수 없거나 제어할 수 없음 → 회색
      */
     private static final int POWER_COLOR_AWAKE =
             Color.parseColor("#43A047");
@@ -97,6 +97,9 @@ public class BleDeviceAdapter
      */
     private final OnPowerClickListener powerClickListener;
 
+    // 왼쪽 장치 정보 영역 클릭을 MainActivity에 전달한다.
+    private final OnDeviceClickListener deviceClickListener;
+
 
     /*
      * Adapter 생성자
@@ -106,16 +109,23 @@ public class BleDeviceAdapter
      *
      * powerClickListener:
      * 전원 버튼 클릭을 처리할 Listener
+     *
+     * deviceClickListener:
+     * 장치 관리 화면 열기를 처리할 Listener
      */
     public BleDeviceAdapter(
             List<BleDeviceItem> deviceList,
-            OnPowerClickListener powerClickListener) {
+            OnPowerClickListener powerClickListener,
+            OnDeviceClickListener deviceClickListener) {
 
         this.deviceList =
                 deviceList;
 
         this.powerClickListener =
                 powerClickListener;
+
+        this.deviceClickListener =
+                deviceClickListener;
     }
 
 
@@ -191,15 +201,8 @@ public class BleDeviceAdapter
 
 
         /*
-         * Bluetooth 신호 강도 표시
-         *
-         * 현재:
-         * 신호 강함 · -54 dBm
-         *
-         * 추후 Base Station 채널 READ 기능이 추가되면
-         * 같은 줄을 다음과 같이 확장할 수 있다.
-         *
-         * 채널 3 | 신호 강함 · -54 dBm
+         * RF 채널과 Bluetooth RSSI를 한 줄에 표시한다.
+         * 채널 조회가 실패했거나 미지원이면 '-'로 표시한다.
          */
         configureDeviceRadioInfo(
                 holder,
@@ -245,6 +248,27 @@ public class BleDeviceAdapter
             if (powerClickListener != null) {
 
                 powerClickListener.onPowerClick(
+                        device
+                );
+            }
+        });
+
+        /*
+         * 전원 버튼과 분리된 왼쪽 정보 영역 클릭.
+         * BLE 작업은 실행하지 않고 MainActivity에 선택한 장치만 전달한다.
+         *
+         * RecyclerView가 ViewHolder를 재사용하므로
+         * 바인딩할 때마다 해당 장치에 맞는 클릭 대상을 설정한다.
+         */
+        holder.layoutDeviceInfo.setContentDescription(
+                device.getName() + " 장치 관리 열기"
+        );
+
+        holder.layoutDeviceInfo.setOnClickListener(v -> {
+
+            if (deviceClickListener != null) {
+
+                deviceClickListener.onDeviceClick(
                         device
                 );
             }
@@ -573,6 +597,7 @@ public class BleDeviceAdapter
          * Timeout
          * Connection failed
          * Standby
+         * Processing / Stuck
          * READ 미지원 + WRITE 미지원
          * 기타 알 수 없는 상태
          *
@@ -624,6 +649,7 @@ public class BleDeviceAdapter
         TextView textLastStateChecked;
 
         ImageButton buttonPower;
+        View layoutDeviceInfo;
 
 
         public DeviceViewHolder(
@@ -666,6 +692,11 @@ public class BleDeviceAdapter
                     itemView.findViewById(
                             R.id.buttonPower
                     );
+
+            layoutDeviceInfo =
+                    itemView.findViewById(
+                            R.id.layoutDeviceInfo
+                    );
         }
     }
 
@@ -677,6 +708,18 @@ public class BleDeviceAdapter
     public interface OnPowerClickListener {
 
         void onPowerClick(
+                BleDeviceItem device
+        );
+    }
+
+
+    /*
+     * 장치 관리 영역 클릭을 외부에 전달한다.
+     * 전원 버튼 이벤트와는 독립적인 Listener다.
+     */
+    public interface OnDeviceClickListener {
+
+        void onDeviceClick(
                 BleDeviceItem device
         );
     }
