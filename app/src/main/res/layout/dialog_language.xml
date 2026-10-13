@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    android:layout_width="280dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@drawable/dialog_manual_background">
+
+    <!-- 제목 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/language_dialog_title"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 언어 선택 -->
+    <RadioGroup
+        android:id="@+id/radioLanguageGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 시스템 기본값 -->
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/radioSystemLanguage"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="@string/language_system"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            app:buttonTint="#FFFFFF" />
+
+        <!-- 한국어 -->
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/radioKorean"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="@string/language_korean"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            app:buttonTint="#FFFFFF" />
+
+        <!-- 영어 -->
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/radioEnglish"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="@string/language_english"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            app:buttonTint="#FFFFFF" />
+
+    </RadioGroup>
+
+    <!-- BLE 작업 중 언어 변경 제한 안내 -->
+    <TextView
+        android:id="@+id/textLanguageBusy"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/language_change_busy"
+        android:textColor="#FF6B6B"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <!--
+    하단 버튼 영역
+
+    기존 수동 전원 제어 Dialog와 동일한
+    버튼 배경 및 색상 체계를 사용한다.
+
+    Cancel : 빨간색
+    Apply  : 파란색
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="horizontal">
+
+        <!--
+            취소 버튼
+
+            선택한 언어를 적용하지 않고
+            언어 설정 창만 닫는다.
+        -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonLanguageCancel"
+
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="0.6"
+
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+
+            android:background="@drawable/dialog_action_button_background"
+            android:backgroundTint="@null"
+
+            android:text="@string/dialog_cancel"
+            android:textAllCaps="false"
+            android:textColor="#FF6B6B"
+            android:textSize="15sp" />
+
+        <!--
+            적용 버튼
+
+            사용자가 선택한 언어 설정을
+            저장하고 적용한다.
+        -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonLanguageApply"
+
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="50dp"
+
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+
+            android:background="@drawable/dialog_action_button_background"
+            android:backgroundTint="@null"
+
+            android:text="@string/language_apply"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -137,4 +137,42 @@
     <string name="device_power_manual">%1$s: Open manual power controls</string>
     <string name="device_power_unavailable">%1$s: Power control unavailable</string>
 
+
+    <!-- ==================================================
+         06. popup_main_menu.xml / Main Menu
+         ================================================== -->
+
+    <!-- Language menu -->
+    <string name="menu_language">Language</string>
+
+    <!-- Current language setting -->
+    <string name="menu_language_default">System default</string>
+
+    <!-- GitHub menu -->
+    <string name="menu_github">GitHub</string>
+    <string name="menu_github_description">Source code and issue reports</string>
+
+    <!-- Browser launch failure -->
+    <string name="error_open_browser">No app available to open the link.</string>
+
+
+    <!-- ==================================================
+         07. dialog_language.xml / Language Settings
+         ================================================== -->
+
+    <!-- Dialog title -->
+    <string name="language_dialog_title">Language</string>
+
+    <!-- Language options -->
+    <string name="language_system">System default</string>
+    <string name="language_korean" translatable="false">한국어</string>
+    <string name="language_english" translatable="false">English</string>
+
+    <!-- Dialog buttons -->
+    <string name="dialog_cancel">Cancel</string>
+    <string name="language_apply">Apply</string>
+
+    <!-- Language change restriction -->
+    <string name="language_change_busy">Please wait until the Bluetooth operation is complete.</string>
+
 </resources>

@@ -48,6 +48,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+
+        <!--
+        앱별 언어 설정 자동 저장
+
+        Android 12 이하에서도 사용자가 선택한
+        언어 설정을 저장하고 복원한다.
+        -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+
+        </service>
+
     </application>
 
 </manifest>

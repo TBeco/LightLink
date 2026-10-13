@@ -4,7 +4,7 @@ An Android app for controlling SteamVR Base Station 2.0 over Bluetooth Low Energ
 
 LightLink는 Bluetooth Low Energy(BLE)를 이용해 SteamVR Base Station 2.0을 검색하고 전원을 제어하는 **Android 전용 앱**입니다.
 
-**Version:** `v0.8.0-beta.2` · **Status:** Beta · **Android:** 8.0 (API 26)+
+**Version:** `v0.9.0-beta.1` · **Status:** Beta · **Android:** 8.0 (API 26)+
 
 ## Download / 다운로드
 
@@ -55,16 +55,21 @@ The discovery issue has improved in my setup, and I'm still testing how well the
 - Open a device management panel for individual base stations / 베이스스테이션별 장치 관리 화면 제공
 - Identify a specific base station by making its LED blink white / 특정 베이스스테이션의 LED를 흰색으로 점멸시켜 장치 식별
 - Recheck the power state after identifying a sleeping base station when supported / 지원되는 장치에서 Sleep 상태의 베이스스테이션 식별 후 전원 상태 재확인
+- Switch between Korean, English, and the system default language / 한국어, 영어 및 시스템 기본 언어 선택
+- Save the selected language preference across app restarts / 앱 재실행 후에도 선택한 언어 설정 유지
+- Access language settings and GitHub through the in-app menu / 앱 내 메뉴에서 언어 설정 및 GitHub 저장소 접근
 
 ## Planned Features / 개발 예정 기능
 
-The following features are being considered for future versions and are not available in the current release.
+The following features are planned or being considered for future versions.
 
-- **Language support:** Add Korean and English language options throughout the app.
+- **RF Channel Conflict Detection:** Detect duplicate RF channels among discovered Base Station 2.0 devices and display warning indicators in the device list.
+- **RF Channel Management (Under Consideration):** Explore changing Base Station 2.0 RF channels directly through BLE.
 
-다음 기능은 향후 버전에서 개발을 고려하고 있으며, 현재 버전에서는 지원하지 않습니다.
+다음 기능은 향후 버전에서 개발을 계획하거나 검토하고 있습니다.
 
-- **다국어 지원:** 앱의 화면과 안내 메시지에 한국어 및 영어 지원 추가
+- **RF 채널 중복 감지:** 검색된 Base Station 2.0 장치 간 RF 채널 중복을 감지하고, 장치 목록에 경고 표시 제공
+- **RF 채널 관리 (검토 중):** BLE를 이용한 Base Station 2.0의 RF 채널 직접 변경 기능 검토
 
 These plans may change depending on testing results and technical limitations.
 
@@ -116,7 +121,11 @@ This list includes devices used for testing. It does not guarantee that every fe
 
 LightLink does not require an account or cloud connection. Base station discovery and control happen locally over BLE.
 
-계정이나 클라우드 연결 없이 사용할 수 있으며, 베이스스테이션 검색과 전원 제어는 기기 간 BLE 통신으로 이루어집니다.
+Language preferences are stored using Android's app language settings or local app storage, depending on the Android version.
+
+LightLink는 계정이나 클라우드 연결 없이 사용할 수 있으며, 베이스스테이션 검색과 전원 제어는 기기 간 BLE 통신으로 이루어집니다.
+
+언어 설정은 Android 버전에 따라 시스템의 앱별 언어 설정 기능 또는 앱 내부 저장소에 저장됩니다.
 
 ## Development & Feedback / 개발 및 피드백
 

@@ -92,7 +92,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/topDivider"
 
-        tools:text="v0.8.0-beta.2" />
+        tools:text="v0.9.0-beta.1" />
 
 
     <!--
@@ -123,11 +123,22 @@
         Base Station이 하나도 없을 때 표시할 안내 문구
 
         RecyclerView 영역의 가운데에 표시한다.
+
+        RecyclerView보다 좌우 16dp씩 좁게 배치하여
+        긴 안내 문구가 화면 밖으로 벗어나지 않도록 한다.
+
+        텍스트가 길어지면 자동으로 줄바꿈한다.
     -->
     <TextView
         android:id="@+id/textEmpty"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+
+        android:gravity="center"
+        android:textAlignment="center"
 
         android:text="@string/empty_scan_prompt"
         android:textColor="#AAAAAA"

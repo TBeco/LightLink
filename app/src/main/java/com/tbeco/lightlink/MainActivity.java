@@ -33,6 +33,7 @@ package com.tbeco.lightlink;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -44,12 +45,14 @@ import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.location.LocationManager;
 import android.provider.Settings;
@@ -58,6 +61,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.PopupWindow;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.os.SystemClock;
@@ -68,9 +77,11 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.os.LocaleListCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -602,6 +613,17 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
 
         setContentView(R.layout.activity_main);
+
+        /*
+         * 상단 메뉴 버튼
+         *
+         * 클릭하면 LightLink의 설정 팝업을 표시한다.
+         */
+        ImageButton buttonMenu = findViewById(R.id.buttonMenu);
+
+        buttonMenu.setOnClickListener(v -> {
+            showMainMenuPopup(v);
+        });
 
 
         /*
@@ -4716,5 +4738,310 @@ public class MainActivity extends AppCompatActivity {
                         timeText
                 )
         );
+    }
+
+    /*
+     * 메인 메뉴 팝업 표시
+     *
+     * 상단 메뉴 버튼을 기준으로 작은 팝업을 표시한다.
+     *
+     * - 기존 popup_main_menu.xml 사용
+     * - 바깥 영역 터치 시 자동으로 닫힘
+     * - 뒤로가기 버튼으로 닫기 가능
+     * - 언어 설정 Dialog 표시
+     * - GitHub 저장소 외부 브라우저 연결
+     */
+    private void showMainMenuPopup(View anchor) {
+
+        // XML의 LayoutParams를 올바르게 해석하기 위한 임시 부모
+        FrameLayout popupParent = new FrameLayout(this);
+
+        // 실제 부모에 연결하지 않고 팝업 레이아웃만 생성
+        View popupView = getLayoutInflater().inflate(
+                R.layout.popup_main_menu,
+                popupParent,
+                false
+        );
+
+        // PopupWindow 생성
+        PopupWindow popupWindow = new PopupWindow(
+                popupView,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true
+        );
+
+        // XML에 설정된 둥근 배경이 표시되도록
+        // PopupWindow 자체의 배경은 투명하게 설정
+        popupWindow.setBackgroundDrawable(
+                new ColorDrawable(Color.TRANSPARENT)
+        );
+
+        // 팝업 바깥을 누르면 닫기
+        popupWindow.setOutsideTouchable(true);
+
+        // 팝업 그림자
+        float density = getResources()
+                .getDisplayMetrics()
+                .density;
+
+        popupWindow.setElevation(8f * density);
+
+        /*
+         * 현재 선택된 언어 설정을 메뉴에 표시한다.
+         *
+         * ""   : 시스템 기본값
+         * "ko" : 한국어
+         * "en" : 영어
+         */
+        TextView textCurrentLanguage =
+                popupView.findViewById(R.id.textCurrentLanguage);
+
+        String selectedLanguage = AppCompatDelegate
+                .getApplicationLocales()
+                .toLanguageTags();
+
+        if (selectedLanguage.startsWith("ko")) {
+
+            textCurrentLanguage.setText(R.string.language_korean);
+
+        } else if (selectedLanguage.startsWith("en")) {
+
+            textCurrentLanguage.setText(R.string.language_english);
+
+        } else {
+
+            textCurrentLanguage.setText(R.string.menu_language_default);
+        }
+
+        /*
+         * 메뉴 버튼의 중앙을 기준으로
+         * 팝업의 왼쪽 위 시작점을 정렬한다.
+         */
+        popupWindow.showAsDropDown(
+                anchor,
+                anchor.getWidth() / 2,
+                -anchor.getHeight() / 2
+        );
+
+        /*
+         * GitHub 메뉴
+         *
+         * 클릭하면 팝업을 닫고
+         * LightLink GitHub 저장소를 외부 브라우저로 연다.
+         */
+        View menuGithub = popupView.findViewById(R.id.menuGithub);
+
+        menuGithub.setOnClickListener(v -> {
+
+            // 팝업 닫기
+            popupWindow.dismiss();
+
+            // GitHub 저장소 주소
+            String githubUrl = "https://github.com/TBeco/LightLink";
+
+            // 외부 브라우저에서 열기
+            Intent intent = new Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(githubUrl)
+            );
+
+            try {
+                startActivity(intent);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(
+                        this,
+                        R.string.error_open_browser,
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
+
+        /*
+         * 언어 설정 메뉴
+         *
+         * 메뉴 클릭 시 팝업을 닫고
+         * 언어 선택 Dialog를 표시한다.
+         */
+        View menuLanguage = popupView.findViewById(R.id.menuLanguage);
+
+        menuLanguage.setOnClickListener(v -> {
+
+            // 메인 메뉴 팝업 닫기
+            popupWindow.dismiss();
+
+            // 언어 선택 창 표시
+            showLanguageDialog();
+        });
+    }
+
+    /*
+     * 언어 선택 Dialog 표시
+     *
+     * - 현재 저장된 언어 설정을 확인한다.
+     * - 해당 RadioButton을 미리 선택한다.
+     * - Cancel 버튼은 Dialog만 닫는다.
+     *
+     * 실제 언어 변경 기능은 추후 연결한다.
+     */
+    private void showLanguageDialog() {
+
+        // Dialog 생성
+        Dialog dialog = new Dialog(this);
+
+        // 기존 언어 선택 XML 사용
+        dialog.setContentView(R.layout.dialog_language);
+
+        // 기존 XML의 둥근 배경을 유지하기 위해
+        // Dialog Window의 기본 배경 제거
+        Window window = dialog.getWindow();
+
+        if (window != null) {
+            window.setBackgroundDrawable(
+                    new ColorDrawable(Color.TRANSPARENT)
+            );
+        }
+
+        // 언어 선택 RadioGroup
+        RadioGroup radioLanguageGroup =
+                dialog.findViewById(R.id.radioLanguageGroup);
+
+        /*
+         * 현재 앱의 언어 설정 확인
+         *
+         * ""   : 시스템 기본값
+         * "ko" : 한국어
+         * "en" : 영어
+         */
+        String currentLanguage = AppCompatDelegate
+                .getApplicationLocales()
+                .toLanguageTags();
+
+        // 현재 언어에 맞는 항목 선택
+        if (currentLanguage.startsWith("ko")) {
+
+            radioLanguageGroup.check(R.id.radioKorean);
+
+        } else if (currentLanguage.startsWith("en")) {
+
+            radioLanguageGroup.check(R.id.radioEnglish);
+
+        } else {
+
+            radioLanguageGroup.check(R.id.radioSystemLanguage);
+        }
+
+        /*
+         * Cancel 버튼
+         *
+         * 언어 설정을 변경하지 않고
+         * Dialog만 닫는다.
+         */
+        dialog.findViewById(R.id.buttonLanguageCancel)
+                .setOnClickListener(v -> dialog.dismiss());
+
+
+        /*
+         * Apply 버튼
+         *
+         * 사용자가 선택한 언어를 저장하고 적용한다.
+         *
+         * 언어가 변경되면 AppCompat이 Activity를
+         * 재생성할 수 있으므로 BLE 작업 상태를 확인한다.
+         */
+        dialog.findViewById(R.id.buttonLanguageApply)
+                .setOnClickListener(v -> {
+
+                    // 현재 선택된 RadioButton 확인
+                    int checkedId =
+                            radioLanguageGroup.getCheckedRadioButtonId();
+
+                    String selectedLanguage;
+
+                    if (checkedId == R.id.radioKorean) {
+
+                        selectedLanguage = "ko";
+
+                    } else if (checkedId == R.id.radioEnglish) {
+
+                        selectedLanguage = "en";
+
+                    } else {
+
+                        // 시스템 기본값
+                        selectedLanguage = "";
+                    }
+
+                    // 현재 설정과 같으면 변경하지 않는다.
+                    String appliedLanguage  =
+                            AppCompatDelegate.getApplicationLocales()
+                                    .toLanguageTags();
+
+                    if (appliedLanguage.equals(selectedLanguage)) {
+                        dialog.dismiss();
+                        return;
+                    }
+
+                    /*
+                     * BLE 작업 중에는 언어 변경을 제한한다.
+                     */
+                    if (isLanguageChangeBusy()) {
+
+                        // Toast 대신 Dialog 내부에 안내 문구 표시
+                        TextView textLanguageBusy =
+                                dialog.findViewById(R.id.textLanguageBusy);
+
+                        textLanguageBusy.setVisibility(View.VISIBLE);
+
+                        return;
+                    }
+
+                    // Dialog 닫기
+                    dialog.dismiss();
+
+                    /*
+                     * 언어 변경 및 자동 저장
+                     *
+                     * ""   : 시스템 기본값
+                     * "ko" : 한국어
+                     * "en" : 영어
+                     */
+                    LocaleListCompat locales =
+                            selectedLanguage.isEmpty()
+                                    ? LocaleListCompat.getEmptyLocaleList()
+                                    : LocaleListCompat.forLanguageTags(
+                                    selectedLanguage
+                            );
+
+                    AppCompatDelegate.setApplicationLocales(locales);
+                });
+
+
+                // Dialog 표시
+                dialog.show();
+
+                // XML에 지정한 너비를 사용
+                if (window != null) {
+                        window.setLayout(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
+    }
+
+    /*
+     * 진행 중인 BLE 작업이 있는지 확인한다.
+     *
+     * 언어 변경으로 Activity가 재생성되는 동안
+     * BLE 작업이 중단되는 상황을 방지한다.
+     */
+    private boolean isLanguageChangeBusy() {
+
+        return scanning
+                || readingStatus
+                || !statusQueue.isEmpty()
+                || !statusRetryCounts.isEmpty()
+                || isAnyPowerControllerBusy()
+                || isAnyIdentifyBusy();
     }
 }
