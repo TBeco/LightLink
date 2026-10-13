@@ -53,6 +53,66 @@
 
 
     <!-- ==================================================
+         Permission / 권한 안내
+         ================================================== -->
+
+    <!-- 권한 부족: 앱 설정 이동 필요 -->
+    <string name="empty_permission_settings_required">권한이 제한되어 있습니다. 검색 버튼을 눌러 앱 설정을 여세요.</string>
+
+    <!-- 권한 부족: 다시 요청 -->
+    <string name="empty_permission_request_required">블루투스 또는 정확한 위치 권한이 필요합니다. 검색 버튼을 눌러 다시 요청하세요.</string>
+
+
+    <!-- 런타임 권한 요청 안내 -->
+
+    <string name="permission_explanation_title">권한 허용 필요</string>
+
+    <string name="permission_explanation_message">LightLink에서 베이스스테이션을 검색하고 제어하려면 블루투스 및 정확한 위치 권한이 필요합니다.\n\n권한을 허용해야 장치를 검색할 수 있습니다.</string>
+
+
+    <!-- 앱 권한 설정 안내 -->
+
+    <string name="permission_settings_title">권한 설정 필요</string>
+
+    <string name="permission_settings_message">LightLink에서 베이스스테이션을 검색하고 제어하려면 필요한 권한을 허용해야 합니다.\n\n앱 정보 → 권한 메뉴에서 필요한 권한을 허용해 주세요.</string>
+
+
+    <!-- 정확한 위치 권한 안내 -->
+
+    <string name="permission_precise_location_title">정확한 위치 권한 필요</string>
+
+    <string name="permission_precise_location_message">현재 대략적인 위치만 허용되어 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 정확한 위치 권한이 필요합니다.\n\n앱 정보 → 권한 → 위치에서 \'정확한 위치 사용\'을 활성화해 주세요.</string>
+
+
+    <!-- 공통 실행 버튼 -->
+
+    <string name="common_open_settings">설정 열기</string>
+
+    <string name="common_request_permissions">권한 요청</string>
+
+
+    <!-- ==================================================
+         Location Services / 위치 서비스 안내
+         ================================================== -->
+
+    <!-- 위치 서비스 비활성화: 메인 화면 -->
+
+    <string name="empty_location_disabled">휴대전화 위치 기능이 꺼져 있습니다. 검색 버튼을 눌러 설정을 여세요.</string>
+
+
+    <!-- 위치 서비스 활성화: 메인 화면 -->
+
+    <string name="empty_location_enabled">위치 기능이 켜졌습니다. 검색 버튼을 눌러 장치를 검색하세요.</string>
+
+
+    <!-- 위치 서비스 비활성화 안내창 -->
+
+    <string name="location_services_disabled_title">위치 서비스 비활성화</string>
+
+    <string name="location_services_disabled_message">현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 위치 기능을 활성화해 주세요.</string>
+
+
+    <!-- ==================================================
          bottom_sheet_device.xml / 장치 관리
          ================================================== -->
 

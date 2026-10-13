@@ -60,6 +60,66 @@
 
 
     <!-- ==================================================
+         Permission / 권한 안내
+         ================================================== -->
+
+    <!-- Missing permissions: app settings required -->
+    <string name="empty_permission_settings_required">Permissions are restricted. Tap Search to open app settings.</string>
+
+    <!-- Missing permissions: request again -->
+    <string name="empty_permission_request_required">Bluetooth or precise location permission is required. Tap Search to request permissions again.</string>
+
+
+    <!-- Runtime permission explanation -->
+
+    <string name="permission_explanation_title">Permission Required</string>
+
+    <string name="permission_explanation_message">LightLink requires Bluetooth and precise location permissions to scan for and control base stations.\n\nPlease grant the required permissions to scan for devices.</string>
+
+
+    <!-- App permission settings -->
+
+    <string name="permission_settings_title">Permission Settings Required</string>
+
+    <string name="permission_settings_message">LightLink requires the necessary permissions to scan for and control base stations.\n\nOpen App info → Permissions and grant the required permissions.</string>
+
+
+    <!-- Precise location permission -->
+
+    <string name="permission_precise_location_title">Precise Location Required</string>
+
+    <string name="permission_precise_location_message">Only approximate location access is currently allowed.\n\nLightLink requires precise location permission to scan for base stations.\n\nOpen App info → Permissions → Location and enable \'Use precise location\'.</string>
+
+
+    <!-- Common action buttons -->
+
+    <string name="common_open_settings">Open settings</string>
+
+    <string name="common_request_permissions">Request permissions</string>
+
+
+    <!-- ==================================================
+         Location Services / 위치 서비스 안내
+         ================================================== -->
+
+    <!-- Location services disabled: main screen -->
+
+    <string name="empty_location_disabled">Location services are OFF. Tap Search to open settings.</string>
+
+
+    <!-- Location services enabled: main screen -->
+
+    <string name="empty_location_enabled">Location services are ON. Tap Search to scan for devices.</string>
+
+
+    <!-- Location services disabled dialog -->
+
+    <string name="location_services_disabled_title">Location Services Disabled</string>
+
+    <string name="location_services_disabled_message">Location services are currently turned off on your device.\n\nPlease enable location services to scan for base stations with LightLink.</string>
+
+
+    <!-- ==================================================
          bottom_sheet_device.xml / Device Management
          ================================================== -->
 

@@ -1940,17 +1940,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 권한 부족으로 검색을 시작하지 못했을 때 빈 목록 영역에 이유를 표시한다.
-     * Search 버튼은 다시 눌러 권한 요청 또는 앱 설정 안내를 확인할 수 있도록 유지한다.
+     * 권한 부족으로 검색을 시작하지 못했을 때
+     * 빈 목록 영역에 이유를 표시한다.
+     *
+     * 권한 상태에 따라 재요청 또는 앱 설정 이동을 안내한다.
+     * 안내 문구는 시스템 언어에 맞는 리소스를 사용한다.
      */
     private void showPermissionRequiredMessage() {
+
         boolean settingsRequired = mustOpenSettingsForPermission(
                 getMissingPermissions()
         );
+
         textEmpty.setVisibility(View.VISIBLE);
-        textEmpty.setText(settingsRequired
-                ? "권한이 제한되어 있습니다. 검색 버튼을 눌러 앱 설정을 여세요."
-                : "블루투스 또는 정확한 위치 권한이 필요합니다. 검색 버튼을 눌러 다시 요청하세요.");
+
+        textEmpty.setText(
+                settingsRequired
+                        ? R.string.empty_permission_settings_required
+                        : R.string.empty_permission_request_required
+        );
+
         updateScanButton();
     }
 
@@ -1965,7 +1974,18 @@ public class MainActivity extends AppCompatActivity {
      * 배경/버튼 drawable을 사용한다. 시스템 설정의 '권한' 항목 Ripple 요청은
      * 기존 openAppSettingsWithHighlight()에서 별도로 처리한다.
      */
+    /*
+     * 시스템 권한을 다시 요청하기 어려운 경우
+     * Android 앱 설정 화면으로 이동하도록 안내한다.
+     *
+     * Android 12 이상에서 대략적인 위치만
+     * 허용된 경우에는 정확한 위치 권한이
+     * 필요하다는 안내를 별도로 표시한다.
+     *
+     * 기존 권한 판단 및 설정 이동 로직은 유지한다.
+     */
     private void showAppPermissionSettingsDialog() {
+
         boolean approximateOnly =
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
                         && ContextCompat.checkSelfPermission(
@@ -1980,23 +2000,37 @@ public class MainActivity extends AppCompatActivity {
         String title;
         String message;
 
+        /*
+         * 대략적인 위치만 허용된 경우
+         */
         if (approximateOnly) {
-            title = "정확한 위치 권한 필요";
-            message = "현재 대략적인 위치만 허용되어 있습니다.\n\n"
-                    + "LightLink에서 베이스스테이션을 검색하려면 "
-                    + "정확한 위치 권한이 필요합니다.\n\n"
-                    + "앱 정보 → 권한 → 위치에서 '정확한 위치 사용'을 활성화해 주세요.";
+
+            title = getString(
+                    R.string.permission_precise_location_title
+            );
+
+            message = getString(
+                    R.string.permission_precise_location_message
+            );
+
         } else {
-            title = "권한 설정 필요";
-            message = "LightLink에서 베이스스테이션을 검색하고 "
-                    + "제어하려면 필요한 권한을 허용해야 합니다.\n\n"
-                    + "앱 정보 → 권한 메뉴에서 필요한 권한을 허용해 주세요.";
+
+            /*
+             * 그 밖의 권한 부족 상황
+             */
+            title = getString(
+                    R.string.permission_settings_title
+            );
+
+            message = getString(
+                    R.string.permission_settings_message
+            );
         }
 
         showStyledActionDialog(
                 title,
                 message,
-                "설정 열기",
+                getString(R.string.common_open_settings),
                 this::openAppSettingsWithHighlight
         );
     }
@@ -2068,19 +2102,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 시스템이 권한 재요청을 허용할 때 먼저 보여 주는 설명 창.
+     * 시스템 권한을 다시 요청하기 전에
+     * 사용자에게 필요한 권한을 설명한다.
      *
-     * 이 커스텀 창의 '권한 허용' 버튼을 눌러야 Android의 실제 시스템
-     * 권한 요청 창(permissionLauncher)이 열린다. 권한을 직접 부여하지 않는다.
-     * missing은 팝업을 연 시점의 미허용 권한 목록이다.
+     * 실행 버튼을 누르면 기존 permissionLauncher를
+     * 통한 Android 시스템 권한 요청이 시작된다.
+     *
+     * 실제 권한 허용 여부는 Android가 결정하며,
+     * 이 안내창 자체가 권한을 부여하지는 않는다.
      */
-    private void showPermissionExplanationDialog(List<String> missing) {
+    private void showPermissionExplanationDialog(
+            List<String> missing) {
+
         showStyledActionDialog(
-                "권한 허용 필요",
-                "LightLink에서 베이스스테이션을 검색하고 "
-                        + "제어하려면 블루투스 및 정확한 위치 권한이 필요합니다.\n\n"
-                        + "권한을 허용해야 장치를 검색할 수 있습니다.",
-                "권한 허용",
+                getString(R.string.permission_explanation_title),
+                getString(R.string.permission_explanation_message),
+                getString(R.string.common_request_permissions),
                 () -> requestMissingPermissions(missing)
         );
     }
@@ -2175,13 +2212,26 @@ public class MainActivity extends AppCompatActivity {
      * 목록이 이미 있는 경우에는 장치 상태/전원 버튼 영역을 갑자기 덮지 않는다.
      * 사용자는 Search 버튼을 다시 누르면 별도의 설정 안내창을 볼 수 있다.
      */
+    /*
+     * 스마트폰의 전체 위치 서비스가
+     * 비활성화된 경우 안내 문구를 표시한다.
+     *
+     * 기존 검색 결과가 남아 있다면
+     * 목록을 강제로 덮어쓰지 않는다.
+     *
+     * 문자열만 다국어 리소스로 변경한다.
+     */
     private void showLocationServicesDisabledMessage() {
+
         if (deviceList.isEmpty()) {
+
             textEmpty.setVisibility(View.VISIBLE);
+
             textEmpty.setText(
-                    "휴대전화 위치 기능이 꺼져 있습니다. 검색 버튼을 눌러 설정을 여세요."
+                    R.string.empty_location_disabled
             );
         }
+
         updateScanButton();
     }
 
@@ -2193,13 +2243,22 @@ public class MainActivity extends AppCompatActivity {
      * 이번 UI 변경에서는 공식 Intent만 사용하며, Fold2에서 효과가 없었던
      * 위치 스위치용 실험 Ripple 인자는 전달하지 않는다.
      */
+    /*
+     * 스마트폰의 전체 위치 서비스가
+     * 비활성화된 경우 설정 화면 이동을 안내한다.
+     *
+     * 앱의 위치 접근 권한과
+     * 기기 전체 위치 서비스는 서로 다른 설정이다.
+     *
+     * 실행 버튼을 누르면 기존의
+     * openDeviceLocationSettings()를 호출한다.
+     */
     private void showLocationServicesDisabledDialog() {
+
         showStyledActionDialog(
-                "위치 서비스 비활성화",
-                "현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\n"
-                        + "LightLink에서 베이스스테이션을 검색하려면 "
-                        + "위치 기능을 활성화해 주세요.",
-                "설정 열기",
+                getString(R.string.location_services_disabled_title),
+                getString(R.string.location_services_disabled_message),
+                getString(R.string.common_open_settings),
                 this::openDeviceLocationSettings
         );
     }
@@ -2256,7 +2315,9 @@ public class MainActivity extends AppCompatActivity {
             try {
                 if (bluetoothAdapter.isEnabled()) {
                     textEmpty.setVisibility(View.VISIBLE);
-                    textEmpty.setText("위치 기능이 켜졌습니다. 검색 버튼을 눌러 장치를 검색하세요.");
+                    textEmpty.setText(
+                            R.string.empty_location_enabled
+                    );
                 }
             } catch (SecurityException e) {
                 AppLog.d("Unable to check Bluetooth after location change", e);
