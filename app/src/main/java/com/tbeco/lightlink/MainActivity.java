@@ -841,8 +841,12 @@ public class MainActivity extends AppCompatActivity {
                         },
 
                         // 장치 정보 영역을 누르면 관리용 Bottom Sheet를 연다.
-                        this::showDeviceManagementSheet
+                        this::showDeviceManagementSheet,
+
+                        // 해당 장치의 Identify GATT 진행 여부 확인
+                        this::isIdentifyBusy
                 );
+
 
 
         recyclerBaseStations.setAdapter(
@@ -1072,9 +1076,22 @@ public class MainActivity extends AppCompatActivity {
             AppLog.d((success ? "Identify sent" : "Identify failed")
                     + " / " + device.getName() + " / " + reason);
             if (!success) {
+
                 // 버튼 비활성 시에는 아무 메시지가 없지만 통신 실패는 표시한다.
-                Toast.makeText(this, "식별 명령 실패: " + reason,
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(
+                        this,
+                        "식별 명령 실패: " + reason,
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                /*
+                 * Identify 실패 후 전원 버튼 UI 복구.
+                 *
+                 * 실제 장치 상태는 변경하지 않았으므로
+                 * Sleep 상태였다면 다시 파란색 버튼으로 돌아간다.
+                 */
+                updateDeviceRow(device);
+
             } else if ("Sleep".equals(previousStatus)
                     && "Sleep".equals(device.getStatus())) {
                 // 실제 식별 명령으로 Sleep 장치가 깨어날 수 있으므로 다시 읽어 확인한다.
@@ -1092,9 +1109,20 @@ public class MainActivity extends AppCompatActivity {
             refreshIdentifyButtonFor(device);
             updateScanButton();
         });
+
         AppLog.d("Identify requested / " + device.getName());
+
+        /*
+         * Identify GATT가 시작되었으므로
+         * 해당 장치의 전원 버튼 UI를 다시 갱신한다.
+         *
+         * Sleep 상태라면 회색 + 비활성화로 표시된다.
+         */
+        updateDeviceRow(device);
+
         refreshIdentifyButtonFor(device);
         updateScanButton();
+
         handler.postDelayed(() -> refreshIdentifyButtonFor(device),
                 IDENTIFY_COOLDOWN_MS + 30L);
     }

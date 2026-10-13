@@ -30,14 +30,27 @@ public class BleDeviceAdapter
      * Sleep:
      * Base Station 절전 상태 → 파란색
      *
-     * Checking / Processing / Stuck / Unknown / 오류:
+     * Checking / Processing / Unknown / 오류:
      * 상태를 확정할 수 없거나 제어할 수 없음 → 회색
+     *
+     * Stuck (0x01):
+     * 연속된 0x01 응답으로 상태 확인 불가 → 빨간색
      */
     private static final int POWER_COLOR_AWAKE =
             Color.parseColor("#43A047");
 
     private static final int POWER_COLOR_SLEEP =
             Color.parseColor("#4285F4");
+
+    /*
+     * Sleep 상태에서 Identify 명령을 처리 중일 때 사용한다.
+     *
+     * 실제 전원 상태는 여전히 Sleep이지만,
+     * Identify GATT 작업 중에는 전원 버튼을 사용할 수 없으므로
+     * 일반 Sleep보다 어두운 파란색으로 구분한다.
+     */
+    private static final int POWER_COLOR_SLEEP_IDENTIFY =
+            Color.parseColor("#2D4F78");
 
     /*
      * 현재 Power State는 읽을 수 없지만
@@ -112,6 +125,9 @@ public class BleDeviceAdapter
     // 왼쪽 장치 정보 영역 클릭을 MainActivity에 전달한다.
     private final OnDeviceClickListener deviceClickListener;
 
+    // 장치별 Identify 진행 여부를 확인한다.
+    private final IdentifyBusyChecker identifyBusyChecker;
+
 
     /*
      * Adapter 생성자
@@ -124,11 +140,16 @@ public class BleDeviceAdapter
      *
      * deviceClickListener:
      * 장치 관리 화면 열기를 처리할 Listener
+     *
+     * identifyBusyChecker:
+     * MainActivity에서 특정 장치의 Identify 처리 여부를 조회한다.
+     * Controller에 직접 접근하지 않고 전원 버튼 UI에만 반영한다.
      */
     public BleDeviceAdapter(
             List<BleDeviceItem> deviceList,
             OnPowerClickListener powerClickListener,
-            OnDeviceClickListener deviceClickListener) {
+            OnDeviceClickListener deviceClickListener,
+            IdentifyBusyChecker identifyBusyChecker) {
 
         this.deviceList =
                 deviceList;
@@ -138,6 +159,9 @@ public class BleDeviceAdapter
 
         this.deviceClickListener =
                 deviceClickListener;
+
+        this.identifyBusyChecker =
+                identifyBusyChecker;
     }
 
 
@@ -540,15 +564,48 @@ public class BleDeviceAdapter
         /*
          * Sleep
          *
-         * Base Station이 Sleep 상태.
-         * 버튼 사용 가능 + 파란색.
+         * 일반적인 Sleep 상태에서는 파란색 전원 버튼을 표시한다.
+         *
+         * 단, 동일한 Base Station에서 Identify 명령을
+         * 처리 중이라면 전원 버튼을 일시적으로 비활성화한다.
+         *
+         * 장치의 실제 상태값은 변경하지 않는다.
          */
         if ("Sleep".equals(status)) {
 
-            holder.buttonPower.setEnabled(
-                    true
-            );
+            /*
+             * Identify GATT 작업이 진행 중인 경우.
+             *
+             * 연결, 재시도, WRITE 처리 중에는
+             * 전원 버튼을 회색으로 표시하고 클릭을 막는다.
+             */
+            boolean identifyBusy =
+                    identifyBusyChecker != null
+                            && identifyBusyChecker.isIdentifyBusy(device);
 
+            if (identifyBusy) {
+
+                holder.buttonPower.setEnabled(false);
+
+                holder.buttonPower.setBackgroundTintList(
+                        ColorStateList.valueOf(
+                                POWER_COLOR_SLEEP_IDENTIFY
+                        )
+                );
+
+                holder.buttonPower.setContentDescription(
+                        device.getName()
+                                + " power unavailable during Identify"
+                );
+
+                return;
+            }
+
+            /*
+             * Identify 작업이 진행 중이지 않은
+             * 일반적인 Sleep 상태.
+             */
+            holder.buttonPower.setEnabled(true);
 
             holder.buttonPower.setBackgroundTintList(
                     ColorStateList.valueOf(
@@ -556,12 +613,10 @@ public class BleDeviceAdapter
                     )
             );
 
-
             holder.buttonPower.setContentDescription(
                     device.getName()
                             + " power on"
             );
-
 
             return;
         }
@@ -637,7 +692,7 @@ public class BleDeviceAdapter
          * Timeout
          * Connection failed
          * Standby
-         * Processing / Stuck
+         * Processing (0x01)
          * READ 미지원 + WRITE 미지원
          * 기타 알 수 없는 상태
          *
@@ -763,4 +818,19 @@ public class BleDeviceAdapter
                 BleDeviceItem device
         );
     }
+
+
+    /*
+     * 특정 Base Station에서 Identify 명령이
+     * 진행 중인지 외부(MainActivity)에 확인한다.
+     *
+     * Adapter는 BLE Controller를 직접 관리하지 않는다.
+     */
+    public interface IdentifyBusyChecker {
+
+        boolean isIdentifyBusy(
+                BleDeviceItem device
+        );
+    }
 }
+

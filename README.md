@@ -4,7 +4,7 @@ An Android app for controlling SteamVR Base Station 2.0 over Bluetooth Low Energ
 
 LightLink는 Bluetooth Low Energy(BLE)를 이용해 SteamVR Base Station 2.0을 검색하고 전원을 제어하는 **Android 전용 앱**입니다.
 
-**Version:** `v0.8.0-beta.1` · **Status:** Beta · **Android:** 8.0 (API 26)+
+**Version:** `v0.8.0-beta.2` · **Status:** Beta · **Android:** 8.0 (API 26)+
 
 ## Download / 다운로드
 
@@ -20,9 +20,9 @@ LightLink is still in beta, and compatibility may vary between devices.
 
 ## Screenshots / 스크린샷
 
-|                     Main Screen /<br/>메인 화면                     |                       Manual Power Control /<br/>수동 전원 제어                        |                       Permission Dialog /<br/>권한 안내창                       |
+|                     Main Screen /<br/>메인 화면                     |                       Manual Power Control /<br/>수동 전원 제어                        |                      Device Identify /<br/>장치 식별                       |
 |:--------------------------------------------------------------:|:---------------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
-| <img src="screenshots/main.jpg" width="220" alt="Main Screen"> | <img src="screenshots/device-control.jpg" width="220" alt="Manual Power Control"> | <img src="screenshots/permission.jpg" width="220" alt="Permission Dialog"> |
+| <img src="screenshots/main.jpg" width="220" alt="Main Screen"> | <img src="screenshots/device-control.jpg" width="220" alt="Manual Power Control"> | <img src="screenshots/device-identify.jpg" width="220" alt="Device Identify"> |
 
 ## Why I Made LightLink / 개발 배경
 
