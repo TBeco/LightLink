@@ -49,6 +49,18 @@ public class BleDeviceAdapter
     private static final int POWER_COLOR_UNAVAILABLE =
             Color.parseColor("#616161");
 
+    /*
+     * Stuck (0x01)
+     *
+     * Power State READ에서 0x01이 반복되어
+     * 현재 상태를 확정할 수 없는 경우.
+     *
+     * 일반적인 상태 확인 실패와 구분하기 위해
+     * 빨간색으로 표시한다.
+     */
+    private static final int POWER_COLOR_STUCK =
+            Color.parseColor("#C62828");
+
 
     /*
      * Bluetooth RSSI를 사용자에게 보여줄 때 사용하는
@@ -550,6 +562,34 @@ public class BleDeviceAdapter
                             + " power on"
             );
 
+
+            return;
+        }
+
+        /*
+         * Stuck (0x01)
+         *
+         * 0x01이 반복적으로 확인되어
+         * 앱에서 현재 전원 상태를 확정할 수 없는 경우.
+         *
+         * 전원 명령은 허용하지 않지만,
+         * 일반적인 비활성 상태와 구분하기 위해
+         * 빨간색 배경을 사용한다.
+         */
+        if ("Stuck (0x01)".equals(status)) {
+
+            holder.buttonPower.setEnabled(false);
+
+            holder.buttonPower.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                            POWER_COLOR_STUCK
+                    )
+            );
+
+            holder.buttonPower.setContentDescription(
+                    device.getName()
+                            + " power state stuck"
+            );
 
             return;
         }
