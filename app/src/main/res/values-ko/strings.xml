@@ -1,207 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <!-- ==================================================
-         activity_main.xml / 메인 화면
+         00. App / 공통
          ================================================== -->
 
-    <!-- 상단 메뉴 버튼 -->
-    <string name="menu_open">메뉴</string>
+    <!-- ==================================================
+         01. activity_main.xml / 메인 화면
+         ================================================== -->
 
-    <!-- BLE 검색 버튼 -->
+    <!-- 메뉴 · 검색 버튼 · 최근 검색 -->
+    <string name="menu_open">메뉴</string>
     <string name="scan_search">검색</string>
     <string name="scan_stop">검색 중지</string>
-
-    <!-- 검색 전 기본 안내 -->
     <string name="empty_scan_prompt">검색을 진행해 주세요.</string>
-
-    <!-- 최근 검색 시각 -->
     <string name="last_scan_placeholder">최근 검색 | -</string>
     <string name="last_scan_format">최근 검색 | %1$s</string>
 
-
-    <!-- BLE 검색 상태 안내 -->
-
-    <!-- 검색 진행 중 -->
+    <!-- BLE 검색 진행 · 결과 -->
     <string name="empty_scanning">검색 중...</string>
-
-    <!-- 검색 결과 없음 -->
     <string name="empty_no_base_station">검색된 베이스스테이션이 없습니다.</string>
-
-    <!-- BLE 검색 실패 -->
     <string name="empty_scan_failed">BLE 검색 실패: %1$d</string>
 
-    <!-- Bluetooth 활성화 -->
+    <!-- Bluetooth 상태 · 스캐너 오류 -->
     <string name="empty_bluetooth_on">블루투스가 켜졌습니다. 검색 버튼을 눌러 장치를 검색하세요.</string>
-
-    <!-- Bluetooth 비활성화 -->
     <string name="empty_bluetooth_off_tap_search">블루투스가 꺼져 있습니다. 검색 버튼을 눌러 켜 주세요.</string>
-
-    <!-- Bluetooth 활성화 요청 -->
     <string name="empty_bluetooth_off_turn_on">블루투스가 꺼져 있습니다. 검색하려면 켜 주세요.</string>
-
-    <!-- Bluetooth 미지원 -->
     <string name="empty_bluetooth_not_supported">이 기기는 블루투스를 지원하지 않습니다.</string>
-
-    <!-- Bluetooth 스캐너 권한 오류 -->
     <string name="empty_bluetooth_scanner_permission_error">블루투스 스캐너를 사용할 수 없습니다. 권한을 확인해 주세요.</string>
-
-    <!-- BLE 스캐너 사용 불가 -->
     <string name="empty_ble_scanner_unavailable">BLE 스캐너를 사용할 수 없습니다.</string>
-
-    <!-- BLE 검색 시작 실패 -->
     <string name="empty_ble_scan_start_failed">BLE 검색을 시작할 수 없습니다. 블루투스 권한을 확인해 주세요.</string>
 
-
-    <!-- ==================================================
-         Permission / 권한 안내
-         ================================================== -->
-
-    <!-- 권한 부족: 앱 설정 이동 필요 -->
+    <!-- 권한 부족 · 위치 서비스 상태 (textEmpty) -->
     <string name="empty_permission_settings_required">권한이 제한되어 있습니다. 검색 버튼을 눌러 앱 설정을 여세요.</string>
-
-    <!-- 권한 부족: 다시 요청 -->
     <string name="empty_permission_request_required">블루투스 또는 정확한 위치 권한이 필요합니다. 검색 버튼을 눌러 다시 요청하세요.</string>
-
-
-    <!-- 런타임 권한 요청 안내 -->
-
-    <string name="permission_explanation_title">권한 허용 필요</string>
-
-    <string name="permission_explanation_message">LightLink에서 베이스스테이션을 검색하고 제어하려면 블루투스 및 정확한 위치 권한이 필요합니다.\n\n권한을 허용해야 장치를 검색할 수 있습니다.</string>
-
-
-    <!-- 앱 권한 설정 안내 -->
-
-    <string name="permission_settings_title">권한 설정 필요</string>
-
-    <string name="permission_settings_message">LightLink에서 베이스스테이션을 검색하고 제어하려면 필요한 권한을 허용해야 합니다.\n\n앱 정보 → 권한 메뉴에서 필요한 권한을 허용해 주세요.</string>
-
-
-    <!-- 정확한 위치 권한 안내 -->
-
-    <string name="permission_precise_location_title">정확한 위치 권한 필요</string>
-
-    <string name="permission_precise_location_message">현재 대략적인 위치만 허용되어 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 정확한 위치 권한이 필요합니다.\n\n앱 정보 → 권한 → 위치에서 \'정확한 위치 사용\'을 활성화해 주세요.</string>
-
-
-    <!-- 공통 실행 버튼 -->
-
-    <string name="common_open_settings">설정 열기</string>
-
-    <string name="common_request_permissions">권한 요청</string>
-
-
-    <!-- ==================================================
-         Location Services / 위치 서비스 안내
-         ================================================== -->
-
-    <!-- 위치 서비스 비활성화: 메인 화면 -->
-
     <string name="empty_location_disabled">휴대전화 위치 기능이 꺼져 있습니다. 검색 버튼을 눌러 설정을 여세요.</string>
-
-
-    <!-- 위치 서비스 활성화: 메인 화면 -->
-
     <string name="empty_location_enabled">위치 기능이 켜졌습니다. 검색 버튼을 눌러 장치를 검색하세요.</string>
 
-
-    <!-- 위치 서비스 비활성화 안내창 -->
-
-    <string name="location_services_disabled_title">위치 서비스 비활성화</string>
-
-    <string name="location_services_disabled_message">현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 위치 기능을 활성화해 주세요.</string>
-
-
     <!-- ==================================================
-         bottom_sheet_device.xml / 장치 관리
+         02. bottom_sheet_device.xml / 장치 관리
          ================================================== -->
 
-    <!-- 장치 관리 부제목 -->
-    <string name="device_sheet_subtitle">Base Station 2.0 · 장치 관리</string>
-
-    <!-- 닫기 버튼 접근성 설명 -->
+    <!-- 장치 정보 · 닫기 -->
+    <string name="device_sheet_subtitle">베이스스테이션 2.0 · 장치 관리</string>
     <string name="device_sheet_close">장치 관리 화면 닫기</string>
 
-    <!-- 장치 식별 영역 -->
+    <!-- Identify 기능 · 설명 · 접근성 -->
     <string name="device_identify_title">장치 식별</string>
-
     <string name="device_identify_description">베이스스테이션의 LED를 약 20초간 흰색으로 점멸시켜 실제 설치된 장치를 찾습니다.</string>
-
-    <!-- 식별 버튼 -->
     <string name="device_identify_button">식별하기</string>
-
-    <!-- 식별 버튼 접근성 설명 -->
     <string name="device_identify_button_description">이 베이스스테이션 식별하기</string>
 
-    <!-- 기본 식별 안내 -->
+    <!-- Identify 안내 · 실패 메시지 -->
     <string name="identify_warning_default">※ Sleep 상태에서는 장치가 깨어날 수 있습니다.</string>
-
-    <!-- Power State READ 미지원 장치 전용 안내 -->
     <string name="identify_warning_read_unsupported">※ 이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 LED가 초록색인지 확인해 주세요.</string>
+    <string name="identify_command_failed">식별 명령 실패: %1$s</string>
 
-    <!-- 향후 기능 안내 -->
+    <!-- 향후 기능 -->
     <string name="device_channel_future">채널 변경 · 추후 추가 가능</string>
 
-
     <!-- ==================================================
-     dialog_manual_power.xml / 수동 전원 제어
-     ================================================== -->
+         03. dialog_manual_power.xml / 수동 전원 제어
+         ================================================== -->
 
-    <!-- 팝업 제목 -->
+    <!-- 제목 · 본문 · 취소 -->
     <string name="manual_power_title">수동 전원 제어 필요</string>
-
-    <!-- 수동 전원 제어 안내 -->
-    <string name="manual_power_message">이 Base Station은 현재 전원 상태를 확인할 수 없습니다.\n\n일부 이전 버전의 Base Station 펌웨어에서 발생할 수 있습니다.\n\n원하는 전원 상태를 직접 선택해주세요.</string>
-
-    <!-- 취소 버튼 -->
+    <string name="manual_power_message">이 베이스스테이션은 현재 전원 상태를 확인할 수 없습니다.\n\n일부 이전 버전의 베이스스테이션 펌웨어에서 발생할 수 있습니다.\n\n원하는 전원 상태를 직접 선택해주세요.</string>
     <string name="manual_power_cancel">취소</string>
 
-    <!--
-        Sleep / Wake 버튼 이름은 기본 리소스를 사용한다.
-        따라서 이 파일에는 중복으로 선언하지 않는다.
-    -->
-
-    <!-- Sleep / Wake 버튼 접근성 설명 -->
+    <!-- Sleep / Wake 접근성 -->
     <string name="manual_power_sleep_accessibility">이 베이스스테이션에 Sleep 명령 보내기</string>
     <string name="manual_power_wake_accessibility">이 베이스스테이션에 Wake 명령 보내기</string>
 
-
     <!-- ==================================================
-     dialog_settings_action.xml / 설정 안내창
-     ================================================== -->
+         04. dialog_settings_action.xml / 권한 · 설정 안내
+         ================================================== -->
 
-    <!-- 취소 버튼 -->
+    <!-- 공통 버튼 -->
     <string name="settings_dialog_cancel">취소</string>
+    <string name="common_open_settings">설정 열기</string>
+    <string name="common_request_permissions">권한 요청</string>
 
+    <!-- 런타임 권한 요청 안내 -->
+    <string name="permission_explanation_title">권한 허용 필요</string>
+    <string name="permission_explanation_message">LightLink에서 베이스스테이션을 검색하고 제어하려면 블루투스 및 정확한 위치 권한이 필요합니다.\n\n권한을 허용해야 장치를 검색할 수 있습니다.</string>
+
+    <!-- 앱 권한 설정 안내 -->
+    <string name="permission_settings_title">권한 설정 필요</string>
+    <string name="permission_settings_message">LightLink에서 베이스스테이션을 검색하고 제어하려면 필요한 권한을 허용해야 합니다.\n\n앱 정보 → 권한 메뉴에서 필요한 권한을 허용해 주세요.</string>
+
+    <!-- 정확한 위치 권한 안내 -->
+    <string name="permission_precise_location_title">정확한 위치 권한 필요</string>
+    <string name="permission_precise_location_message">현재 대략적인 위치만 허용되어 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 정확한 위치 권한이 필요합니다.\n\n앱 정보 → 권한 → 위치에서 \'정확한 위치 사용\'을 활성화해 주세요.</string>
+
+    <!-- 스마트폰 위치 서비스 안내 -->
+    <string name="location_services_disabled_title">위치 서비스 비활성화</string>
+    <string name="location_services_disabled_message">현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 위치 기능을 활성화해 주세요.</string>
 
     <!-- ==================================================
-     item_ble_device.xml / 베이스스테이션 목록
-     ================================================== -->
+         05. item_ble_device.xml / 베이스스테이션 목록
+         ================================================== -->
 
-    <!-- 장치 관리 접근성 -->
+    <!-- 기본 접근성 -->
     <string name="device_management_open">장치 관리 열기</string>
-
-    <!-- 전원 버튼 접근성 -->
     <string name="device_power_control">전원 제어</string>
 
-    <!-- RF 채널 및 Bluetooth 신호 강도 -->
+    <!-- RF 채널 · RSSI 신호 강도 -->
     <string name="device_signal_strong">강함</string>
     <string name="device_signal_normal">보통</string>
     <string name="device_signal_weak">약함</string>
-
-    <!-- RF 채널 및 RSSI 표시 형식 -->
     <string name="device_radio_info_format">채널 %1$s | 신호 %2$s · %3$d dBm</string>
 
-    <!-- Power State READ 미지원 -->
+    <!-- 마지막 Power State 확인 -->
     <string name="device_last_checked_unsupported">마지막 상태 확인 | 지원되지 않음</string>
-
-    <!-- Power State 확인 진행 중 -->
     <string name="device_last_checked_checking">마지막 상태 확인 | 확인 중...</string>
-
-    <!-- Power State 확인 성공 기록 없음 -->
     <string name="device_last_checked_unknown">마지막 상태 확인 | 확인되지 않음</string>
-
-    <!-- 마지막 Power State 확인 성공 시간 -->
     <string name="device_last_checked_format">마지막 상태 확인 | %1$s</string>
+
+    <!-- 장치 이름을 포함한 접근성 문구 -->
+    <string name="device_management_open_named">%1$s: 장치 관리 열기</string>
+    <string name="device_power_processing">%1$s: 전원 작업 처리 중</string>
+    <string name="device_power_sleep">%1$s: Sleep 명령 보내기</string>
+    <string name="device_power_identify_unavailable">%1$s: 식별 실행 중에는 전원 제어를 사용할 수 없습니다</string>
+    <string name="device_power_wake">%1$s: Wake 명령 보내기</string>
+    <string name="device_power_stuck">%1$s: 전원 상태 확인 실패(0x01). 전원 제어를 사용할 수 없습니다</string>
+    <string name="device_power_manual">%1$s: 수동 전원 제어 열기</string>
+    <string name="device_power_unavailable">%1$s: 전원 제어를 사용할 수 없습니다</string>
 
 </resources>

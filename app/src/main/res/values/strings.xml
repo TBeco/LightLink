@@ -1,218 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <!-- ==================================================
-         App / 앱 공통
+         00. App / Common
          ================================================== -->
 
+    <!-- App name (not translated) -->
     <string name="app_name" translatable="false">LightLink</string>
 
-
     <!-- ==================================================
-         activity_main.xml / 메인 화면
+         01. activity_main.xml / Main Screen
          ================================================== -->
 
-    <!-- 상단 메뉴 버튼 -->
+    <!-- Menu · Search Controls · Last Scan -->
     <string name="menu_open">Menu</string>
-
-    <!-- BLE 검색 버튼 -->
     <string name="scan_search">Search</string>
     <string name="scan_stop">Stop scan</string>
-
-    <!-- 검색 전 기본 안내 -->
     <string name="empty_scan_prompt">Tap Search to scan for base stations.</string>
-
-    <!-- 최근 검색 시각 -->
     <string name="last_scan_placeholder">Last scan | -</string>
     <string name="last_scan_format">Last scan | %1$s</string>
 
-
-    <!-- BLE 검색 상태 안내 -->
-
-    <!-- 검색 진행 중 -->
+    <!-- BLE Scan Status · Results -->
     <string name="empty_scanning">Scanning...</string>
-
-    <!-- 검색 결과 없음 -->
     <string name="empty_no_base_station">No Base Station found</string>
-
-    <!-- BLE 검색 실패 -->
     <string name="empty_scan_failed">BLE scan failed: %1$d</string>
 
-    <!-- Bluetooth enabled -->
+    <!-- Bluetooth Status · Scanner Errors -->
     <string name="empty_bluetooth_on">Bluetooth is ON. Tap Search to scan.</string>
-
-    <!-- Bluetooth disabled -->
     <string name="empty_bluetooth_off_tap_search">Bluetooth is OFF. Tap Search to enable it.</string>
-
-    <!-- Bluetooth enable request -->
     <string name="empty_bluetooth_off_turn_on">Bluetooth is OFF. Turn it on to scan.</string>
-
-    <!-- Bluetooth unsupported -->
     <string name="empty_bluetooth_not_supported">Bluetooth not supported</string>
-
-    <!-- Bluetooth scanner permission error -->
     <string name="empty_bluetooth_scanner_permission_error">Bluetooth scanner unavailable. Check permissions.</string>
-
-    <!-- BLE scanner unavailable -->
     <string name="empty_ble_scanner_unavailable">BLE scanner unavailable</string>
-
-    <!-- BLE scan start failure -->
     <string name="empty_ble_scan_start_failed">Unable to start BLE scan. Check Bluetooth permissions.</string>
 
-
-    <!-- ==================================================
-         Permission / 권한 안내
-         ================================================== -->
-
-    <!-- Missing permissions: app settings required -->
+    <!-- Missing Permissions · Location Status (textEmpty) -->
     <string name="empty_permission_settings_required">Permissions are restricted. Tap Search to open app settings.</string>
-
-    <!-- Missing permissions: request again -->
     <string name="empty_permission_request_required">Bluetooth or precise location permission is required. Tap Search to request permissions again.</string>
-
-
-    <!-- Runtime permission explanation -->
-
-    <string name="permission_explanation_title">Permission Required</string>
-
-    <string name="permission_explanation_message">LightLink requires Bluetooth and precise location permissions to scan for and control base stations.\n\nPlease grant the required permissions to scan for devices.</string>
-
-
-    <!-- App permission settings -->
-
-    <string name="permission_settings_title">Permission Settings Required</string>
-
-    <string name="permission_settings_message">LightLink requires the necessary permissions to scan for and control base stations.\n\nOpen App info → Permissions and grant the required permissions.</string>
-
-
-    <!-- Precise location permission -->
-
-    <string name="permission_precise_location_title">Precise Location Required</string>
-
-    <string name="permission_precise_location_message">Only approximate location access is currently allowed.\n\nLightLink requires precise location permission to scan for base stations.\n\nOpen App info → Permissions → Location and enable \'Use precise location\'.</string>
-
-
-    <!-- Common action buttons -->
-
-    <string name="common_open_settings">Open settings</string>
-
-    <string name="common_request_permissions">Request permissions</string>
-
-
-    <!-- ==================================================
-         Location Services / 위치 서비스 안내
-         ================================================== -->
-
-    <!-- Location services disabled: main screen -->
-
     <string name="empty_location_disabled">Location services are OFF. Tap Search to open settings.</string>
-
-
-    <!-- Location services enabled: main screen -->
-
     <string name="empty_location_enabled">Location services are ON. Tap Search to scan for devices.</string>
 
-
-    <!-- Location services disabled dialog -->
-
-    <string name="location_services_disabled_title">Location Services Disabled</string>
-
-    <string name="location_services_disabled_message">Location services are currently turned off on your device.\n\nPlease enable location services to scan for base stations with LightLink.</string>
-
-
     <!-- ==================================================
-         bottom_sheet_device.xml / Device Management
+         02. bottom_sheet_device.xml / Device Management
          ================================================== -->
 
-    <!-- Device management subtitle -->
+    <!-- Device Information · Close -->
     <string name="device_sheet_subtitle">Base Station 2.0 · Device Management</string>
-
-    <!-- Close button accessibility description -->
     <string name="device_sheet_close">Close device management</string>
 
-    <!-- Identify section -->
+    <!-- Identify · Description · Accessibility -->
     <string name="device_identify_title">Identify Base Station</string>
-
     <string name="device_identify_description">The base station LED will blink white for approximately 20 seconds to help you locate the device.</string>
-
-    <!-- Identify button -->
     <string name="device_identify_button">Identify</string>
-
-    <!-- Identify button accessibility description -->
     <string name="device_identify_button_description">Identify this base station</string>
 
-    <!-- Default Identify warning -->
+    <!-- Identify Warnings · Error Message -->
     <string name="identify_warning_default">※ Using Identify while the base station is in Sleep mode may wake it up.</string>
-
-    <!-- Warning for devices without Power State READ support -->
     <string name="identify_warning_read_unsupported">※ The base station may be using older firmware. Before using Identify, turn on the base station and make sure its LED is green.</string>
+    <string name="identify_command_failed">Identify command failed: %1$s</string>
 
-    <!-- Future feature notice -->
+    <!-- Future Features -->
     <string name="device_channel_future">Channel change · May be added later</string>
 
-
     <!-- ==================================================
-     dialog_manual_power.xml / Manual Power Control
-     ================================================== -->
+         03. dialog_manual_power.xml / Manual Power Control
+         ================================================== -->
 
-    <!-- Dialog title -->
+    <!-- Title · Message · Cancel -->
     <string name="manual_power_title">Manual Power Control Required</string>
-
-    <!-- Manual power control explanation -->
     <string name="manual_power_message">The current power state of this Base Station cannot be determined.\n\nThis may occur with some older Base Station firmware versions.\n\nPlease select the desired power state manually.</string>
-
-    <!-- Cancel button -->
     <string name="manual_power_cancel">Cancel</string>
 
-    <!--
-        Power command labels
-
-        Sleep / Wake are kept in English across all languages.
-        These are command labels, not translated device states.
-    -->
+    <!-- Sleep / Wake Commands (not translated) -->
     <string name="manual_power_sleep" translatable="false">Sleep</string>
     <string name="manual_power_wake" translatable="false">Wake</string>
 
-    <!-- Accessibility descriptions for power commands -->
+    <!-- Sleep / Wake Accessibility -->
     <string name="manual_power_sleep_accessibility">Send Sleep command to this base station</string>
     <string name="manual_power_wake_accessibility">Send Wake command to this base station</string>
 
-
     <!-- ==================================================
-     dialog_settings_action.xml / Settings Dialog
-     ================================================== -->
+         04. dialog_settings_action.xml / Permissions · Settings Dialog
+         ================================================== -->
 
-    <!-- Cancel button -->
+    <!-- Dialog Buttons -->
     <string name="settings_dialog_cancel">Cancel</string>
+    <string name="common_open_settings">Open settings</string>
+    <string name="common_request_permissions">Request permissions</string>
 
+    <!-- Runtime Permission Request -->
+    <string name="permission_explanation_title">Permission Required</string>
+    <string name="permission_explanation_message">LightLink requires Bluetooth and precise location permissions to scan for and control base stations.\n\nPlease grant the required permissions to scan for devices.</string>
+
+    <!-- App Permission Settings -->
+    <string name="permission_settings_title">Permission Settings Required</string>
+    <string name="permission_settings_message">LightLink requires the necessary permissions to scan for and control base stations.\n\nOpen App info → Permissions and grant the required permissions.</string>
+
+    <!-- Precise Location Permission -->
+    <string name="permission_precise_location_title">Precise Location Required</string>
+    <string name="permission_precise_location_message">Only approximate location access is currently allowed.\n\nLightLink requires precise location permission to scan for base stations.\n\nOpen App info → Permissions → Location and enable \'Use precise location\'.</string>
+
+    <!-- Device Location Services -->
+    <string name="location_services_disabled_title">Location Services Disabled</string>
+    <string name="location_services_disabled_message">Location services are currently turned off on your device.\n\nPlease enable location services to scan for base stations with LightLink.</string>
 
     <!-- ==================================================
-     item_ble_device.xml / Base Station List
-     ================================================== -->
+         05. item_ble_device.xml / Base Station List
+         ================================================== -->
 
-    <!-- Device management accessibility -->
+    <!-- Default Accessibility -->
     <string name="device_management_open">Open device management</string>
-
-    <!-- Power button accessibility -->
     <string name="device_power_control">Power control</string>
 
-    <!-- RF channel and Bluetooth signal strength -->
+    <!-- RF Channel · RSSI Signal Strength -->
     <string name="device_signal_strong">Strong</string>
     <string name="device_signal_normal">Medium</string>
     <string name="device_signal_weak">Weak</string>
-
-    <!-- RF channel and RSSI display format -->
     <string name="device_radio_info_format">Channel %1$s | Signal %2$s · %3$d dBm</string>
 
-    <!-- Power State READ is unsupported -->
+    <!-- Last Power State Check -->
     <string name="device_last_checked_unsupported">Last state check | Not supported</string>
-
-    <!-- Power State check is in progress -->
     <string name="device_last_checked_checking">Last state check | Checking...</string>
-
-    <!-- No successful Power State check recorded -->
     <string name="device_last_checked_unknown">Last state check | Not confirmed</string>
-
-    <!-- Last successful Power State check time -->
     <string name="device_last_checked_format">Last state check | %1$s</string>
+
+    <!-- Device-Specific Accessibility -->
+    <string name="device_management_open_named">%1$s: Open device management</string>
+    <string name="device_power_processing">%1$s: Power operation in progress</string>
+    <string name="device_power_sleep">%1$s: Send Sleep command</string>
+    <string name="device_power_identify_unavailable">%1$s: Power control unavailable during Identify</string>
+    <string name="device_power_wake">%1$s: Send Wake command</string>
+    <string name="device_power_stuck">%1$s: Power state check failed (0x01). Power control unavailable</string>
+    <string name="device_power_manual">%1$s: Open manual power controls</string>
+    <string name="device_power_unavailable">%1$s: Power control unavailable</string>
 
 </resources>

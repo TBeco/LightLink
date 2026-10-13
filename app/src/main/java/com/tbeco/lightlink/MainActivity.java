@@ -1084,7 +1084,10 @@ public class MainActivity extends AppCompatActivity {
                 // 버튼 비활성 시에는 아무 메시지가 없지만 통신 실패는 표시한다.
                 Toast.makeText(
                         this,
-                        "식별 명령 실패: " + reason,
+                        getString(
+                                R.string.identify_command_failed,
+                                reason
+                        ),
                         Toast.LENGTH_SHORT
                 ).show();
 

@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import androidx.annotation.StringRes;
+
 
 // BLE 검색 결과를 RecyclerView에 표시해주는 Adapter
 public class BleDeviceAdapter
@@ -296,8 +298,18 @@ public class BleDeviceAdapter
          * RecyclerView가 ViewHolder를 재사용하므로
          * 바인딩할 때마다 해당 장치에 맞는 클릭 대상을 설정한다.
          */
+        /*
+         * 장치 관리 영역의 접근성 설명.
+         *
+         * 여러 장치가 등록된 경우에도
+         * 어느 장치의 관리 화면인지 구분할 수 있도록
+         * 실제 장치 이름을 포함한다.
+         */
         holder.layoutDeviceInfo.setContentDescription(
-                device.getName() + " 장치 관리 열기"
+                holder.itemView.getContext().getString(
+                        R.string.device_management_open_named,
+                        device.getName()
+                )
         );
 
         holder.layoutDeviceInfo.setOnClickListener(v -> {
@@ -535,9 +547,10 @@ public class BleDeviceAdapter
             );
 
 
-            holder.buttonPower.setContentDescription(
-                    device.getName()
-                            + " power command in progress"
+            setPowerButtonDescription(
+                    holder,
+                    device,
+                    R.string.device_power_processing
             );
 
 
@@ -565,9 +578,10 @@ public class BleDeviceAdapter
             );
 
 
-            holder.buttonPower.setContentDescription(
-                    device.getName()
-                            + " power off"
+            setPowerButtonDescription(
+                    holder,
+                    device,
+                    R.string.device_power_sleep
             );
 
 
@@ -607,9 +621,10 @@ public class BleDeviceAdapter
                         )
                 );
 
-                holder.buttonPower.setContentDescription(
-                        device.getName()
-                                + " power unavailable during Identify"
+                setPowerButtonDescription(
+                        holder,
+                        device,
+                        R.string.device_power_identify_unavailable
                 );
 
                 return;
@@ -627,9 +642,10 @@ public class BleDeviceAdapter
                     )
             );
 
-            holder.buttonPower.setContentDescription(
-                    device.getName()
-                            + " power on"
+            setPowerButtonDescription(
+                    holder,
+                    device,
+                    R.string.device_power_wake
             );
 
             return;
@@ -655,9 +671,10 @@ public class BleDeviceAdapter
                     )
             );
 
-            holder.buttonPower.setContentDescription(
-                    device.getName()
-                            + " power state stuck"
+            setPowerButtonDescription(
+                    holder,
+                    device,
+                    R.string.device_power_stuck
             );
 
             return;
@@ -689,9 +706,10 @@ public class BleDeviceAdapter
             );
 
 
-            holder.buttonPower.setContentDescription(
-                    device.getName()
-                            + " manual power control"
+            setPowerButtonDescription(
+                    holder,
+                    device,
+                    R.string.device_power_manual
             );
 
 
@@ -726,9 +744,33 @@ public class BleDeviceAdapter
         );
 
 
+        setPowerButtonDescription(
+                holder,
+                device,
+                R.string.device_power_unavailable
+        );
+    }
+
+    /*
+     * Base Station 전원 버튼의 접근성 설명을 설정한다.
+     *
+     * 장치 이름과 현재 상태에 맞는 문자열 리소스를 조합한다.
+     *
+     * 시스템 언어에 따라 적절한 strings.xml을 사용한다.
+     *
+     * 이 메서드는 접근성 설명만 변경하며
+     * 버튼 활성화 여부나 BLE 명령에는 영향을 주지 않는다.
+     */
+    private void setPowerButtonDescription(
+            DeviceViewHolder holder,
+            BleDeviceItem device,
+            @StringRes int descriptionResId) {
+
         holder.buttonPower.setContentDescription(
-                device.getName()
-                        + " power unavailable"
+                holder.itemView.getContext().getString(
+                        descriptionResId,
+                        device.getName()
+                )
         );
     }
 
