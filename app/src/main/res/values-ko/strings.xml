@@ -91,4 +91,24 @@
     <!-- 전원 버튼 접근성 -->
     <string name="device_power_control">전원 제어</string>
 
+    <!-- RF 채널 및 Bluetooth 신호 강도 -->
+    <string name="device_signal_strong">강함</string>
+    <string name="device_signal_normal">보통</string>
+    <string name="device_signal_weak">약함</string>
+
+    <!-- RF 채널 및 RSSI 표시 형식 -->
+    <string name="device_radio_info_format">채널 %1$s | 신호 %2$s · %3$d dBm</string>
+
+    <!-- Power State READ 미지원 -->
+    <string name="device_last_checked_unsupported">마지막 상태 확인 | 지원되지 않음</string>
+
+    <!-- Power State 확인 진행 중 -->
+    <string name="device_last_checked_checking">마지막 상태 확인 | 확인 중...</string>
+
+    <!-- Power State 확인 성공 기록 없음 -->
+    <string name="device_last_checked_unknown">마지막 상태 확인 | 확인되지 않음</string>
+
+    <!-- 마지막 Power State 확인 성공 시간 -->
+    <string name="device_last_checked_format">마지막 상태 확인 | %1$s</string>
+
 </resources>

@@ -4587,10 +4587,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 마지막 검색 시도 시간을 표시한다.
+     * 마지막 검색 시간을 화면에 표시한다.
      *
-     * 실제로 startScan() 호출에 예외가 발생하지 않은 직후 실행되므로
-     * '검색 완료 시간'이나 '장치를 발견한 시간'을 뜻하지 않는다.
+     * 날짜 및 시간 형식은 기존 형식을 유지한다.
+     *
+     * 사용자에게 표시하는 안내 문구는
+     * 시스템 언어에 맞는 strings.xml 리소스를 사용한다.
      */
     private void updateLastScanTime() {
 
@@ -4599,9 +4601,11 @@ public class MainActivity extends AppCompatActivity {
                         LAST_SCAN_TIME_FORMAT
                 );
 
-
         textLastScan.setText(
-                "최근 검색 | " + timeText
+                getString(
+                        R.string.last_scan_format,
+                        timeText
+                )
         );
     }
 }

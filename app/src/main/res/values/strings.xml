@@ -102,4 +102,24 @@
     <!-- Power button accessibility -->
     <string name="device_power_control">Power control</string>
 
+    <!-- RF channel and Bluetooth signal strength -->
+    <string name="device_signal_strong">Strong</string>
+    <string name="device_signal_normal">Medium</string>
+    <string name="device_signal_weak">Weak</string>
+
+    <!-- RF channel and RSSI display format -->
+    <string name="device_radio_info_format">Channel %1$s | Signal %2$s · %3$d dBm</string>
+
+    <!-- Power State READ is unsupported -->
+    <string name="device_last_checked_unsupported">Last state check | Not supported</string>
+
+    <!-- Power State check is in progress -->
+    <string name="device_last_checked_checking">Last state check | Checking...</string>
+
+    <!-- No successful Power State check recorded -->
+    <string name="device_last_checked_unknown">Last state check | Not confirmed</string>
+
+    <!-- Last successful Power State check time -->
+    <string name="device_last_checked_format">Last state check | %1$s</string>
+
 </resources>

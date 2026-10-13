@@ -339,21 +339,26 @@ public class BleDeviceAdapter
 
         String signalText;
 
-
         if (rssi >= SIGNAL_STRONG_RSSI) {
 
             signalText =
-                    "강함";
+                    holder.itemView.getContext().getString(
+                            R.string.device_signal_strong
+                    );
 
         } else if (rssi >= SIGNAL_NORMAL_RSSI) {
 
             signalText =
-                    "보통";
+                    holder.itemView.getContext().getString(
+                            R.string.device_signal_normal
+                    );
 
         } else {
 
             signalText =
-                    "약함";
+                    holder.itemView.getContext().getString(
+                            R.string.device_signal_weak
+                    );
         }
 
 
@@ -385,13 +390,12 @@ public class BleDeviceAdapter
 
 
         holder.textDeviceRadioInfo.setText(
-                "채널 "
-                        + channelText
-                        + " | 신호 "
-                        + signalText
-                        + " · "
-                        + rssi
-                        + " dBm"
+                holder.itemView.getContext().getString(
+                        R.string.device_radio_info_format,
+                        channelText,
+                        signalText,
+                        rssi
+                )
         );
     }
 
@@ -410,12 +414,14 @@ public class BleDeviceAdapter
      * 이전에 한 번이라도 성공한 적이 있다면
      * 현재 Checking... 상태이더라도
      * 마지막으로 성공했던 시간을 계속 표시한다.
+     *
+     * 사용자에게 표시하는 문자열은
+     * strings.xml의 언어별 리소스를 사용한다.
      */
     private void configureLastStateChecked(
             DeviceViewHolder holder,
             BleDeviceItem device,
             String status) {
-
 
         /*
          * Power State characteristic은 존재하지만
@@ -428,9 +434,8 @@ public class BleDeviceAdapter
         if (device.isStateReadUnsupported()) {
 
             holder.textLastStateChecked.setText(
-                    "마지막 상태 확인 | 지원되지 않음"
+                    R.string.device_last_checked_unsupported
             );
-
 
             return;
         }
@@ -438,7 +443,6 @@ public class BleDeviceAdapter
 
         LocalDateTime lastStateCheckedAt =
                 device.getLastStateCheckedAt();
-
 
         /*
          * 실제 상태 확인 성공 기록이
@@ -448,11 +452,15 @@ public class BleDeviceAdapter
 
             /*
              * 현재 상태를 확인하고 있는 중
+             *
+             * 주의:
+             * "Checking..."은 내부 상태값이므로
+             * 번역하거나 변경하지 않는다.
              */
             if ("Checking...".equals(status)) {
 
                 holder.textLastStateChecked.setText(
-                        "마지막 상태 확인 | 확인 중..."
+                        R.string.device_last_checked_checking
                 );
 
             } else {
@@ -462,10 +470,9 @@ public class BleDeviceAdapter
                  * 실제 Power State를 확정하지 못한 경우
                  */
                 holder.textLastStateChecked.setText(
-                        "마지막 상태 확인 | 확인되지 않음"
+                        R.string.device_last_checked_unknown
                 );
             }
-
 
             return;
         }
@@ -474,16 +481,23 @@ public class BleDeviceAdapter
         /*
          * 이전에 실제 Power State 확인에
          * 성공한 기록이 있는 경우
+         *
+         * 기존 날짜 형식을 유지한다.
          */
         String formattedTime =
                 lastStateCheckedAt.format(
                         LAST_STATE_TIME_FORMAT
                 );
 
-
+        /*
+         * 마지막 상태 확인 시각을
+         * 현재 시스템 언어에 맞게 표시한다.
+         */
         holder.textLastStateChecked.setText(
-                "마지막 상태 확인 | "
-                        + formattedTime
+                holder.itemView.getContext().getString(
+                        R.string.device_last_checked_format,
+                        formattedTime
+                )
         );
     }
 
