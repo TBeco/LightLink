@@ -2528,12 +2528,22 @@ public class MainActivity extends AppCompatActivity {
 
         /*
          * 새로운 검색이므로
-         * 이전 목록과 중복 기록을 모두 제거
+         * 이전 목록과 중복 기록을 모두 제거한다.
+         *
+         * 기존 항목 수를 먼저 저장하여
+         * RecyclerView에 삭제된 범위를 정확하게 알린다.
          */
+        int removedCount = deviceList.size();
+
         deviceList.clear();
         seenAddresses.clear();
 
-        deviceAdapter.notifyDataSetChanged();
+        if (removedCount > 0) {
+            deviceAdapter.notifyItemRangeRemoved(
+                    0,
+                    removedCount
+            );
+        }
 
 
         scanning =
@@ -2880,9 +2890,25 @@ public class MainActivity extends AppCompatActivity {
         clearPowerControllers();
         clearIdentifyControllers();
         bleScanner = null;
+
+        /*
+         * Bluetooth가 꺼지면 기존 검색 결과를 제거한다.
+         *
+         * 삭제할 항목 수를 먼저 저장하여
+         * RecyclerView에 정확한 변경 범위를 알린다.
+         */
+        int removedCount = deviceList.size();
+
         seenAddresses.clear();
         deviceList.clear();
-        deviceAdapter.notifyDataSetChanged();
+
+        if (removedCount > 0) {
+            deviceAdapter.notifyItemRangeRemoved(
+                    0,
+                    removedCount
+            );
+        }
+
         textEmpty.setVisibility(View.VISIBLE);
         textEmpty.setText(
                 R.string.empty_bluetooth_off_tap_search
