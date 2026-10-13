@@ -308,10 +308,18 @@ public class MainActivity extends AppCompatActivity {
             new HashMap<>();
     private final Map<String, Long> identifyCooldownUntil = new HashMap<>();
 
-    // 현재 열려 있는 장치 관리 시트. 장치 상태 변경 시 버튼만 갱신한다.
+    /*
+     * 현재 열려 있는 장치 관리 Bottom Sheet.
+     *
+     * 장치 상태가 변경되면 식별 버튼과
+     * READ 미지원 안내 문구를 함께 갱신한다.
+     */
     private BottomSheetDialog currentDeviceSheet;
     private BleDeviceItem currentSheetDevice;
     private View currentIdentifyButton;
+
+    // READ 미지원 장치 전용 안내 문구
+    private View currentIdentifyWarningUnsupported;
 
 
     /*
@@ -894,11 +902,28 @@ public class MainActivity extends AppCompatActivity {
         TextView deviceName = sheetView.findViewById(R.id.textSheetDeviceName);
         View buttonClose = sheetView.findViewById(R.id.buttonSheetClose);
         View buttonIdentify = sheetView.findViewById(R.id.buttonIdentify);
+
+        /*
+         * Power State READ 미지원 장치 전용 안내.
+         *
+         * 기본 안내 문구는 XML에서 항상 표시하고,
+         * 이 추가 안내만 장치 상태에 따라 표시한다.
+         */
+        View identifyWarningUnsupported =
+                sheetView.findViewById(
+                        R.id.textIdentifyWarningUnsupported
+                );
+
         deviceName.setText(device.getName());
+
 
         currentDeviceSheet = dialog;
         currentSheetDevice = device;
         currentIdentifyButton = buttonIdentify;
+
+        // READ 미지원 안내 문구 연결
+        currentIdentifyWarningUnsupported = identifyWarningUnsupported;
+
         buttonClose.setOnClickListener(v -> dialog.dismiss());
         buttonIdentify.setOnClickListener(v -> startIdentify(device));
 
@@ -907,6 +932,9 @@ public class MainActivity extends AppCompatActivity {
                 currentDeviceSheet = null;
                 currentSheetDevice = null;
                 currentIdentifyButton = null;
+
+                // Bottom Sheet 종료 시 참조 정리
+                currentIdentifyWarningUnsupported = null;
             }
         });
         dialog.setOnShowListener(ignored -> {
@@ -946,12 +974,60 @@ public class MainActivity extends AppCompatActivity {
                 device.getAddress(), 0L);
     }
 
+    /*
+     * 현재 열려 있는 Bottom Sheet의 식별 관련 UI 갱신.
+     *
+     * 1. Identify 버튼 활성화 여부
+     * 2. Power State READ 미지원 안내 표시 여부
+     *
+     * 장치 상태 변경 시 기존 refreshIdentifyButtonFor()를 통해
+     * 이 메서드가 호출된다.
+     */
     private void refreshIdentifyButton() {
-        if (currentIdentifyButton == null || currentSheetDevice == null) return;
+
+        if (currentIdentifyButton == null
+                || currentSheetDevice == null) {
+            return;
+        }
+
+        /*
+         * Identify 버튼 활성화 상태 갱신.
+         *
+         * 기존 canIdentify() 조건은 그대로 사용한다.
+         */
         boolean enabled = canIdentify(currentSheetDevice);
+
         currentIdentifyButton.setEnabled(enabled);
-        // MaterialButton disabled 스타일에 더해 눈으로도 확실히 어둡게 보이게 한다.
-        currentIdentifyButton.setAlpha(enabled ? 1.0f : 0.43f);
+
+        // 비활성 상태를 시각적으로 명확하게 표시
+        currentIdentifyButton.setAlpha(
+                enabled ? 1.0f : 0.43f
+        );
+
+
+        /*
+         * Power State READ 미지원 장치 전용 안내.
+         *
+         * 상태 조회를 지원하지 않으면서
+         * 수동 전원 제어가 가능한 장치에서만 표시한다.
+         *
+         * Checking, Processing, Stuck 등에서는 표시하지 않는다.
+         */
+        if (currentIdentifyWarningUnsupported != null) {
+
+            boolean showUnsupportedWarning =
+                    "State read unsupported".equals(
+                            currentSheetDevice.getStatus()
+                    )
+                            && currentSheetDevice.isStateReadUnsupported()
+                            && currentSheetDevice.isManualPowerControlAvailable();
+
+            currentIdentifyWarningUnsupported.setVisibility(
+                    showUnsupportedWarning
+                            ? View.VISIBLE
+                            : View.GONE
+            );
+        }
     }
 
     private void refreshIdentifyButtonFor(BleDeviceItem device) {

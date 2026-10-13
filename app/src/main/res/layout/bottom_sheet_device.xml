@@ -99,15 +99,47 @@
         android:textSize="14sp"
         android:lineSpacingExtra="3dp" />
 
-    <!-- 주의사항 -->
+    <!--
+        기본 식별 안내
+
+        모든 베이스스테이션에 공통으로 표시한다.
+        펌웨어에 따라 Sleep 상태에서의 Identify 동작이
+        다를 수 있음을 안내한다.
+    -->
     <TextView
+        android:id="@+id/textIdentifyWarning"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
 
-        android:text="※ Sleep 상태에서는 장치가 깨어날 수 있습니다."
+        android:text="@string/identify_warning_default"
         android:textColor="#E6B96A"
-        android:textSize="12sp" />
+        android:textSize="12sp"
+        android:lineSpacingExtra="2dp" />
+
+    <!--
+        Power State READ 미지원 장치 전용 안내
+
+        전원 상태를 읽을 수 없지만 수동 전원 제어가
+        가능한 장치에서만 표시한다.
+
+        기본적으로 GONE 상태이며,
+        MainActivity에서 장치 정보에 따라 표시 여부를 변경한다.
+
+        GONE 상태에서는 레이아웃 공간을 차지하지 않는다.
+    -->
+    <TextView
+        android:id="@+id/textIdentifyWarningUnsupported"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+
+        android:text="@string/identify_warning_read_unsupported"
+        android:textColor="#E6B96A"
+        android:textSize="12sp"
+        android:lineSpacingExtra="2dp"
+
+        android:visibility="gone" />
 
     <!-- 식별 버튼 -->
     <com.google.android.material.button.MaterialButton

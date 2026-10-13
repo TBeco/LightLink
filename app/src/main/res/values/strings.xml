@@ -1,3 +1,11 @@
 <resources>
+
     <string name="app_name">LightLink</string>
+
+    <!-- 모든 베이스스테이션에 표시하는 기본 안내 -->
+    <string name="identify_warning_default">※ Sleep 상태에서는 장치가 깨어날 수 있습니다.</string>
+
+    <!-- Power State READ 미지원 장치 전용 안내 -->
+    <string name="identify_warning_read_unsupported">※ 이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 LED가 초록색인지 확인해 주세요.</string>
+
 </resources>
