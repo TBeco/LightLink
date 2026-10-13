@@ -8,6 +8,9 @@
     <!-- App name (not translated) -->
     <string name="app_name" translatable="false">LightLink</string>
 
+    <!-- App version (not translated) -->
+    <string name="app_version_format" translatable="false">v%1$s</string>
+
     <!-- ==================================================
          01. activity_main.xml / Main Screen
          ================================================== -->
@@ -21,7 +24,7 @@
     <string name="last_scan_format">Last scan | %1$s</string>
 
     <!-- BLE Scan Status · Results -->
-    <string name="empty_scanning">Scanning...</string>
+    <string name="empty_scanning">Scanning…</string>
     <string name="empty_no_base_station">No Base Station found</string>
     <string name="empty_scan_failed">BLE scan failed: %1$d</string>
 
@@ -120,7 +123,7 @@
 
     <!-- Last Power State Check -->
     <string name="device_last_checked_unsupported">Last state check | Not supported</string>
-    <string name="device_last_checked_checking">Last state check | Checking...</string>
+    <string name="device_last_checked_checking">Last state check | Checking…</string>
     <string name="device_last_checked_unknown">Last state check | Not confirmed</string>
     <string name="device_last_checked_format">Last state check | %1$s</string>
 

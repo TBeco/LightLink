@@ -59,6 +59,7 @@
         android:textStyle="bold"
 
         android:accessibilityHeading="true"
+        tools:ignore="UnusedAttribute"
 
         tools:text="권한 설정 필요" />
 

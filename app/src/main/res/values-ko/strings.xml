@@ -18,7 +18,7 @@
     <string name="last_scan_format">최근 검색 | %1$s</string>
 
     <!-- BLE 검색 진행 · 결과 -->
-    <string name="empty_scanning">검색 중...</string>
+    <string name="empty_scanning">검색 중…</string>
     <string name="empty_no_base_station">검색된 베이스스테이션이 없습니다.</string>
     <string name="empty_scan_failed">BLE 검색 실패: %1$d</string>
 
@@ -113,7 +113,7 @@
 
     <!-- 마지막 Power State 확인 -->
     <string name="device_last_checked_unsupported">마지막 상태 확인 | 지원되지 않음</string>
-    <string name="device_last_checked_checking">마지막 상태 확인 | 확인 중...</string>
+    <string name="device_last_checked_checking">마지막 상태 확인 | 확인 중…</string>
     <string name="device_last_checked_unknown">마지막 상태 확인 | 확인되지 않음</string>
     <string name="device_last_checked_format">마지막 상태 확인 | %1$s</string>
 

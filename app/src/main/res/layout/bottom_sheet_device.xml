@@ -76,6 +76,7 @@
                 android:textStyle="bold"
 
                 android:accessibilityHeading="true"
+                tools:ignore="UnusedAttribute"
 
                 tools:text="LHB-94A66C14" />
 
@@ -149,7 +150,8 @@
         android:textSize="16sp"
         android:textStyle="bold"
 
-        android:accessibilityHeading="true" />
+        android:accessibilityHeading="true"
+        tools:ignore="UnusedAttribute" />
 
 
     <!--

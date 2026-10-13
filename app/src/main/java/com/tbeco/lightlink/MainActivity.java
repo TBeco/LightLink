@@ -26,7 +26,8 @@
  * - 앱 내부의 안내창은 dialog_settings_action.xml 하나로 스타일을 통일한다.
  *   Android OS 자체의 런타임 권한/Bluetooth 승인창은 시스템 UI를 사용한다.
  *
- * 이 파일의 사용자 문구는 추후 다국어 지원 시 strings.xml로 이관하는 것이 좋다.
+ * 사용자에게 표시하는 문구는 strings.xml에서 관리한다.
+ * BLE 내부 상태값과 진단 로그는 별도로 관리한다.
  */
 package com.tbeco.lightlink;
 
@@ -60,6 +61,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.os.SystemClock;
+import java.util.Locale;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -645,8 +647,17 @@ public class MainActivity extends AppCompatActivity {
         TextView textAppVersion =
                 findViewById(R.id.textAppVersion);
 
+        /*
+         * 앱 버전 표시.
+         *
+         * 버전 이름은 BuildConfig에서 가져오며,
+         * 화면 표시 형식은 strings.xml에서 관리한다.
+         */
         textAppVersion.setText(
-                "v" + BuildConfig.VERSION_NAME
+                getString(
+                        R.string.app_version_format,
+                        BuildConfig.VERSION_NAME
+                )
         );
 
 
@@ -859,14 +870,18 @@ public class MainActivity extends AppCompatActivity {
 
 
         /*
-         * Android 시스템의 Bluetooth 기능 가져오기
+         * Android Bluetooth 서비스 가져오기.
+         *
+         * 시스템에서 BluetoothManager를 제공하지 않는 경우에도
+         * NullPointerException이 발생하지 않도록 처리한다.
          */
         BluetoothManager bluetoothManager =
                 getSystemService(BluetoothManager.class);
 
-
         bluetoothAdapter =
-                bluetoothManager.getAdapter();
+                bluetoothManager != null
+                        ? bluetoothManager.getAdapter()
+                        : null;
 
         /*
          * 앱 시작 시 Search 버튼 초기 상태 설정
@@ -903,22 +918,35 @@ public class MainActivity extends AppCompatActivity {
     private void showDeviceManagementSheet(BleDeviceItem device) {
         if (currentDeviceSheet != null) currentDeviceSheet.dismiss();
 
+        /*
+         * 베이스스테이션 관리 Bottom Sheet 생성.
+         *
+         * Dialog가 직접 XML 레이아웃을 생성하도록 하여
+         * 루트 View의 레이아웃 속성이 정상적으로 적용되도록 한다.
+         */
         BottomSheetDialog dialog = new BottomSheetDialog(this);
-        View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_device, null);
-        dialog.setContentView(sheetView);
 
-        TextView deviceName = sheetView.findViewById(R.id.textSheetDeviceName);
-        View buttonClose = sheetView.findViewById(R.id.buttonSheetClose);
-        View buttonIdentify = sheetView.findViewById(R.id.buttonIdentify);
+        dialog.setContentView(
+                R.layout.bottom_sheet_device
+        );
+
+        /*
+         * Bottom Sheet 내부 UI 연결.
+         */
+        TextView deviceName =
+                dialog.findViewById(R.id.textSheetDeviceName);
+
+        View buttonClose =
+                dialog.findViewById(R.id.buttonSheetClose);
+
+        View buttonIdentify =
+                dialog.findViewById(R.id.buttonIdentify);
 
         /*
          * Power State READ 미지원 장치 전용 안내.
-         *
-         * 기본 안내 문구는 XML에서 항상 표시하고,
-         * 이 추가 안내만 장치 상태에 따라 표시한다.
          */
         View identifyWarningUnsupported =
-                sheetView.findViewById(
+                dialog.findViewById(
                         R.id.textIdentifyWarningUnsupported
                 );
 
@@ -2210,19 +2238,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 위치 서비스가 꺼져 있을 때 검색 화면에 표시할 비차단 안내.
+     * 스마트폰의 전체 위치 서비스가 비활성화되었을 때
+     * 메인 화면에 안내 문구를 표시한다.
      *
-     * 목록이 이미 있는 경우에는 장치 상태/전원 버튼 영역을 갑자기 덮지 않는다.
-     * 사용자는 Search 버튼을 다시 누르면 별도의 설정 안내창을 볼 수 있다.
-     */
-    /*
-     * 스마트폰의 전체 위치 서비스가
-     * 비활성화된 경우 안내 문구를 표시한다.
+     * 검색된 장치가 없는 경우에만 textEmpty를 갱신하며,
+     * 기존 장치 목록과 GATT 연결은 변경하지 않는다.
      *
-     * 기존 검색 결과가 남아 있다면
-     * 목록을 강제로 덮어쓰지 않는다.
-     *
-     * 문자열만 다국어 리소스로 변경한다.
+     * 사용자가 Search 버튼을 누르면
+     * 별도의 위치 설정 안내창을 표시할 수 있다.
      */
     private void showLocationServicesDisabledMessage() {
 
@@ -2239,22 +2262,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 스마트폰 전체 위치 서비스가 OFF일 때 표시하는 LightLink 스타일 안내창.
+     * 스마트폰의 전체 위치 서비스가 비활성화된 경우
+     * 시스템 위치 설정으로 이동하는 안내창을 표시한다.
      *
-     * 앱의 위치 접근 권한(정확한 위치)과는 다른 설정이므로,
-     * '설정 열기'는 앱 정보 화면이 아닌 시스템의 전체 위치 설정을 연다.
-     * 이번 UI 변경에서는 공식 Intent만 사용하며, Fold2에서 효과가 없었던
-     * 위치 스위치용 실험 Ripple 인자는 전달하지 않는다.
-     */
-    /*
-     * 스마트폰의 전체 위치 서비스가
-     * 비활성화된 경우 설정 화면 이동을 안내한다.
+     * 앱의 위치 접근 권한과 기기 전체 위치 서비스는
+     * 서로 다른 설정이므로 구분하여 안내한다.
      *
-     * 앱의 위치 접근 권한과
-     * 기기 전체 위치 서비스는 서로 다른 설정이다.
-     *
-     * 실행 버튼을 누르면 기존의
-     * openDeviceLocationSettings()를 호출한다.
+     * 실행 버튼을 누르면 openDeviceLocationSettings()를 호출하며,
+     * Android의 공식 Intent를 통해 위치 설정 화면을 연다.
      */
     private void showLocationServicesDisabledDialog() {
 
@@ -2612,12 +2627,10 @@ public class MainActivity extends AppCompatActivity {
                     String deviceName =
                             result.getDevice().getName();
 
-
                     /*
                      * BLE 광고 패킷 안의 이름
                      */
                     String advertisedName = null;
-
 
                     if (result.getScanRecord() != null) {
 
@@ -2626,33 +2639,13 @@ public class MainActivity extends AppCompatActivity {
                                         .getDeviceName();
                     }
 
-
                     // MAC 주소
                     String address =
                             result.getDevice().getAddress();
 
-
                     // 신호 세기
                     int rssi =
                             result.getRssi();
-
-
-                    /*
-                     * 디버깅을 위해
-                     * Logcat에는 주변 BLE 장치를 모두 출력
-                     */
-                    AppLog.d(
-                            "Device"
-                                    + " / deviceName = "
-                                    + deviceName
-                                    + " / advertisedName = "
-                                    + advertisedName
-                                    + " / address = "
-                                    + address
-                                    + " / RSSI = "
-                                    + rssi
-                    );
-
 
                     /*
                      * 화면에 사용할 이름 결정
@@ -2661,7 +2654,6 @@ public class MainActivity extends AppCompatActivity {
                      * 없으면 BluetoothDevice 이름 사용
                      */
                     String displayName;
-
 
                     if (advertisedName != null) {
 
@@ -2679,7 +2671,6 @@ public class MainActivity extends AppCompatActivity {
                                 "(No name)";
                     }
 
-
                     /*
                      * Base Station 2.0만 사용
                      *
@@ -2687,10 +2678,32 @@ public class MainActivity extends AppCompatActivity {
                      * LHB- 로 시작하는 이름으로 검색된다.
                      */
                     if (!displayName.startsWith("LHB-")) {
-
                         return;
                     }
 
+                    /*
+                     * 최적화:
+                     *
+                     * 기존에는 주변의 모든 BLE 광고에 대해
+                     * 로그 문자열을 생성했다.
+                     *
+                     * 이제 LHB- 장치로 확인된 경우에만
+                     * 로그를 생성하여 불필요한 작업을 줄인다.
+                     *
+                     * 검색 조건이나 장치 등록 동작에는
+                     * 영향을 주지 않는다.
+                     */
+                    AppLog.d(
+                            "Device"
+                                    + " / deviceName = "
+                                    + deviceName
+                                    + " / advertisedName = "
+                                    + advertisedName
+                                    + " / address = "
+                                    + address
+                                    + " / RSSI = "
+                                    + rssi
+                    );
 
                     /*
                      * 같은 MAC 주소가 이미 검색됐다면
@@ -2701,10 +2714,8 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
-
                     // 처음 발견한 Base Station
                     seenAddresses.add(address);
-
 
                     /*
                      * 새로운 Base Station 객체 생성
@@ -2718,18 +2729,15 @@ public class MainActivity extends AppCompatActivity {
                                     rssi
                             );
 
-
                     // RecyclerView 데이터에 추가
                     deviceList.add(
                             newDevice
                     );
 
-
                     // 새 항목 추가 알림
                     deviceAdapter.notifyItemInserted(
                             deviceList.size() - 1
                     );
-
 
                     /*
                      * Base Station을 하나라도 찾았으므로
@@ -2739,7 +2747,6 @@ public class MainActivity extends AppCompatActivity {
                             View.GONE
                     );
 
-
                     /*
                      * 상태 조회 대기열에 추가
                      */
@@ -2747,14 +2754,12 @@ public class MainActivity extends AppCompatActivity {
                             newDevice
                     );
 
-
                     /*
                      * 현재 다른 Base Station의 상태를
                      * 확인하고 있지 않다면 바로 시작
                      */
                     processNextStatusRead();
                 }
-
 
                 /*
                  * BLE 검색 자체가 실패한 경우
@@ -2770,7 +2775,6 @@ public class MainActivity extends AppCompatActivity {
                     scanning =
                             false;
 
-
                     /*
                      * 실패한 Scan의 자동 종료 타이머 제거
                      */
@@ -2778,13 +2782,11 @@ public class MainActivity extends AppCompatActivity {
                             scanTimeoutRunnable
                     );
 
-
                     runOnUiThread(() -> {
 
                         textEmpty.setVisibility(
                                 View.VISIBLE
                         );
-
 
                         textEmpty.setText(
                                 getString(
@@ -2792,7 +2794,6 @@ public class MainActivity extends AppCompatActivity {
                                         errorCode
                                 )
                         );
-
 
                         updateScanButton();
                     });
@@ -3232,7 +3233,7 @@ public class MainActivity extends AppCompatActivity {
                                                 : "(unknown)"
                                 )
                                         + " / properties = 0x"
-                                        + Integer.toHexString(modeProperties).toUpperCase()
+                                        + Integer.toHexString(modeProperties).toUpperCase(Locale.ROOT)
                                         + " / READ = "
                                         + modeReadable
                                         + " / WRITE = "
@@ -3312,7 +3313,7 @@ public class MainActivity extends AppCompatActivity {
                                             : "(unknown)"
                             )
                                     + " / properties = 0x"
-                                    + Integer.toHexString(properties).toUpperCase()
+                                    + Integer.toHexString(properties).toUpperCase(Locale.ROOT)
                                     + " / READ = "
                                     + readable
                                     + " / WRITE = "

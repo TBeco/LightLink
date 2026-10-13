@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 
+import java.util.Locale;
 import java.util.UUID;
 
 
@@ -1079,7 +1080,7 @@ public class BaseStationGattController {
                                         ? currentDevice.getName()
                                         : "(unknown)")
                                         + " / properties = 0x"
-                                        + Integer.toHexString(modeProperties).toUpperCase()
+                                        + Integer.toHexString(modeProperties).toUpperCase(Locale.ROOT)
                                         + " / READ = "
                                         + modeReadable
                                         + " / WRITE = "
