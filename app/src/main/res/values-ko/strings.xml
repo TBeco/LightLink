@@ -19,6 +19,39 @@
     <string name="last_scan_format">최근 검색 | %1$s</string>
 
 
+    <!-- BLE 검색 상태 안내 -->
+
+    <!-- 검색 진행 중 -->
+    <string name="empty_scanning">검색 중...</string>
+
+    <!-- 검색 결과 없음 -->
+    <string name="empty_no_base_station">검색된 베이스스테이션이 없습니다.</string>
+
+    <!-- BLE 검색 실패 -->
+    <string name="empty_scan_failed">BLE 검색 실패: %1$d</string>
+
+    <!-- Bluetooth 활성화 -->
+    <string name="empty_bluetooth_on">블루투스가 켜졌습니다. 검색 버튼을 눌러 장치를 검색하세요.</string>
+
+    <!-- Bluetooth 비활성화 -->
+    <string name="empty_bluetooth_off_tap_search">블루투스가 꺼져 있습니다. 검색 버튼을 눌러 켜 주세요.</string>
+
+    <!-- Bluetooth 활성화 요청 -->
+    <string name="empty_bluetooth_off_turn_on">블루투스가 꺼져 있습니다. 검색하려면 켜 주세요.</string>
+
+    <!-- Bluetooth 미지원 -->
+    <string name="empty_bluetooth_not_supported">이 기기는 블루투스를 지원하지 않습니다.</string>
+
+    <!-- Bluetooth 스캐너 권한 오류 -->
+    <string name="empty_bluetooth_scanner_permission_error">블루투스 스캐너를 사용할 수 없습니다. 권한을 확인해 주세요.</string>
+
+    <!-- BLE 스캐너 사용 불가 -->
+    <string name="empty_ble_scanner_unavailable">BLE 스캐너를 사용할 수 없습니다.</string>
+
+    <!-- BLE 검색 시작 실패 -->
+    <string name="empty_ble_scan_start_failed">BLE 검색을 시작할 수 없습니다. 블루투스 권한을 확인해 주세요.</string>
+
+
     <!-- ==================================================
          bottom_sheet_device.xml / 장치 관리
          ================================================== -->

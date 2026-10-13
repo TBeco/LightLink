@@ -246,7 +246,9 @@ public class MainActivity extends AppCompatActivity {
             } else if (state == BluetoothAdapter.STATE_ON) {
                 if (!scanning && deviceList.isEmpty()) {
                     textEmpty.setVisibility(View.VISIBLE);
-                    textEmpty.setText("Bluetooth is ON. Tap Search to scan.");
+                    textEmpty.setText(
+                            R.string.empty_bluetooth_on
+                    );
                 }
                 updateScanButton();
                 refreshIdentifyButton();
@@ -572,7 +574,9 @@ public class MainActivity extends AppCompatActivity {
                             checkPermissionAndScan();
                         } else {
                             textEmpty.setVisibility(View.VISIBLE);
-                            textEmpty.setText("Bluetooth is OFF. Tap Search to enable it.");
+                            textEmpty.setText(
+                                    R.string.empty_bluetooth_off_tap_search
+                            );
                             updateScanButton();
                         }
                     }
@@ -2375,7 +2379,9 @@ public class MainActivity extends AppCompatActivity {
         if (bluetoothAdapter == null) {
 
             textEmpty.setVisibility(View.VISIBLE);
-            textEmpty.setText("Bluetooth not supported");
+            textEmpty.setText(
+                    R.string.empty_bluetooth_not_supported
+            );
 
             return;
         }
@@ -2386,7 +2392,9 @@ public class MainActivity extends AppCompatActivity {
          */
         if (!bluetoothAdapter.isEnabled()) {
             textEmpty.setVisibility(View.VISIBLE);
-            textEmpty.setText("Bluetooth is OFF. Turn it on to scan.");
+            textEmpty.setText(
+                    R.string.empty_bluetooth_off_turn_on
+            );
             bluetoothEnableLauncher.launch(
                     new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             );
@@ -2402,7 +2410,9 @@ public class MainActivity extends AppCompatActivity {
         } catch (SecurityException | IllegalStateException e) {
             AppLog.d("BLE scanner unavailable", e);
             textEmpty.setVisibility(View.VISIBLE);
-            textEmpty.setText("Bluetooth scanner unavailable. Check permissions.");
+            textEmpty.setText(
+                    R.string.empty_bluetooth_scanner_permission_error
+            );
             updateScanButton();
             return;
         }
@@ -2411,7 +2421,9 @@ public class MainActivity extends AppCompatActivity {
         if (bleScanner == null) {
 
             textEmpty.setVisibility(View.VISIBLE);
-            textEmpty.setText("BLE scanner unavailable");
+            textEmpty.setText(
+                    R.string.empty_ble_scanner_unavailable
+            );
 
             return;
         }
@@ -2457,7 +2469,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         textEmpty.setText(
-                "Scanning..."
+                R.string.empty_scanning
         );
 
 
@@ -2479,7 +2491,9 @@ public class MainActivity extends AppCompatActivity {
             scanning = false;
             bleScanner = null;
             textEmpty.setVisibility(View.VISIBLE);
-            textEmpty.setText("Unable to start BLE scan. Check Bluetooth permissions.");
+            textEmpty.setText(
+                    R.string.empty_ble_scan_start_failed
+            );
             updateScanButton();
             return;
         }
@@ -2709,8 +2723,10 @@ public class MainActivity extends AppCompatActivity {
 
 
                         textEmpty.setText(
-                                "BLE scan failed: "
-                                        + errorCode
+                                getString(
+                                        R.string.empty_scan_failed,
+                                        errorCode
+                                )
                         );
 
 
@@ -2780,7 +2796,7 @@ public class MainActivity extends AppCompatActivity {
             );
 
             textEmpty.setText(
-                    "No Base Station found"
+                    R.string.empty_no_base_station
             );
         }
     }
@@ -2803,7 +2819,9 @@ public class MainActivity extends AppCompatActivity {
         deviceList.clear();
         deviceAdapter.notifyDataSetChanged();
         textEmpty.setVisibility(View.VISIBLE);
-        textEmpty.setText("Bluetooth is OFF. Tap Search to enable it.");
+        textEmpty.setText(
+                R.string.empty_bluetooth_off_tap_search
+        );
         updateScanButton();
     }
 
@@ -4548,7 +4566,7 @@ public class MainActivity extends AppCompatActivity {
             );
 
             buttonScan.setContentDescription(
-                    "Stop scan"
+                    getString(R.string.scan_stop)
             );
 
             buttonScan.setEnabled(
@@ -4567,7 +4585,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         buttonScan.setContentDescription(
-                "Search"
+                getString(R.string.scan_search)
         );
 
 

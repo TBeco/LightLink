@@ -26,6 +26,39 @@
     <string name="last_scan_format">Last scan | %1$s</string>
 
 
+    <!-- BLE 검색 상태 안내 -->
+
+    <!-- 검색 진행 중 -->
+    <string name="empty_scanning">Scanning...</string>
+
+    <!-- 검색 결과 없음 -->
+    <string name="empty_no_base_station">No Base Station found</string>
+
+    <!-- BLE 검색 실패 -->
+    <string name="empty_scan_failed">BLE scan failed: %1$d</string>
+
+    <!-- Bluetooth enabled -->
+    <string name="empty_bluetooth_on">Bluetooth is ON. Tap Search to scan.</string>
+
+    <!-- Bluetooth disabled -->
+    <string name="empty_bluetooth_off_tap_search">Bluetooth is OFF. Tap Search to enable it.</string>
+
+    <!-- Bluetooth enable request -->
+    <string name="empty_bluetooth_off_turn_on">Bluetooth is OFF. Turn it on to scan.</string>
+
+    <!-- Bluetooth unsupported -->
+    <string name="empty_bluetooth_not_supported">Bluetooth not supported</string>
+
+    <!-- Bluetooth scanner permission error -->
+    <string name="empty_bluetooth_scanner_permission_error">Bluetooth scanner unavailable. Check permissions.</string>
+
+    <!-- BLE scanner unavailable -->
+    <string name="empty_ble_scanner_unavailable">BLE scanner unavailable</string>
+
+    <!-- BLE scan start failure -->
+    <string name="empty_ble_scan_start_failed">Unable to start BLE scan. Check Bluetooth permissions.</string>
+
+
     <!-- ==================================================
          bottom_sheet_device.xml / Device Management
          ================================================== -->
