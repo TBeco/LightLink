@@ -577,7 +577,7 @@ public class BleDeviceAdapter
              * Identify GATT 작업이 진행 중인 경우.
              *
              * 연결, 재시도, WRITE 처리 중에는
-             * 전원 버튼을 회색으로 표시하고 클릭을 막는다.
+             * 전원 버튼을 어두운 파란색으로 표시하고 클릭을 막는다.
              */
             boolean identifyBusy =
                     identifyBusyChecker != null

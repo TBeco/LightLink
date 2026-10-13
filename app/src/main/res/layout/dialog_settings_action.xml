@@ -1,94 +1,199 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <!--
     LightLink 공통 안내창 UI.
 
     사용처:
-      1. 권한 설정으로 이동해야 할 때
-      2. 런타임 권한을 다시 요청하기 전에 설명할 때
-      3. 스마트폰 전체 위치 서비스를 켜도록 안내할 때
+    1. 앱 권한 설정으로 이동해야 할 때
+    2. 런타임 권한을 다시 요청하기 전에 설명할 때
+    3. 스마트폰 전체 위치 서비스를 켜도록 안내할 때
 
-    dialog_manual_power.xml과 같은 둥근 팝업 배경과 버튼 배경을 사용한다.
-    본문 내용과 오른쪽 버튼 이름은 MainActivity에서 상황에 맞게 변경한다.
-    시스템 자체 권한 요청창은 Android가 표시하므로 이 스타일이 적용되지 않는다.
+    dialog_manual_power.xml과 동일한
+    팝업 배경과 버튼 배경을 사용한다.
+
+    제목, 본문, 실행 버튼 문구는
+    MainActivity의 showStyledActionDialog()에서 설정한다.
+
+    시스템 자체의 권한 요청창은 Android가 표시하므로
+    이 XML의 디자인이 적용되지 않는다.
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+
     android:orientation="vertical"
+
     android:paddingStart="24dp"
     android:paddingTop="24dp"
     android:paddingEnd="24dp"
     android:paddingBottom="20dp"
+
     android:background="@drawable/dialog_manual_background">
 
-    <!-- 제목: MainActivity에서 상황별 한국어 문구를 지정한다. -->
-    <TextView
-        android:id="@+id/textSettingsDialogTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="설정 안내"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold" />
-
-    <!-- 안내 본문: 여러 문단과 설정 경로 표시를 위해 줄 간격을 넓힌다. -->
-    <TextView
-        android:id="@+id/textSettingsDialogMessage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:text="설정이 필요합니다."
-        android:textColor="#BDBDBD"
-        android:textSize="15sp"
-        android:lineSpacingExtra="3dp" />
 
     <!--
-        하단 공통 버튼 영역.
+        안내창 제목
 
-        수동 전원 제어창과 동일한 버튼 Drawable을 사용한다.
-        취소 버튼보다 실행 버튼에 더 넓은 공간을 할당하며,
-        두 버튼 사이에는 60dp의 간격을 둔다.
+        실제 제목은 MainActivity에서 동적으로 설정한다.
+
+        tools:text는 Android Studio의 Preview에서만
+        표시되며 실제 앱에는 영향을 주지 않는다.
+
+        접근성 Heading으로 지정하여
+        TalkBack에서 제목을 쉽게 찾을 수 있도록 한다.
+
+        Android 9(API 28) 이상에서 Heading으로 인식되며,
+        이전 Android에서는 일반 텍스트로 처리된다.
+    -->
+    <TextView
+        android:id="@+id/textSettingsDialogTitle"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+
+        android:accessibilityHeading="true"
+
+        tools:text="권한 설정 필요" />
+
+
+    <!--
+        안내 본문
+
+        권한 상태와 설정 상황에 따라
+        MainActivity에서 서로 다른 문구를 설정한다.
+
+        여러 문단과 설정 경로를 표시하기 위해
+        기존 줄 간격을 유지한다.
+
+        일반 TextView이므로 TalkBack에서
+        실제 설정된 문구를 읽을 수 있다.
+
+        별도의 contentDescription은 필요하지 않다.
+    -->
+    <TextView
+        android:id="@+id/textSettingsDialogMessage"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="18dp"
+
+        android:textColor="#BDBDBD"
+        android:textSize="15sp"
+
+        android:lineSpacingExtra="3dp"
+
+        tools:text="LightLink에서 베이스스테이션을 검색하려면 필요한 권한을 허용해 주세요." />
+
+
+    <!--
+        하단 공통 버튼 영역
+
+        dialog_manual_power.xml과 동일한
+        버튼 Drawable을 사용한다.
 
         버튼의 눌림 효과와 배경 디자인은
-        dialog_action_button_background에서 공통으로 관리한다.
+        dialog_action_button_background에서 관리한다.
+
+        기존 가로 배치를 유지한다.
+
+        다국어 및 작은 화면을 고려하여
+        버튼 사이의 여백을 60dp에서 16dp로 조정한다.
     -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+
         android:layout_marginTop="24dp"
+
         android:orientation="horizontal">
 
-        <!-- 작업 취소: 팝업만 닫는다. -->
+
+        <!--
+            취소 버튼
+
+            팝업만 닫으며 별도의 작업은 실행하지 않는다.
+
+            화면에 표시되는 문구는
+            시스템 언어에 맞게 변경된다.
+
+            버튼 자체에 명확한 텍스트가 있으므로
+            별도의 contentDescription을 추가하지 않는다.
+
+            기존 48dp 터치 영역을 유지한다.
+        -->
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/buttonSettingsDialogCancel"
+
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="0.6"
+
             android:minWidth="0dp"
             android:minHeight="0dp"
+
             android:background="@drawable/dialog_action_button_background"
             android:backgroundTint="@null"
-            android:text="취소"
+
+            android:text="@string/settings_dialog_cancel"
             android:textAllCaps="false"
             android:textColor="#FF6B6B"
             android:textSize="15sp" />
 
-        <!-- 권한 허용 / 설정 열기: 실제 작업은 MainActivity에서 전달한다. -->
+
+        <!--
+            실행 버튼
+
+            현재 안내 상황에 따라 다음과 같이 동작한다.
+
+            권한 설정 안내:
+            → 앱 정보 화면 열기
+
+            권한 요청 안내:
+            → Android 시스템 권한 요청
+
+            위치 서비스 안내:
+            → 스마트폰 위치 설정 화면 열기
+
+            실제 버튼 문구와 클릭 동작은
+            MainActivity에서 설정한다.
+
+            tools:text는 Preview 전용이다.
+
+            버튼에 표시되는 텍스트가
+            TalkBack 접근성 이름으로 사용되므로
+            별도의 contentDescription은 추가하지 않는다.
+
+            기존 48dp 터치 영역을 유지한다.
+        -->
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/buttonSettingsDialogAction"
+
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
+
             android:layout_marginStart="60dp"
+
             android:minWidth="0dp"
             android:minHeight="0dp"
+
             android:background="@drawable/dialog_action_button_background"
             android:backgroundTint="@null"
-            android:text="설정 열기"
+
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
-            android:textSize="15sp" />
+            android:textSize="15sp"
+
+            tools:text="설정 열기" />
 
     </LinearLayout>
+
 </LinearLayout>

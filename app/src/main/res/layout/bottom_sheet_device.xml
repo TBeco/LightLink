@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
 
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -13,7 +15,15 @@
 
     android:background="@drawable/bg_device_sheet">
 
-    <!-- Bottom Sheet 상단 손잡이 -->
+
+    <!--
+        Bottom Sheet 상단 손잡이
+
+        실제로 조작하는 버튼이 아닌 장식 요소이므로
+        접근성 서비스에서 읽지 않도록 제외한다.
+
+        "━━━"는 번역할 필요가 없는 시각적 장식이다.
+    -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -21,9 +31,16 @@
 
         android:text="━━━"
         android:textColor="#777777"
-        android:textSize="18sp" />
+        android:textSize="18sp"
 
-    <!-- 장치 이름 및 닫기 버튼 -->
+        android:importantForAccessibility="no"
+
+        tools:ignore="HardcodedText" />
+
+
+    <!--
+        장치 이름 및 닫기 버튼
+    -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,80 +48,136 @@
         android:gravity="center_vertical"
         android:layout_marginTop="12dp">
 
+
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
 
+
+            <!--
+                Base Station 이름
+
+                실제 장치 이름은 MainActivity에서 설정한다.
+
+                tools:text는 Android Studio Preview에서만
+                표시되므로 실제 앱에는 영향을 주지 않는다.
+
+                Android 9 이상에서는 접근성 제목으로 인식된다.
+            -->
             <TextView
                 android:id="@+id/textSheetDeviceName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
 
-                android:text="LHB-94A66C14"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
 
+                android:accessibilityHeading="true"
+
+                tools:text="LHB-94A66C14" />
+
+
+            <!--
+                장치 관리 부제목
+
+                언어별 문자열 리소스를 사용한다.
+            -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
 
-                android:text="Base Station 2.0 · 장치 관리"
+                android:text="@string/device_sheet_subtitle"
                 android:textColor="#AAAAAA"
                 android:textSize="12sp" />
 
         </LinearLayout>
 
+
+        <!--
+            장치 관리 화면 닫기
+
+            아이콘만 있는 버튼이므로
+            TalkBack에서 버튼의 용도를 알 수 있도록
+            접근성 설명을 제공한다.
+
+            48dp 터치 영역은 그대로 유지한다.
+        -->
         <ImageButton
             android:id="@+id/buttonSheetClose"
             android:layout_width="48dp"
             android:layout_height="48dp"
 
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="닫기"
+
+            android:contentDescription="@string/device_sheet_close"
+
             android:src="@android:drawable/ic_menu_close_clear_cancel"
+
             app:tint="#AAAAAA" />
 
     </LinearLayout>
 
-    <!-- 구분선 -->
+
+    <!--
+        장치 정보와 식별 영역을 구분하는 선
+    -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="20dp"
+
         android:background="#444444" />
 
-    <!-- 장치 식별 -->
+
+    <!--
+        장치 식별 영역 제목
+
+        접근성 제목(Heading)으로 지정하여
+        TalkBack 사용자가 화면 구조를 파악하기 쉽게 한다.
+    -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="22dp"
 
-        android:text="장치 식별"
+        android:text="@string/device_identify_title"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
 
-    <!-- 설명 -->
+        android:accessibilityHeading="true" />
+
+
+    <!--
+        장치 식별 기능 설명
+
+        실제 설치된 베이스스테이션을 구분하기 위해
+        LED를 흰색으로 점멸시키는 기능이다.
+
+        설명 문구는 시스템 언어에 맞게 표시한다.
+    -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
 
-        android:text="베이스스테이션의 LED를 약 20초간 흰색으로 점멸시켜 실제 설치된 장치를 찾습니다."
+        android:text="@string/device_identify_description"
         android:textColor="#BDBDBD"
         android:textSize="14sp"
         android:lineSpacingExtra="3dp" />
+
 
     <!--
         기본 식별 안내
 
         모든 베이스스테이션에 공통으로 표시한다.
-        펌웨어에 따라 Sleep 상태에서의 Identify 동작이
-        다를 수 있음을 안내한다.
+
+        펌웨어에 따라 Sleep 상태에서 Identify를 실행하면
+        장치가 깨어날 수 있음을 안내한다.
     -->
     <TextView
         android:id="@+id/textIdentifyWarning"
@@ -117,16 +190,19 @@
         android:textSize="12sp"
         android:lineSpacingExtra="2dp" />
 
+
     <!--
         Power State READ 미지원 장치 전용 안내
 
-        전원 상태를 읽을 수 없지만 수동 전원 제어가
-        가능한 장치에서만 표시한다.
+        전원 상태를 읽을 수 없지만
+        수동 전원 제어가 가능한 장치에서만 표시한다.
 
         기본적으로 GONE 상태이며,
-        MainActivity에서 장치 정보에 따라 표시 여부를 변경한다.
+        MainActivity에서 장치 정보에 따라
+        표시 여부를 변경한다.
 
-        GONE 상태에서는 레이아웃 공간을 차지하지 않는다.
+        GONE 상태에서는 레이아웃 공간을 차지하지 않으며,
+        접근성 서비스에서도 읽지 않는다.
     -->
     <TextView
         android:id="@+id/textIdentifyWarningUnsupported"
@@ -141,7 +217,19 @@
 
         android:visibility="gone" />
 
-    <!-- 식별 버튼 -->
+
+    <!--
+        장치 식별 버튼
+
+        버튼에 표시되는 문구는 다국어 리소스를 사용한다.
+
+        TalkBack에서는 버튼의 목적을 조금 더
+        구체적으로 안내하도록 별도의
+        contentDescription을 제공한다.
+
+        버튼 활성화 여부는 기존 MainActivity의
+        refreshIdentifyButton()에서 관리한다.
+    -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonIdentify"
         android:layout_width="wrap_content"
@@ -151,7 +239,9 @@
 
         android:minWidth="196dp"
 
-        android:text="식별하기"
+        android:text="@string/device_identify_button"
+        android:contentDescription="@string/device_identify_button_description"
+
         android:textAllCaps="false"
         android:textSize="15sp"
         android:textColor="#FFFFFF"
@@ -159,20 +249,32 @@
         app:backgroundTint="#4285F4"
         app:cornerRadius="10dp" />
 
-    <!-- 구분선 -->
+
+    <!--
+        장치 식별 영역과 향후 기능 안내를 구분하는 선
+    -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="24dp"
+
         android:background="#444444" />
 
-    <!-- 향후 기능 -->
+
+    <!--
+        향후 기능 안내
+
+        현재는 기능이 구현되지 않은 안내 문구이며,
+        실제로 클릭할 수 있는 버튼은 아니다.
+
+        언어별 문자열 리소스를 사용한다.
+    -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"
 
-        android:text="채널 변경 · 추후 추가 가능"
+        android:text="@string/device_channel_future"
         android:textColor="#777777"
         android:textSize="12sp" />
 

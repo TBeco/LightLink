@@ -1116,7 +1116,7 @@ public class MainActivity extends AppCompatActivity {
          * Identify GATT가 시작되었으므로
          * 해당 장치의 전원 버튼 UI를 다시 갱신한다.
          *
-         * Sleep 상태라면 회색 + 비활성화로 표시된다.
+         * Sleep 상태라면 어두운 파란색 + 비활성화로 표시된다.
          */
         updateDeviceRow(device);
 

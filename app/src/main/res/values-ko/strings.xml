@@ -1,0 +1,94 @@
+<resources>
+
+    <!-- ==================================================
+         activity_main.xml / 메인 화면
+         ================================================== -->
+
+    <!-- 상단 메뉴 버튼 -->
+    <string name="menu_open">메뉴</string>
+
+    <!-- BLE 검색 버튼 -->
+    <string name="scan_search">검색</string>
+    <string name="scan_stop">검색 중지</string>
+
+    <!-- 검색 전 기본 안내 -->
+    <string name="empty_scan_prompt">검색을 진행해 주세요.</string>
+
+    <!-- 최근 검색 시각 -->
+    <string name="last_scan_placeholder">최근 검색 | -</string>
+    <string name="last_scan_format">최근 검색 | %1$s</string>
+
+
+    <!-- ==================================================
+         bottom_sheet_device.xml / 장치 관리
+         ================================================== -->
+
+    <!-- 장치 관리 부제목 -->
+    <string name="device_sheet_subtitle">Base Station 2.0 · 장치 관리</string>
+
+    <!-- 닫기 버튼 접근성 설명 -->
+    <string name="device_sheet_close">장치 관리 화면 닫기</string>
+
+    <!-- 장치 식별 영역 -->
+    <string name="device_identify_title">장치 식별</string>
+
+    <string name="device_identify_description">베이스스테이션의 LED를 약 20초간 흰색으로 점멸시켜 실제 설치된 장치를 찾습니다.</string>
+
+    <!-- 식별 버튼 -->
+    <string name="device_identify_button">식별하기</string>
+
+    <!-- 식별 버튼 접근성 설명 -->
+    <string name="device_identify_button_description">이 베이스스테이션 식별하기</string>
+
+    <!-- 기본 식별 안내 -->
+    <string name="identify_warning_default">※ Sleep 상태에서는 장치가 깨어날 수 있습니다.</string>
+
+    <!-- Power State READ 미지원 장치 전용 안내 -->
+    <string name="identify_warning_read_unsupported">※ 이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 LED가 초록색인지 확인해 주세요.</string>
+
+    <!-- 향후 기능 안내 -->
+    <string name="device_channel_future">채널 변경 · 추후 추가 가능</string>
+
+
+    <!-- ==================================================
+     dialog_manual_power.xml / 수동 전원 제어
+     ================================================== -->
+
+    <!-- 팝업 제목 -->
+    <string name="manual_power_title">수동 전원 제어 필요</string>
+
+    <!-- 수동 전원 제어 안내 -->
+    <string name="manual_power_message">이 Base Station은 현재 전원 상태를 확인할 수 없습니다.\n\n일부 이전 버전의 Base Station 펌웨어에서 발생할 수 있습니다.\n\n원하는 전원 상태를 직접 선택해주세요.</string>
+
+    <!-- 취소 버튼 -->
+    <string name="manual_power_cancel">취소</string>
+
+    <!--
+        Sleep / Wake 버튼 이름은 기본 리소스를 사용한다.
+        따라서 이 파일에는 중복으로 선언하지 않는다.
+    -->
+
+    <!-- Sleep / Wake 버튼 접근성 설명 -->
+    <string name="manual_power_sleep_accessibility">이 베이스스테이션에 Sleep 명령 보내기</string>
+    <string name="manual_power_wake_accessibility">이 베이스스테이션에 Wake 명령 보내기</string>
+
+
+    <!-- ==================================================
+     dialog_settings_action.xml / 설정 안내창
+     ================================================== -->
+
+    <!-- 취소 버튼 -->
+    <string name="settings_dialog_cancel">취소</string>
+
+
+    <!-- ==================================================
+     item_ble_device.xml / 베이스스테이션 목록
+     ================================================== -->
+
+    <!-- 장치 관리 접근성 -->
+    <string name="device_management_open">장치 관리 열기</string>
+
+    <!-- 전원 버튼 접근성 -->
+    <string name="device_power_control">전원 제어</string>
+
+</resources>

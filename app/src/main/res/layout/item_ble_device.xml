@@ -6,6 +6,7 @@
 
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+
     android:orientation="horizontal"
     android:padding="12dp">
 
@@ -13,6 +14,7 @@
     <!--
         왼쪽: Base Station 정보
 
+        표시 항목:
         1. 장치 이름 및 장치 관리
         2. 현재 전원 상태
         3. MAC 주소
@@ -24,11 +26,21 @@
         장치 관리 Bottom Sheet를 표시한다.
 
         나머지 상태 정보는 클릭할 수 없다.
+
+        layout_weight를 사용해 오른쪽 전원 버튼을
+        제외한 나머지 공간을 사용한다.
+
+        minWidth=0dp를 적용하여
+        화면이 좁을 때도 가용 너비 안에서
+        문자열을 배치할 수 있도록 한다.
     -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+
+        android:minWidth="0dp"
+
         android:orientation="vertical">
 
 
@@ -42,21 +54,44 @@
 
             Ripple 효과로 클릭 가능한 영역임을
             시각적으로 알려준다.
+
+            최소 높이를 48dp로 설정하여
+            접근성 권장 터치 영역을 확보한다.
+
+            실제 접근성 설명은 BleDeviceAdapter에서
+            장치 이름을 포함하여 동적으로 설정한다.
         -->
         <LinearLayout
             android:id="@+id/layoutDeviceInfo"
 
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+
             android:orientation="horizontal"
             android:gravity="center_vertical"
 
             android:clickable="true"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
+
+            android:foreground="?attr/selectableItemBackground"
+
+            android:contentDescription="@string/device_management_open">
 
 
-            <!-- Base Station 이름 -->
+            <!--
+                Base Station 이름
+
+                실제 장치 이름은 BleDeviceAdapter에서
+                동적으로 설정한다.
+
+                기존 디자인을 유지하기 위해
+                한 줄로 표시한다.
+
+                이름이 표시 공간을 초과하면
+                말줄임표로 처리한다.
+
+                tools:text는 Preview 전용이다.
+            -->
             <TextView
                 android:id="@+id/textDeviceName"
 
@@ -76,12 +111,18 @@
             <!--
                 장치 관리 표시
 
-                별도의 버튼이 아닌 표시용 TextView.
+                별도의 버튼이 아닌 장식 요소다.
 
-                클릭 이벤트는 상위 layoutDeviceInfo가
+                클릭 이벤트는 상위 layoutDeviceInfo에서
                 처리하므로 별도 Listener가 필요하지 않다.
 
                 장치 이름 바로 오른쪽에 배치한다.
+
+                TalkBack에서는 상위 클릭 영역의
+                접근성 설명으로 기능을 안내하므로
+                이 장식은 읽기 대상에서 제외한다.
+
+                "⋯"는 번역할 필요가 없는 기호다.
             -->
             <TextView
                 android:layout_width="wrap_content"
@@ -93,7 +134,9 @@
                 android:textColor="#AAAAAA"
                 android:textSize="18sp"
 
-                android:importantForAccessibility="no" />
+                android:importantForAccessibility="no"
+
+                tools:ignore="HardcodedText" />
 
         </LinearLayout>
 
@@ -102,14 +145,24 @@
             현재 Base Station 전원 상태
 
             장치 정보 중 가장 중요한 정보이므로
-            다른 보조 정보보다 조금 더 크게 표시한다.
+            다른 보조 정보보다 크게 표시한다.
 
-            클릭 이벤트는 사용하지 않는다.
+            상태 문자열은 BleDeviceAdapter에서 설정한다.
+
+            현재 다국어 작업에서는
+            Awake / Sleep / Checking 등의
+            내부 상태값을 그대로 표시한다.
+
+            상태값은 번역하지 않는다.
+
+            긴 상태 문자열도 표시할 수 있도록
+            match_parent를 사용하며
+            여러 줄 표시를 허용한다.
         -->
         <TextView
             android:id="@+id/textDeviceStatus"
 
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
 
             android:layout_marginTop="4dp"
@@ -124,12 +177,19 @@
         <!--
             Bluetooth MAC 주소
 
-            현재는 기본 카드에 그대로 표시한다.
+            실제 MAC 주소는 BleDeviceAdapter에서
+            동적으로 설정한다.
+
+            기존처럼 장치 정보에 그대로 표시한다.
+
+            작은 화면이나 큰 글꼴 환경에서도
+            주소를 확인할 수 있도록
+            별도의 줄 수 제한을 두지 않는다.
         -->
         <TextView
             android:id="@+id/textDeviceInfo"
 
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
 
             android:layout_marginTop="4dp"
@@ -141,48 +201,80 @@
 
 
         <!--
-            Base Station RF 채널과 Bluetooth 신호 강도
+            Base Station RF 채널 및 Bluetooth 신호 강도
 
             예:
             채널 3 | 신호 강함 · -54 dBm
 
-            RF 채널을 정상적으로 읽을 수 있는 경우
-            채널 번호와 RSSI 정보를 함께 표시한다.
+            실제 문자열은 BleDeviceAdapter에서
+            동적으로 생성한다.
 
             채널을 읽지 못한 경우에는
-            Bluetooth 신호 정보만 표시할 수 있다.
+            채널 번호 대신 "-"를 표시한다.
+
+            다국어 적용 후 문자열이 길어질 수 있으므로
+            사용 가능한 너비를 넘어서지 않도록
+            match_parent를 사용한다.
+
+            여러 줄 표시를 허용하여
+            긴 문구가 잘리지 않도록 한다.
+
+            텍스트 자체의 번역은
+            추후 BleDeviceAdapter에서 진행한다.
         -->
         <TextView
             android:id="@+id/textDeviceRadioInfo"
 
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
 
             android:layout_marginTop="4dp"
 
             android:textColor="#777777"
             android:textSize="12sp"
+
+            android:lineSpacingExtra="2dp"
 
             tools:text="채널 3 | 신호 강함 · -54 dBm" />
 
 
         <!--
-            실제 Power State를 마지막으로
-            정상 확인한 시간을 표시한다.
+            마지막 Power State 확인 시간
+
+            예:
+            마지막 상태 확인 | 2026-10-08 15:35:18
+
+            마지막으로 실제 Power State를
+            정상적으로 확인한 시간을 표시한다.
 
             상태 확인에 실패한 경우에는
-            이 시간을 갱신하지 않는다.
+            기존 성공 시간을 유지한다.
+
+            실제 문자열은 BleDeviceAdapter에서
+            동적으로 설정한다.
+
+            영어 등 다른 언어에서는
+            안내 문구가 길어질 수 있으므로
+            여러 줄 표시를 허용한다.
+
+            날짜와 시간이 화면 밖으로 잘리지 않도록
+            match_parent를 사용한다.
+
+            텍스트 자체의 번역은
+            추후 BleDeviceAdapter에서 진행한다.
         -->
         <TextView
             android:id="@+id/textLastStateChecked"
 
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
 
             android:layout_marginTop="4dp"
 
             android:textColor="#777777"
             android:textSize="12sp"
+
+            android:lineSpacingExtra="2dp"
 
             tools:text="마지막 상태 확인 | 2026-10-08 15:35:18" />
 
@@ -199,6 +291,15 @@
 
         왼쪽 정보 영역 전체를 기준으로
         세로 가운데에 배치한다.
+
+        기존 70dp 크기를 유지하여
+        충분한 터치 영역을 확보한다.
+
+        기본 접근성 설명은 strings.xml을 사용한다.
+
+        실제로는 BleDeviceAdapter에서
+        Awake / Sleep / Stuck 등 상태에 따라
+        더 구체적인 접근성 설명을 설정한다.
     -->
     <ImageButton
         android:id="@+id/buttonPower"
@@ -212,7 +313,8 @@
         android:scaleType="center"
 
         android:background="@drawable/bg_power_button"
-        android:contentDescription="Power"
+
+        android:contentDescription="@string/device_power_control"
 
         android:src="@drawable/ic_power" />
 

@@ -1,11 +1,105 @@
 <resources>
 
-    <string name="app_name">LightLink</string>
+    <!-- ==================================================
+         App / 앱 공통
+         ================================================== -->
 
-    <!-- 모든 베이스스테이션에 표시하는 기본 안내 -->
-    <string name="identify_warning_default">※ Sleep 상태에서는 장치가 깨어날 수 있습니다.</string>
+    <string name="app_name" translatable="false">LightLink</string>
 
-    <!-- Power State READ 미지원 장치 전용 안내 -->
-    <string name="identify_warning_read_unsupported">※ 이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 LED가 초록색인지 확인해 주세요.</string>
+
+    <!-- ==================================================
+         activity_main.xml / 메인 화면
+         ================================================== -->
+
+    <!-- 상단 메뉴 버튼 -->
+    <string name="menu_open">Menu</string>
+
+    <!-- BLE 검색 버튼 -->
+    <string name="scan_search">Search</string>
+    <string name="scan_stop">Stop scan</string>
+
+    <!-- 검색 전 기본 안내 -->
+    <string name="empty_scan_prompt">Tap Search to scan for base stations.</string>
+
+    <!-- 최근 검색 시각 -->
+    <string name="last_scan_placeholder">Last scan | -</string>
+    <string name="last_scan_format">Last scan | %1$s</string>
+
+
+    <!-- ==================================================
+         bottom_sheet_device.xml / Device Management
+         ================================================== -->
+
+    <!-- Device management subtitle -->
+    <string name="device_sheet_subtitle">Base Station 2.0 · Device Management</string>
+
+    <!-- Close button accessibility description -->
+    <string name="device_sheet_close">Close device management</string>
+
+    <!-- Identify section -->
+    <string name="device_identify_title">Identify Base Station</string>
+
+    <string name="device_identify_description">The base station LED will blink white for approximately 20 seconds to help you locate the device.</string>
+
+    <!-- Identify button -->
+    <string name="device_identify_button">Identify</string>
+
+    <!-- Identify button accessibility description -->
+    <string name="device_identify_button_description">Identify this base station</string>
+
+    <!-- Default Identify warning -->
+    <string name="identify_warning_default">※ Using Identify while the base station is in Sleep mode may wake it up.</string>
+
+    <!-- Warning for devices without Power State READ support -->
+    <string name="identify_warning_read_unsupported">※ The base station may be using older firmware. Before using Identify, turn on the base station and make sure its LED is green.</string>
+
+    <!-- Future feature notice -->
+    <string name="device_channel_future">Channel change · May be added later</string>
+
+
+    <!-- ==================================================
+     dialog_manual_power.xml / Manual Power Control
+     ================================================== -->
+
+    <!-- Dialog title -->
+    <string name="manual_power_title">Manual Power Control Required</string>
+
+    <!-- Manual power control explanation -->
+    <string name="manual_power_message">The current power state of this Base Station cannot be determined.\n\nThis may occur with some older Base Station firmware versions.\n\nPlease select the desired power state manually.</string>
+
+    <!-- Cancel button -->
+    <string name="manual_power_cancel">Cancel</string>
+
+    <!--
+        Power command labels
+
+        Sleep / Wake are kept in English across all languages.
+        These are command labels, not translated device states.
+    -->
+    <string name="manual_power_sleep" translatable="false">Sleep</string>
+    <string name="manual_power_wake" translatable="false">Wake</string>
+
+    <!-- Accessibility descriptions for power commands -->
+    <string name="manual_power_sleep_accessibility">Send Sleep command to this base station</string>
+    <string name="manual_power_wake_accessibility">Send Wake command to this base station</string>
+
+
+    <!-- ==================================================
+     dialog_settings_action.xml / Settings Dialog
+     ================================================== -->
+
+    <!-- Cancel button -->
+    <string name="settings_dialog_cancel">Cancel</string>
+
+
+    <!-- ==================================================
+     item_ble_device.xml / Base Station List
+     ================================================== -->
+
+    <!-- Device management accessibility -->
+    <string name="device_management_open">Open device management</string>
+
+    <!-- Power button accessibility -->
+    <string name="device_power_control">Power control</string>
 
 </resources>
