@@ -1225,6 +1225,15 @@ public class MainActivity extends AppCompatActivity {
                 true
         );
 
+        /*
+         * Wake / Sleep 명령 전의 RF 채널을 보관한다.
+         *
+         * 명령 완료 후 Controller가 채널을 다시 읽었을 때
+         * 이전 값과 비교하여 중복 경고 변경 여부를 판단한다.
+         */
+        final Integer channelBeforePowerCommand =
+                device.getChannel();
+
 
         controller.setPowerState(
                 device,
@@ -1292,6 +1301,19 @@ public class MainActivity extends AppCompatActivity {
                          */
                         device.setLastStateCheckedAt(
                                 LocalDateTime.now()
+                        );
+
+                        /*
+                         * Wake / Sleep 완료 후 RF 채널이 변경되었다면
+                         * 다른 장치들의 중복 경고 상태를 갱신한다.
+                         *
+                         * 현재 장치는 아래 updateDeviceRow()에서
+                         * 정상적으로 갱신하므로 중복 갱신하지 않는다.
+                         */
+                        refreshChannelWarningsAfterPowerCommand(
+                                device,
+                                channelBeforePowerCommand,
+                                false
                         );
 
 
@@ -1574,6 +1596,17 @@ public class MainActivity extends AppCompatActivity {
                 false
         );
 
+        /*
+         * 수동 Wake / Sleep 명령 이전의
+         * RF 채널 값을 보관한다.
+         *
+         * Power State READ가 불가능하더라도
+         * Mode / Channel READ가 가능하다면
+         * 변경된 채널 정보를 비교할 수 있다.
+         */
+        final Integer channelBeforeManualPowerCommand =
+                device.getChannel();
+
 
         controller.setPowerState(
                 device,
@@ -1604,6 +1637,21 @@ public class MainActivity extends AppCompatActivity {
                                         + device.getName()
                                         + " / target = "
                                         + target
+                        );
+
+                        /*
+                         * 수동 Wake / Sleep 작업이 완료된 뒤
+                         * RF 채널이 변경되었다면 중복 경고를 갱신한다.
+                         *
+                         * 수동 제어는 onStateConfirmed()를 사용하지 않으므로
+                         * 현재 장치의 RF 정보도 부분 갱신한다.
+                         *
+                         * Power State를 추측하거나 변경하지 않는다.
+                         */
+                        refreshChannelWarningsAfterPowerCommand(
+                                device,
+                                channelBeforeManualPowerCommand,
+                                true
                         );
 
 
@@ -1792,6 +1840,214 @@ public class MainActivity extends AppCompatActivity {
                 );
             }
             refreshIdentifyButtonFor(device);
+        });
+    }
+
+    /*
+     * Wake / Sleep 명령 이후 RF 채널이 변경되었을 때
+     * 영향을 받은 장치들의 중복 경고를 갱신한다.
+     *
+     * BaseStationGattController는 전원 명령 완료 전
+     * 가능한 경우 RF Channel을 다시 READ하고
+     * BleDeviceItem에 최신 값을 저장한다.
+     *
+     * 따라서 이 메서드에서는 추가 BLE READ를 실행하지 않고
+     * 기존 채널과 새 채널을 비교한다.
+     *
+     * previousChannel:
+     * 전원 명령을 실행하기 전에 저장한 RF 채널.
+     *
+     * refreshCurrentDevice:
+     * true  → 현재 장치의 RF 정보도 부분 갱신.
+     * false → 현재 장치는 기존 상태 완료 처리에서 갱신.
+     *
+     * RecyclerView 전체를 갱신하지 않고
+     * 실제 중복 경고 상태가 변경된 장치만 갱신한다.
+     */
+    private void refreshChannelWarningsAfterPowerCommand(
+            BleDeviceItem updatedDevice,
+            Integer previousChannel,
+            boolean refreshCurrentDevice) {
+
+        /*
+         * UI 관련 작업은 메인 스레드에서 수행한다.
+         */
+        runOnUiThread(() -> {
+
+            /*
+             * 재검색으로 기존 장치가 사라졌거나
+             * Adapter가 준비되지 않았다면 중단한다.
+             */
+            if (updatedDevice == null
+                    || deviceAdapter == null
+                    || !deviceList.contains(updatedDevice)) {
+
+                return;
+            }
+
+
+            /*
+             * Controller가 다시 읽어서 저장한
+             * 최신 RF 채널 정보를 가져온다.
+             */
+            Integer newChannel =
+                    updatedDevice.getChannel();
+
+
+            /*
+             * 채널을 읽지 못했거나
+             * 기존 채널과 동일하다면
+             * 중복 경고 상태는 변경되지 않는다.
+             */
+            if (newChannel == null
+                    || newChannel < 1
+                    || newChannel > 16
+                    || newChannel.equals(previousChannel)) {
+
+                return;
+            }
+
+
+            int newChannelCount = 0;
+            int previousChannelCount = 0;
+
+
+            /*
+             * 현재 장치 목록에서
+             * 새 채널과 이전 채널을 사용하는
+             * 장치 수를 확인한다.
+             *
+             * 이 시점에는 updatedDevice에
+             * 새 채널 값이 저장된 상태다.
+             */
+            for (BleDeviceItem item : deviceList) {
+
+                if (item == null) {
+                    continue;
+                }
+
+                Integer itemChannel =
+                        item.getChannel();
+
+                if (itemChannel == null) {
+                    continue;
+                }
+
+
+                if (newChannel.equals(itemChannel)) {
+
+                    newChannelCount++;
+                }
+
+
+                if (previousChannel != null
+                        && previousChannel.equals(itemChannel)) {
+
+                    previousChannelCount++;
+                }
+            }
+
+
+            /*
+             * 새 채널을 사용하는 장치가
+             * 1대에서 2대로 증가한 경우
+             * 기존 장치에도 경고를 표시해야 한다.
+             */
+            boolean conflictStarted =
+                    newChannelCount == 2;
+
+
+            /*
+             * 기존 중복 채널에서 장치가 빠져나가
+             * 남은 장치가 1대가 된 경우
+             * 해당 장치의 경고를 제거해야 한다.
+             */
+            boolean conflictResolved =
+                    previousChannel != null
+                            && previousChannelCount == 1;
+
+
+            /*
+             * 실제로 영향을 받은 장치만
+             * RecyclerView Payload를 통해 부분 갱신한다.
+             */
+            for (int i = 0; i < deviceList.size(); i++) {
+
+                BleDeviceItem item =
+                        deviceList.get(i);
+
+                if (item == null) {
+                    continue;
+                }
+
+
+                /*
+                 * 현재 채널을 조회한 장치.
+                 *
+                 * 일반 Wake / Sleep에서는 기존
+                 * onStateConfirmed()가 전체 상태를 갱신한다.
+                 *
+                 * 수동 Wake / Sleep에서는 필요할 경우
+                 * RF 채널 정보만 부분 갱신한다.
+                 */
+                if (item == updatedDevice) {
+
+                    if (refreshCurrentDevice) {
+
+                        deviceAdapter.notifyChannelWarningChanged(
+                                i
+                        );
+                    }
+
+                    continue;
+                }
+
+
+                Integer itemChannel =
+                        item.getChannel();
+
+                if (itemChannel == null) {
+                    continue;
+                }
+
+
+                /*
+                 * 새로운 채널 중복이 발생한 경우
+                 * 동일한 채널을 사용하던 기존 장치를 갱신한다.
+                 */
+                boolean shouldShowWarning =
+                        conflictStarted
+                                && newChannel.equals(itemChannel);
+
+
+                /*
+                 * 이전 채널의 중복이 해소되었다면
+                 * 해당 채널에 남은 장치의 경고를 제거한다.
+                 */
+                boolean shouldRemoveWarning =
+                        conflictResolved
+                                && previousChannel.equals(itemChannel);
+
+
+                if (shouldShowWarning
+                        || shouldRemoveWarning) {
+
+                    deviceAdapter.notifyChannelWarningChanged(
+                            i
+                    );
+                }
+            }
+
+
+            AppLog.d(
+                    "Power command RF channel conflict refreshed"
+                            + " / device = "
+                            + updatedDevice.getName()
+                            + " / previous = "
+                            + previousChannel
+                            + " / current = "
+                            + newChannel
+            );
         });
     }
 
@@ -3820,15 +4076,243 @@ public class MainActivity extends AppCompatActivity {
                     && currentStatusDevice != null) {
 
 
-                currentStatusDevice.setChannel(
+                /*
+                 * 현재 채널을 조회한 장치를 보관한다.
+                 *
+                 * 이후 비동기 UI 갱신이 실행되더라도
+                 * 다른 장치와 혼동하지 않도록
+                 * 현재 장치의 참조를 유지한다.
+                 */
+                BleDeviceItem updatedChannelDevice =
+                        currentStatusDevice;
+
+
+                /*
+                 * 기존 RF 채널 값을 보관한다.
+                 *
+                 * 채널이 변경되었을 경우
+                 * 이전 채널의 중복 경고가 해제되는지도
+                 * 확인하기 위해 사용한다.
+                 *
+                 * 최초 조회라면 null일 수 있다.
+                 */
+                Integer previousChannel =
+                        updatedChannelDevice.getChannel();
+
+
+                /*
+                 * 새롭게 확인한 RF 채널을 저장한다.
+                 *
+                 * 기존 Power State 정보에는 영향을 주지 않는다.
+                 */
+                updatedChannelDevice.setChannel(
                         channel
                 );
+
+
+                /*
+                 * RF 채널 변경으로 인해
+                 * 중복 경고 상태가 달라진 장치만 갱신한다.
+                 *
+                 * 기존 방식처럼 전체 장치 목록을 다시 바인딩하면
+                 * RecyclerView의 변경 애니메이션 때문에
+                 * 화면이 깜빡일 수 있다.
+                 *
+                 * 따라서 실제로 경고가 새롭게 발생하거나
+                 * 해제된 다른 장치만 부분 갱신한다.
+                 *
+                 * 현재 조회 중인 장치는
+                 * 기존 상태 조회 완료 과정에서 갱신된다.
+                 *
+                 * RecyclerView 갱신은 UI 스레드에서 수행한다.
+                 */
+                runOnUiThread(() -> {
+
+
+                    /*
+                     * 새로운 검색으로 장치 목록이 초기화되었다면
+                     * 이전 장치의 조회 결과를 UI에 반영하지 않는다.
+                     */
+                    if (!deviceList.contains(updatedChannelDevice)) {
+
+                        return;
+                    }
+
+
+                    /*
+                     * Adapter가 준비되지 않았다면
+                     * UI 갱신을 진행하지 않는다.
+                     */
+                    if (deviceAdapter == null) {
+
+                        return;
+                    }
+
+
+                    /*
+                     * 기존 채널과 새 채널이 동일하다면
+                     * 다른 장치의 중복 여부는 변하지 않는다.
+                     *
+                     * 현재 장치의 정보는
+                     * 기존 상태 조회 완료 과정에서 갱신된다.
+                     */
+                    if (previousChannel != null
+                            && previousChannel.intValue() == channel) {
+
+                        return;
+                    }
+
+
+                    int newChannelCount = 0;
+
+                    int previousChannelCount = 0;
+
+
+                    /*
+                     * 현재 검색된 장치들의 RF 채널을 비교한다.
+                     *
+                     * newChannelCount:
+                     * 새 채널을 사용하는 장치 수.
+                     *
+                     * previousChannelCount:
+                     * 채널 변경 후에도 이전 채널을 사용하는
+                     * 나머지 장치 수.
+                     *
+                     * 채널을 읽지 못한 장치는 제외한다.
+                     */
+                    for (BleDeviceItem item : deviceList) {
+
+                        if (item == null) {
+                            continue;
+                        }
+
+                        Integer itemChannel =
+                                item.getChannel();
+
+                        if (itemChannel == null) {
+                            continue;
+                        }
+
+
+                        if (itemChannel.intValue() == channel) {
+
+                            newChannelCount++;
+                        }
+
+
+                        if (previousChannel != null
+                                && previousChannel.equals(itemChannel)) {
+
+                            previousChannelCount++;
+                        }
+                    }
+
+
+                    /*
+                     * 새 채널에서 중복이 처음 발생했는지 확인한다.
+                     *
+                     * 해당 채널을 사용하는 장치가
+                     * 1대에서 2대로 증가하면
+                     * 기존 장치에도 경고를 표시해야 한다.
+                     *
+                     * 이미 2대 이상이 사용 중인 채널이라면
+                     * 기존 장치들의 경고는 유지되므로
+                     * 추가 갱신할 필요가 없다.
+                     */
+                    boolean conflictStarted =
+                            newChannelCount == 2;
+
+
+                    /*
+                     * 기존 채널의 중복이 해제되었는지 확인한다.
+                     *
+                     * 기존 채널에서 현재 장치가 빠져나간 후
+                     * 남은 장치가 1대라면
+                     * 해당 장치의 경고를 제거해야 한다.
+                     */
+                    boolean conflictResolved =
+                            previousChannel != null
+                                    && previousChannelCount == 1;
+
+
+                    /*
+                     * 실제 중복 경고 상태가 변경된
+                     * 다른 장치들만 부분 갱신한다.
+                     */
+                    for (int i = 0; i < deviceList.size(); i++) {
+
+                        BleDeviceItem item =
+                                deviceList.get(i);
+
+
+                        if (item == null) {
+                            continue;
+                        }
+
+
+                        /*
+                         * 현재 채널을 조회한 장치는
+                         * 기존 상태 조회 완료 과정에서
+                         * 별도로 갱신되므로 제외한다.
+                         */
+                        if (item == updatedChannelDevice) {
+
+                            continue;
+                        }
+
+
+                        Integer itemChannel =
+                                item.getChannel();
+
+
+                        if (itemChannel == null) {
+
+                            continue;
+                        }
+
+
+                        /*
+                         * 새 채널의 중복이 처음 발생한 경우
+                         * 동일한 채널을 사용하는 기존 장치를
+                         * 부분 갱신한다.
+                         */
+                        boolean shouldShowWarning =
+                                conflictStarted
+                                        && itemChannel.intValue() == channel;
+
+
+                        /*
+                         * 이전 채널의 중복이 해제된 경우
+                         * 해당 채널에 남아 있는 장치의
+                         * 경고를 제거하기 위해 부분 갱신한다.
+                         */
+                        boolean shouldRemoveWarning =
+                                conflictResolved
+                                        && previousChannel.equals(itemChannel);
+
+
+                        if (shouldShowWarning
+                                || shouldRemoveWarning) {
+
+
+                            /*
+                             * 해당 장치의 RF 채널 정보만 갱신한다.
+                             *
+                             * 장치 이름, Power State,
+                             * 전원 버튼 등은 다시 설정하지 않는다.
+                             */
+                            deviceAdapter.notifyChannelWarningChanged(
+                                    i
+                            );
+                        }
+                    }
+                });
 
 
                 AppLog.d(
                         "Channel updated"
                                 + " / device = "
-                                + currentStatusDevice.getName()
+                                + updatedChannelDevice.getName()
                                 + " / channel = "
                                 + channel
                 );
@@ -3855,6 +4339,10 @@ public class MainActivity extends AppCompatActivity {
         /*
          * Channel READ 성공 여부와 관계없이
          * 마지막 부가 정보인 RSSI 확인으로 이어간다.
+         *
+         * RF 채널 중복 검사 및 UI 갱신은
+         * 부가적인 표시 기능이므로
+         * 기존 상태 조회 흐름을 변경하지 않는다.
          */
         readRssiThenFinishStatus(
                 gatt,

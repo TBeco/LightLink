@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Solid yellow warning triangle for a dark background -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M10.62,3.35 C11.24,2.25 12.76,2.25 13.38,3.35 L22.5,19.05 C23.15,20.2 22.5,21.15 21.25,21.15 L2.75,21.15 C1.5,21.15 0.85,20.2 1.5,19.05 Z" />
+
+    <!-- Black exclamation mark, including round dot -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,7.45 C12.46,7.45 12.82,7.81 12.82,8.27 L12.82,14.8 C12.82,15.26 12.46,15.62 12,15.62 C11.54,15.62 11.18,15.26 11.18,14.8 L11.18,8.27 C11.18,7.81 11.54,7.45 12,7.45 Z M12,16.9 A1.15,1.15 0,1 1,12,19.2 A1.15,1.15 0,1 1,12,16.9 Z" />
+</vector>

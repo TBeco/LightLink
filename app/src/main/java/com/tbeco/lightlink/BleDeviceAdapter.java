@@ -1,7 +1,13 @@
 package com.tbeco.lightlink;
 
 import android.content.res.ColorStateList;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ImageSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,6 +15,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.time.LocalDateTime;
@@ -75,6 +82,16 @@ public class BleDeviceAdapter
      */
     private static final int POWER_COLOR_STUCK =
             Color.parseColor("#C62828");
+
+    /*
+     * RF 채널 정보만 부분 갱신하기 위한 RecyclerView Payload.
+     *
+     * 일반적인 notifyItemChanged()와 달리
+     * 장치 전체 UI를 다시 바인딩하지 않고
+     * 채널 및 RSSI 정보만 갱신할 때 사용한다.
+     */
+    private static final String PAYLOAD_RF_CHANNEL =
+            "payload_rf_channel";
 
 
     /*
@@ -164,6 +181,111 @@ public class BleDeviceAdapter
 
         this.identifyBusyChecker =
                 identifyBusyChecker;
+    }
+
+
+    /*
+     * TextView 내부에 표시되는 Vector Drawable을
+     * 텍스트의 수직 중앙에 정렬하기 위한 ImageSpan.
+     *
+     * 기본 ImageSpan은 ALIGN_BASELINE 또는 ALIGN_BOTTOM을
+     * 사용하면 아이콘이 글자보다 위쪽으로 치우쳐 보일 수 있다.
+     *
+     * Android API 26부터 동일한 정렬 방식을 사용하기 위해
+     * 직접 텍스트의 FontMetrics를 계산한다.
+     *
+     * 한국어 / 영어 및 시스템 글꼴 크기가 변경되더라도
+     * 현재 TextView의 글꼴을 기준으로 위치를 계산한다.
+     */
+    private static class CenteredImageSpan extends ImageSpan {
+
+        public CenteredImageSpan(Drawable drawable) {
+            super(drawable, ImageSpan.ALIGN_BASELINE);
+        }
+
+        /*
+         * ImageSpan으로 인해 TextView의 줄 높이가
+         * 불필요하게 확장되지 않도록 한다.
+         *
+         * 기본 ImageSpan은 이미지 높이가 글꼴보다 크면
+         * FontMetrics를 수정하여 줄 높이를 늘릴 수 있다.
+         *
+         * 여기서는 기존 TextView의 FontMetrics를 유지하고
+         * 이미지가 차지하는 가로 너비만 반환한다.
+         *
+         * 실제 이미지의 수직 위치는
+         * draw()에서 별도로 계산한다.
+         */
+        @Override
+        public int getSize(
+                @NonNull Paint paint,
+                CharSequence text,
+                int start,
+                int end,
+                Paint.FontMetricsInt fm) {
+
+            return getDrawable().getBounds().width();
+        }
+
+        @Override
+        public void draw(
+                @NonNull Canvas canvas,
+                CharSequence text,
+                int start,
+                int end,
+                float x,
+                int top,
+                int y,
+                int bottom,
+                @NonNull Paint paint) {
+
+            Drawable drawable =
+                    getDrawable();
+
+            /*
+             * 현재 텍스트의 글꼴 정보를 가져온다.
+             *
+             * ascent:
+             * 기준선보다 위쪽에 해당하는 글꼴 높이.
+             *
+             * descent:
+             * 기준선보다 아래쪽에 해당하는 글꼴 높이.
+             */
+            Paint.FontMetricsInt fm =
+                    paint.getFontMetricsInt();
+
+            /*
+             * 현재 글꼴의 수직 중앙 위치를 계산한다.
+             *
+             * y는 텍스트의 Baseline 위치다.
+             */
+            float textCenterY =
+                    y + (fm.ascent + fm.descent) / 2f;
+
+            /*
+             * Vector 아이콘의 높이를 가져온다.
+             */
+            int iconHeight =
+                    drawable.getBounds().height();
+
+            /*
+             * 아이콘의 중앙이
+             * 텍스트의 수직 중앙과 일치하도록 배치한다.
+             */
+            float iconTop =
+                    textCenterY - iconHeight / 2f;
+
+            canvas.save();
+
+            canvas.translate(
+                    x,
+                    iconTop
+            );
+
+            drawable.draw(canvas);
+
+            canvas.restore();
+        }
     }
 
 
@@ -323,6 +445,83 @@ public class BleDeviceAdapter
         });
     }
 
+    /*
+     * 특정 Base Station의 RF 채널 정보만 갱신한다.
+     *
+     * RecyclerView Payload를 사용하여
+     * 기존 장치 이름, Power State, 전원 버튼 등의
+     * UI를 다시 바인딩하지 않는다.
+     *
+     * RF 채널 중복 경고가 변경된 장치에만 호출한다.
+     */
+    public void notifyChannelWarningChanged(int position) {
+
+        if (position < 0
+                || position >= deviceList.size()) {
+            return;
+        }
+
+        notifyItemChanged(
+                position,
+                PAYLOAD_RF_CHANNEL
+        );
+    }
+
+
+    /*
+     * RecyclerView 부분 갱신 처리.
+     *
+     * RF 채널 관련 Payload만 전달된 경우에는
+     * configureDeviceRadioInfo()만 실행한다.
+     *
+     * 일반적인 전체 바인딩이 필요한 경우에는
+     * 기존 onBindViewHolder()를 그대로 사용한다.
+     *
+     * 이를 통해 불필요한 변경 애니메이션과
+     * 전체 UI 재설정을 줄인다.
+     */
+    @Override
+    public void onBindViewHolder(
+            @NonNull DeviceViewHolder holder,
+            int position,
+            @NonNull List<Object> payloads) {
+
+        if (!payloads.isEmpty()) {
+
+            boolean radioOnly = true;
+
+            for (Object payload : payloads) {
+
+                if (!PAYLOAD_RF_CHANNEL.equals(payload)) {
+                    radioOnly = false;
+                    break;
+                }
+            }
+
+            if (radioOnly) {
+
+                BleDeviceItem device =
+                        deviceList.get(position);
+
+                configureDeviceRadioInfo(
+                        holder,
+                        device
+                );
+
+                return;
+            }
+        }
+
+        /*
+         * 부분 갱신 대상이 아니라면
+         * 기존 전체 바인딩 로직을 실행한다.
+         */
+        onBindViewHolder(
+                holder,
+                position
+        );
+    }
+
 
     /*
      * Base Station의 RF Channel과 Bluetooth RSSI를
@@ -401,13 +600,151 @@ public class BleDeviceAdapter
         }
 
 
-        holder.textDeviceRadioInfo.setText(
+        /*
+         * Base Station RF 채널 및 Bluetooth RSSI 표시 문자열.
+         *
+         * 기존 strings.xml을 사용하므로
+         * 한국어 / 영어 번역은 그대로 유지한다.
+         */
+        String radioInfo =
                 holder.itemView.getContext().getString(
                         R.string.device_radio_info_format,
                         channelText,
                         signalText,
                         rssi
-                )
+                );
+
+        /*
+         * RF 채널 중복 경고 아이콘 표시 여부.
+         *
+         * 현재 검색된 Base Station 목록에서
+         * 동일한 RF 채널을 사용하는 장치가
+         * 2대 이상 존재하면 경고를 표시한다.
+         *
+         * 채널 정보가 없거나 유효하지 않은 장치는
+         * RfChannelConflictChecker에서 자동 제외한다.
+         *
+         * Debug Mock과 실제 Base Station 모두
+         * 동일한 중복 감지 로직을 사용한다.
+         */
+        boolean showChannelWarning =
+                RfChannelConflictChecker.isChannelDuplicated(
+                        deviceList,
+                        channel
+                );
+
+        /*
+         * RF 채널 중복 판단 디버그 로그.
+         *
+         * RecyclerView가 각 장치를 다시 표시할 때
+         * 실제 채널 값과 중복 판단 결과를 확인한다.
+         *
+         * 중복 감지 기능에 영향을 주지 않으며,
+         * 문제가 해결되면 제거할 수 있다.
+         */
+        AppLog.d(
+                "RF Channel Conflict"
+                        + " / device = "
+                        + device.getName()
+                        + " / channel = "
+                        + channel
+                        + " / duplicated = "
+                        + showChannelWarning
+                        + " / deviceCount = "
+                        + deviceList.size()
+        );
+
+        /*
+         * 경고 아이콘을 표시하지 않는 경우에는
+         * 기존 텍스트를 그대로 사용한다.
+         *
+         * RecyclerView의 ViewHolder 재사용 과정에서
+         * 이전 ImageSpan이 남지 않도록 한다.
+         */
+        if (!showChannelWarning) {
+
+            holder.textDeviceRadioInfo.setText(
+                    radioInfo
+            );
+
+            return;
+        }
+
+        /*
+         * RF 채널 중복 경고용 Vector Drawable을 가져온다.
+         */
+        Drawable warningIcon =
+                AppCompatResources.getDrawable(
+                        holder.itemView.getContext(),
+                        R.drawable.ic_rf_channel_warning
+                );
+
+        if (warningIcon == null) {
+
+            holder.textDeviceRadioInfo.setText(
+                    radioInfo
+            );
+
+            return;
+        }
+
+        /*
+         * TextView에 적용된 실제 글꼴 크기를 기준으로
+         * 경고 아이콘 크기를 계산한다.
+         *
+         * getTextSize()는 픽셀 단위를 반환하므로
+         * 시스템 글꼴 크기 설정도 반영된다.
+         *
+         * 1.35f는 아이콘 크기 조절 비율이다.
+         * 실제 화면을 확인한 뒤 변경할 수 있다.
+         */
+        float textSize =
+                holder.textDeviceRadioInfo.getTextSize();
+
+        int iconSize =
+                Math.round(textSize * 1.35f);
+
+        warningIcon.setBounds(
+                0,
+                0,
+                iconSize,
+                iconSize
+        );
+
+        /*
+         * 기존 RF 채널 문자열 앞에
+         * ImageSpan이 들어갈 자리 하나를 추가한다.
+         *
+         * \uFFFC:
+         * 이미지로 치환할 특수 문자.
+         *
+         * 뒤의 공백:
+         * 경고 아이콘과 채널 문자열 사이의 간격.
+         */
+        SpannableString styledText =
+                new SpannableString(
+                        "\uFFFC  " + radioInfo
+                );
+
+        /*
+         * 첫 번째 문자 자리에
+         * 수직 중앙 정렬된 Vector 아이콘을 삽입한다.
+         */
+        styledText.setSpan(
+                new CenteredImageSpan(
+                        warningIcon
+                ),
+                0,
+                1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+
+        /*
+         * RF 채널 및 신호 정보는 기존 색상을 유지하고,
+         * 경고 아이콘만 추가된 문자열을 표시한다.
+         */
+        holder.textDeviceRadioInfo.setText(
+                styledText
         );
     }
 
