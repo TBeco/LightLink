@@ -196,7 +196,7 @@
                 android:layout_height="wrap_content"
 
                 android:text="※"
-                android:textColor="#E6B96A"
+                android:textColor="@color/warning_text_color"
                 android:textSize="12sp"
 
                 android:importantForAccessibility="no"
@@ -216,7 +216,7 @@
                 android:layout_marginStart="6dp"
 
                 android:text="@string/identify_warning_read_unsupported"
-                android:textColor="#E6B96A"
+                android:textColor="@color/warning_text_color"
                 android:textSize="12sp"
                 android:lineSpacingExtra="2dp" />
 

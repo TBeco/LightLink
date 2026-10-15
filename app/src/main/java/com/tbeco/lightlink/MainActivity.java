@@ -982,6 +982,28 @@ public class MainActivity extends AppCompatActivity {
                 dialog.findViewById(R.id.buttonIdentify);
 
         /*
+         * 채널 관리 영역의 현재 RF 채널 표시.
+         *
+         * 기존 BLE 상태 조회 과정에서 저장한 채널 정보를 사용한다.
+         * 추가적인 GATT 연결이나 READ는 실행하지 않는다.
+         */
+        TextView textSheetCurrentChannel =
+                dialog.findViewById(
+                        R.id.textSheetCurrentChannel
+                );
+
+        /*
+         * 채널 관리 영역의 RF 채널 중복 경고.
+         *
+         * 현재 장치와 동일한 채널을 사용하는
+         * 다른 Base Station이 존재할 때만 표시한다.
+         */
+        TextView textSheetChannelConflict =
+                dialog.findViewById(
+                        R.id.textSheetChannelConflict
+                );
+
+        /*
          * Power State READ 미지원 장치 전용 안내 영역.
          *
          * 안내 기호(※)와 본문을 함께 표시하거나
@@ -996,6 +1018,55 @@ public class MainActivity extends AppCompatActivity {
                 );
 
         deviceName.setText(device.getName());
+
+        /*
+         * 현재 Base Station의 RF 채널 표시.
+         *
+         * 1~16 범위의 채널이 확인되었다면
+         * 시스템 언어에 맞는 문자열로 표시한다.
+         *
+         * 아직 채널을 확인하지 못했거나
+         * 유효하지 않은 값이라면 기본 안내(—)를 유지한다.
+         */
+        Integer channel = device.getChannel();
+
+        if (channel != null && channel >= 1 && channel <= 16) {
+
+            textSheetCurrentChannel.setText(
+                    getString(
+                            R.string.device_channel_current_format,
+                            channel
+                    )
+            );
+
+        } else {
+
+            textSheetCurrentChannel.setText(
+                    R.string.device_channel_current_placeholder
+            );
+        }
+
+        /*
+         * 현재 장치의 RF 채널 중복 여부 확인.
+         *
+         * 기존 RfChannelConflictChecker를 재사용한다.
+         * 같은 채널을 사용하는 장치가 2대 이상일 때
+         * 중복 경고를 표시한다.
+         *
+         * 이미 저장된 채널 정보만 비교하므로
+         * 추가적인 BLE 연결이나 GATT READ는 수행하지 않는다.
+         */
+        boolean isChannelDuplicated =
+                RfChannelConflictChecker.isChannelDuplicated(
+                        deviceList,
+                        channel
+                );
+
+        textSheetChannelConflict.setVisibility(
+                isChannelDuplicated
+                        ? View.VISIBLE
+                        : View.GONE
+        );
 
 
         currentDeviceSheet = dialog;
@@ -1024,7 +1095,13 @@ public class MainActivity extends AppCompatActivity {
             if (bottomSheet != null) bottomSheet.setBackgroundColor(Color.TRANSPARENT);
         });
 
+        /*
+         * Bottom Sheet를 열기 전에
+         * Identify 버튼과 현재 전원 상태를 갱신한다.
+         */
         refreshIdentifyButton();
+        refreshSheetChannelState();
+
         dialog.show();
     }
 
@@ -1111,8 +1188,201 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /*
+     * 현재 열려 있는 Bottom Sheet의 장치 상태 표시.
+     *
+     * 기존 BleDeviceItem에 저장된 상태 정보를 사용한다.
+     * 추가적인 BLE 연결이나 Power State READ는 수행하지 않는다.
+     *
+     * Awake / Sleep 등의 전원 상태뿐 아니라
+     * Checking / Processing / Stuck / 오류 상태도 표시한다.
+     *
+     * 기존 LightLink의 상태 문자열은 변경하지 않으며,
+     * 상태별로 글자 색상만 구분한다.
+     *
+     * 현재 검색 목록에서 제거된 장치이거나
+     * 상태 정보가 없는 경우에는 표시하지 않는다.
+     */
+    private void refreshSheetChannelState() {
+
+        if (currentDeviceSheet == null
+                || currentSheetDevice == null) {
+            return;
+        }
+
+        /*
+         * Bottom Sheet의 채널 관리 상태 TextView.
+         *
+         * 별도의 필드에 보관하지 않고
+         * 현재 열려 있는 Dialog에서 가져온다.
+         */
+        TextView textSheetChannelState =
+                currentDeviceSheet.findViewById(
+                        R.id.textSheetChannelState
+                );
+
+        if (textSheetChannelState == null) {
+            return;
+        }
+
+        /*
+         * 현재 장치에 저장된 상태 문자열을 가져온다.
+         *
+         * RecyclerView에서 사용하는 상태와
+         * 동일한 값을 그대로 사용한다.
+         */
+        String status =
+                currentSheetDevice.getStatus();
+
+        /*
+         * 장치가 현재 검색 목록에서 제거되었거나
+         * 상태 정보가 없는 경우에는 표시하지 않는다.
+         *
+         * Bluetooth OFF 또는 재검색으로
+         * 이전 장치가 제거된 상황도 포함한다.
+         */
+        if (!deviceList.contains(currentSheetDevice)
+                || status == null
+                || status.trim().isEmpty()) {
+
+            textSheetChannelState.setVisibility(
+                    View.GONE
+            );
+
+            return;
+        }
+
+        /*
+         * 기존 LightLink의 상태 문자열을 그대로 표시한다.
+         *
+         * Awake / Sleep / Checking... 등의 내부 문자열을
+         * 번역하거나 변경하지 않는다.
+         */
+        textSheetChannelState.setText(
+                status
+        );
+
+        /*
+         * 상태별 글자 색상.
+         *
+         * 주요 상태만 개별적으로 구분한다.
+         * 기타 BLE / GATT 오류나 향후 추가되는 상태도
+         * 문자열은 표시하되 기본 회색을 사용한다.
+         */
+        int stateColor;
+
+        if ("Awake".equals(status)) {
+
+            /*
+             * 정상 작동 중.
+             *
+             * 파란색으로 강조한다.
+             */
+            stateColor =
+                    Color.parseColor("#A5C4FF");
+
+        } else if ("Sleep".equals(status)
+                || "Standby".equals(status)
+                || "Checking...".equals(status)
+                || "Unknown".equals(status)
+                || STATUS_PROCESSING.equals(status)
+                || status.startsWith("Unknown (")) {
+
+            /*
+             * 절전 / 대기 / 상태 확인 중 / 상태 확인 불가.
+             *
+             * Processing 및 Unknown 응답값을 포함하여
+             * 회색으로 표시한다.
+             */
+            stateColor =
+                    Color.parseColor("#AAAAAA");
+
+        } else if ("State read unsupported".equals(status)) {
+
+            /*
+             * Power State READ 미지원 장치.
+             *
+             * 현재 전원 상태는 확인할 수 없지만
+             * 수동 Wake / Sleep 명령이 가능한 경우에는
+             * 주황색으로 표시한다.
+             *
+             * 수동 제어도 불가능한 경우에는
+             * 일반적인 비활성 상태인 회색을 사용한다.
+             *
+             * 기존 BleDeviceAdapter의
+             * 전원 버튼 색상 구분 기준을 따른다.
+             */
+            boolean manualControlAvailable =
+                    currentSheetDevice.isStateReadUnsupported()
+                            && currentSheetDevice.isManualPowerControlAvailable();
+
+            stateColor =
+                    manualControlAvailable
+                            ? getColor(R.color.warning_text_color)
+                            : Color.parseColor("#AAAAAA");
+
+        } else if (STATUS_STUCK.equals(status)) {
+
+            /*
+             * Stuck (0x01).
+             *
+             * 0x01 응답이 반복적으로 확인되어
+             * 현재 상태를 확정할 수 없는 경우.
+             *
+             * 일반적인 확인 실패와 구분하기 위해
+             * 빨간색으로 표시한다.
+             *
+             * 장치의 물리적 고장을 확정하는 의미는 아니다.
+             */
+            stateColor =
+                    Color.parseColor("#FF7070");
+
+        } else {
+
+            /*
+             * 기타 BLE / GATT 오류 및
+             * 향후 추가되는 모든 상태.
+             *
+             * 상태 문자열은 그대로 표시하면서
+             * 기본 회색을 적용한다.
+             *
+             * 새로운 상태가 추가되어도
+             * 별도의 수정 없이 표시할 수 있다.
+             */
+            stateColor =
+                    Color.parseColor("#AAAAAA");
+        }
+
+        /*
+         * 현재 상태에 해당하는 글자 색상을 적용한다.
+         */
+        textSheetChannelState.setTextColor(
+                stateColor
+        );
+
+        /*
+         * 장치 상태를 Bottom Sheet에 표시한다.
+         */
+        textSheetChannelState.setVisibility(
+                View.VISIBLE
+        );
+    }
+
+    /*
+     * 현재 Bottom Sheet에서 관리 중인 장치의 상태가
+     * 변경되었을 때 관련 UI를 갱신한다.
+     *
+     * 기존 Identify 버튼 갱신 동작은 유지하고
+     * 채널 관리 영역의 전원 상태 표시도 함께 갱신한다.
+     */
     private void refreshIdentifyButtonFor(BleDeviceItem device) {
-        if (device == currentSheetDevice) refreshIdentifyButton();
+
+        if (device == currentSheetDevice) {
+
+            refreshIdentifyButton();
+
+            refreshSheetChannelState();
+        }
     }
 
     private boolean isIdentifyBusy(BleDeviceItem device) {
@@ -3434,6 +3704,12 @@ public class MainActivity extends AppCompatActivity {
 
         seenAddresses.clear();
         deviceList.clear();
+
+        /*
+         * Bluetooth가 꺼져 검색 결과가 제거되었으므로
+         * Bottom Sheet에 표시된 이전 전원 상태도 숨긴다.
+         */
+        refreshSheetChannelState();
 
         /*
          * Bluetooth가 비활성화되어
