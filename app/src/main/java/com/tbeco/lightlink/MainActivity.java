@@ -982,11 +982,17 @@ public class MainActivity extends AppCompatActivity {
                 dialog.findViewById(R.id.buttonIdentify);
 
         /*
-         * Power State READ 미지원 장치 전용 안내.
+         * Power State READ 미지원 장치 전용 안내 영역.
+         *
+         * 안내 기호(※)와 본문을 함께 표시하거나
+         * 숨길 수 있도록 부모 LinearLayout을 연결한다.
+         *
+         * 실제 표시 여부는 기존 refreshIdentifyButton()에서
+         * 장치 상태에 따라 관리한다.
          */
         View identifyWarningUnsupported =
                 dialog.findViewById(
-                        R.id.textIdentifyWarningUnsupported
+                        R.id.layoutIdentifyWarningUnsupported
                 );
 
         deviceName.setText(device.getName());
