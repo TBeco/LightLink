@@ -23,6 +23,11 @@
     <string name="last_scan_placeholder">Last scan | -</string>
     <string name="last_scan_format">Last scan | %1$s</string>
 
+    <!-- RF Channel Conflict Warning -->
+    <string name="channel_conflict_title">! Channel conflict</string>
+    <string name="channel_conflict_detail_format">Channel %1$d · %2$d devices</string>
+    <string name="channel_conflict_multiple_format">%1$d channels · %2$d devices</string>
+
     <!-- BLE Scan Status · Results -->
     <string name="empty_scanning">Scanning…</string>
     <string name="empty_no_base_station">No Base Station found</string>

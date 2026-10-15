@@ -17,6 +17,11 @@
     <string name="last_scan_placeholder">최근 검색 | -</string>
     <string name="last_scan_format">최근 검색 | %1$s</string>
 
+    <!-- RF 채널 중복 경고 -->
+    <string name="channel_conflict_title">! 채널 중복 감지</string>
+    <string name="channel_conflict_detail_format">채널 %1$d · %2$d대</string>
+    <string name="channel_conflict_multiple_format">%1$d개 채널 · 총 %2$d대</string>
+
     <!-- BLE 검색 진행 · 결과 -->
     <string name="empty_scanning">검색 중…</string>
     <string name="empty_no_base_station">검색된 베이스스테이션이 없습니다.</string>

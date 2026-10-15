@@ -2,4 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- 주의 및 경고 안내 문구에 사용하는 공통 색상 -->
+    <color name="warning_text_color">#FFB74D</color>
 </resources>

@@ -177,6 +177,93 @@
 
 
     <!--
+    RF 채널 중복 경고 안내 영역
+
+    검색 버튼 왼쪽에 배치한다.
+
+    동일한 RF 채널을 사용하는 Base Station이
+    2대 이상 발견되면 경고 문구를 표시한다.
+
+    첫 번째 줄:
+    채널 중복 경고 제목.
+
+    두 번째 줄:
+    중복된 RF 채널 번호와 장치 수.
+
+    기본 상태에서는 GONE으로 숨긴다.
+
+    실제 표시 여부와 안내 문구는
+    MainActivity에서 갱신한다.
+
+    tools:visibility와 tools:text는
+    Android Studio Preview에서만 적용된다.
+-->
+    <LinearLayout
+        android:id="@+id/layoutChannelConflictWarning"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="12dp"
+
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+
+        android:visibility="gone"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/buttonScan"
+        app:layout_constraintTop_toTopOf="@id/buttonScan"
+        app:layout_constraintBottom_toBottomOf="@id/buttonScan"
+
+        tools:visibility="visible">
+
+
+        <!--
+            RF 채널 중복 경고 제목.
+
+            언어별 문자열 리소스를 사용하며,
+            경고가 표시될 때 항상 동일한 제목을 사용한다.
+        -->
+        <TextView
+            android:id="@+id/textChannelConflictTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:gravity="end"
+
+            android:text="@string/channel_conflict_title"
+            android:textColor="#FFB74D"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+
+        <!--
+            중복된 RF 채널의 상세 정보.
+
+            실제 텍스트는 MainActivity에서
+            현재 중복 상태에 따라 설정한다.
+
+            tools:text는 Android Studio Preview에서만 표시된다.
+        -->
+        <TextView
+            android:id="@+id/textChannelConflictDetail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="2dp"
+
+            android:gravity="end"
+
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+
+            tools:text="채널 3 · 2대" />
+
+    </LinearLayout>
+
+
+    <!--
         Base Station 검색 버튼
 
         화면 오른쪽 아래에 배치한다.

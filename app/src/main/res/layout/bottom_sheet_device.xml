@@ -188,7 +188,7 @@
         android:layout_marginTop="12dp"
 
         android:text="@string/identify_warning_default"
-        android:textColor="#E6B96A"
+        android:textColor="@color/warning_text_color"
         android:textSize="12sp"
         android:lineSpacingExtra="2dp" />
 

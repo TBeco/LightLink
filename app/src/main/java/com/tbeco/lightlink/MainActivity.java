@@ -201,6 +201,14 @@ public class MainActivity extends AppCompatActivity {
                     "00001524-1212-EFDE-1523-785FEABCD124"
             );
 
+    /*
+     * RF 채널 중복 안내 UI.
+     *
+     * 실제 중복이 발견된 경우에만 표시한다.
+     */
+    private View layoutChannelConflictWarning;
+    private TextView textChannelConflictDetail;
+
 
     /*
      * Android Bluetooth 객체.
@@ -681,6 +689,15 @@ public class MainActivity extends AppCompatActivity {
                         BuildConfig.VERSION_NAME
                 )
         );
+
+        /*
+         * 검색 버튼 왼쪽의 RF 채널 중복 안내 영역.
+         */
+        layoutChannelConflictWarning =
+                findViewById(R.id.layoutChannelConflictWarning);
+
+        textChannelConflictDetail =
+                findViewById(R.id.textChannelConflictDetail);
 
 
         /*
@@ -1843,6 +1860,213 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+    /*
+     * RF 채널 중복 안내 UI 갱신.
+     *
+     * 현재 검색된 Base Station 목록에서
+     * 동일한 RF 채널을 사용하는 장치가
+     * 2대 이상 존재하는지 확인한다.
+     *
+     * 중복이 없는 경우:
+     * 안내 영역을 숨긴다.
+     *
+     * 하나의 채널에서 중복이 발생한 경우:
+     * 채널 3 · 2대
+     *
+     * 여러 채널에서 중복이 발생한 경우:
+     * 2개 채널 · 총 5대
+     *
+     * 이미 저장된 채널 정보만 사용하므로
+     * 추가적인 BLE 연결이나 GATT READ는 실행하지 않는다.
+     *
+     * RecyclerView는 갱신하지 않고
+     * 검색 버튼 왼쪽의 안내 영역만 변경한다.
+     */
+    private void updateChannelConflictWarning() {
+
+        /*
+         * UI 관련 작업은 메인 스레드에서 수행한다.
+         */
+        runOnUiThread(() -> {
+
+            /*
+             * 안내 UI가 준비되지 않았다면
+             * 갱신을 진행하지 않는다.
+             */
+            if (layoutChannelConflictWarning == null
+                    || textChannelConflictDetail == null) {
+
+                return;
+            }
+
+
+            /*
+             * RF 채널 1~16의 사용 대수를 저장한다.
+             *
+             * 배열의 0번은 사용하지 않는다.
+             *
+             * 예:
+             * channelCounts[3] = 2
+             * → 채널 3을 사용하는 장치가 2대.
+             */
+            int[] channelCounts =
+                    new int[17];
+
+
+            /*
+             * 현재 검색된 모든 장치의
+             * RF 채널 정보를 확인한다.
+             */
+            for (BleDeviceItem device : deviceList) {
+
+                if (device == null) {
+                    continue;
+                }
+
+                Integer channel =
+                        device.getChannel();
+
+
+                /*
+                 * 채널 정보가 없거나
+                 * 유효 범위(1~16)를 벗어난 장치는 제외한다.
+                 */
+                if (channel == null
+                        || channel < 1
+                        || channel > 16) {
+
+                    continue;
+                }
+
+
+                /*
+                 * 해당 채널을 사용하는 장치 수를 증가시킨다.
+                 */
+                channelCounts[channel]++;
+            }
+
+
+            /*
+             * 중복이 발생한 채널 수.
+             */
+            int conflictChannelCount = 0;
+
+
+            /*
+             * 중복에 참여한 전체 장치 수.
+             *
+             * 정상 채널을 사용하는 장치는 포함하지 않는다.
+             */
+            int conflictDeviceCount = 0;
+
+
+            /*
+             * 하나의 채널에서만 중복이 발생한 경우
+             * 안내 문구에 사용할 채널 번호와 장치 수.
+             */
+            int conflictChannel = 0;
+            int conflictCount = 0;
+
+
+            /*
+             * RF 채널 1~16을 순서대로 확인한다.
+             *
+             * 같은 채널을 사용하는 장치가
+             * 2대 이상이면 중복으로 판단한다.
+             */
+            for (int channel = 1; channel <= 16; channel++) {
+
+                int count =
+                        channelCounts[channel];
+
+
+                if (count < 2) {
+                    continue;
+                }
+
+
+                /*
+                 * 중복 채널 수와
+                 * 중복에 참여한 장치 수를 누적한다.
+                 */
+                conflictChannelCount++;
+
+                conflictDeviceCount += count;
+
+
+                /*
+                 * 단일 채널 중복 안내에 사용할 정보를 보관한다.
+                 */
+                conflictChannel = channel;
+
+                conflictCount = count;
+            }
+
+
+            /*
+             * 중복 채널이 없다면
+             * 안내 영역을 완전히 숨긴다.
+             */
+            if (conflictChannelCount == 0) {
+
+                layoutChannelConflictWarning.setVisibility(
+                        View.GONE
+                );
+
+                return;
+            }
+
+
+            /*
+             * 하나의 채널에서만 중복이 발생한 경우.
+             *
+             * 예:
+             * 채널 3 · 2대
+             */
+            if (conflictChannelCount == 1) {
+
+                textChannelConflictDetail.setText(
+                        getString(
+                                R.string.channel_conflict_detail_format,
+                                conflictChannel,
+                                conflictCount
+                        )
+                );
+
+            } else {
+
+                /*
+                 * 여러 채널에서 중복이 발생한 경우.
+                 *
+                 * 예:
+                 * 채널 3 → 2대
+                 * 채널 5 → 3대
+                 *
+                 * 표시:
+                 * 2개 채널 · 총 5대
+                 */
+                textChannelConflictDetail.setText(
+                        getString(
+                                R.string.channel_conflict_multiple_format,
+                                conflictChannelCount,
+                                conflictDeviceCount
+                        )
+                );
+            }
+
+
+            /*
+             * 중복이 존재하므로
+             * 검색 버튼 왼쪽의 안내 영역을 표시한다.
+             */
+            layoutChannelConflictWarning.setVisibility(
+                    View.VISIBLE
+            );
+        });
+    }
+
+
     /*
      * Wake / Sleep 명령 이후 RF 채널이 변경되었을 때
      * 영향을 받은 장치들의 중복 경고를 갱신한다.
@@ -2037,6 +2261,19 @@ public class MainActivity extends AppCompatActivity {
                     );
                 }
             }
+
+
+            /*
+             * Wake / Sleep 이후 RF 채널이 변경되었다면
+             * 검색 버튼 왼쪽의 채널 중복 안내도 갱신한다.
+             *
+             * 기존 장치 목록에 저장된 채널 정보만 사용하며
+             * 추가적인 BLE 연결이나 READ는 실행하지 않는다.
+             *
+             * RecyclerView는 갱신하지 않고
+             * 하단 안내 영역만 갱신한다.
+             */
+            updateChannelConflictWarning();
 
 
             AppLog.d(
@@ -2816,6 +3053,18 @@ public class MainActivity extends AppCompatActivity {
         deviceList.clear();
         seenAddresses.clear();
 
+        /*
+         * 새로운 검색을 시작하므로
+         * 이전 RF 채널 중복 안내를 초기화한다.
+         *
+         * 기존 장치 목록이 제거된 상태이므로
+         * updateChannelConflictWarning()은
+         * 중복 없음으로 판단하여 안내를 숨긴다.
+         *
+         * 추가 BLE 통신이나 RecyclerView 갱신은 발생하지 않는다.
+         */
+        updateChannelConflictWarning();
+
         if (removedCount > 0) {
             deviceAdapter.notifyItemRangeRemoved(
                     0,
@@ -3179,6 +3428,16 @@ public class MainActivity extends AppCompatActivity {
 
         seenAddresses.clear();
         deviceList.clear();
+
+        /*
+         * Bluetooth가 비활성화되어
+         * 기존 Base Station 목록이 제거되었으므로
+         * RF 채널 중복 안내도 초기화한다.
+         *
+         * Bluetooth를 다시 켜더라도
+         * 새로운 검색 전까지 이전 경고를 표시하지 않는다.
+         */
+        updateChannelConflictWarning();
 
         if (removedCount > 0) {
             deviceAdapter.notifyItemRangeRemoved(
@@ -4307,6 +4566,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
+
+
+                /*
+                 * 하단 RF 채널 중복 안내 갱신.
+                 */
+                updateChannelConflictWarning();
 
 
                 AppLog.d(
