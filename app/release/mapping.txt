@@ -3,8 +3,8 @@
 # min_api: 26
 # common_typos_disable
 # {"id":"com.android.tools.r8.mapping","version":"2.2"}
-# pg_map_id: a713c63134daeda850ac9a5f5f4478b681c9a71602c5160fb9a2c37010b580bf
-# pg_map_hash: SHA-256 a713c63134daeda850ac9a5f5f4478b681c9a71602c5160fb9a2c37010b580bf
+# pg_map_id: cf367151707ad62231aca90a0708dc6bd5885bae0f4cdac248f421db09f47369
+# pg_map_hash: SHA-256 cf367151707ad62231aca90a0708dc6bd5885bae0f4cdac248f421db09f47369
 android.app.AppComponentFactory -> android.app.AppComponentFactory:
 # {"id":"com.android.tools.r8.synthesized"}
     void <clinit>() -> <clinit>
@@ -75128,20 +75128,30 @@ androidx.recyclerview.widget.RecyclerView$Adapter -> androidx.recyclerview.widge
     12:14:void <init>():7175:7175 -> <init>
     15:17:void <init>():7176:7176 -> <init>
     1:6:void notifyDataSetChanged():7584:7584 -> a
-    1:7:void notifyItemChanged(int):7599:7599 -> b
-    1:6:void notifyItemInserted(int):7689:7689 -> c
-    1:6:void notifyItemRangeChanged(int,int):7643:7643 -> d
-    1:6:void notifyItemRangeRemoved(int,int):7755:7755 -> e
-    1:6:void registerAdapterDataObserver(androidx.recyclerview.widget.RecyclerView$AdapterDataObserver):7518:7518 -> f
+    3:8:void androidx.recyclerview.widget.RecyclerView$AdapterDataObservable.notifyItemRangeChanged(int,int):12664:12664 -> b
+    3:8:void notifyItemChanged(int):7599 -> b
+      # {"id":"com.android.tools.r8.rewriteFrame","conditions":["throws(Ljava/lang/NullPointerException;)"],"actions":["removeInnerFrames(1)"]}
+    1:7:void notifyItemChanged(int,java.lang.Object):7626:7626 -> c
+    1:6:void notifyItemInserted(int):7689:7689 -> d
+    1:3:void notifyItemRangeChanged(int,int):7643:7643 -> e
+    4:7:void androidx.recyclerview.widget.RecyclerView$AdapterDataObservable.notifyItemRangeChanged(int,int):12664:12664 -> e
+    4:7:void notifyItemRangeChanged(int,int):7643 -> e
+      # {"id":"com.android.tools.r8.rewriteFrame","conditions":["throws(Ljava/lang/NullPointerException;)"],"actions":["removeInnerFrames(1)"]}
+    1:6:void notifyItemRangeRemoved(int,int):7755:7755 -> f
+    1:6:void registerAdapterDataObserver(androidx.recyclerview.widget.RecyclerView$AdapterDataObserver):7518:7518 -> g
       # {"id":"com.android.tools.r8.residualsignature","signature":"(Landroidx/recyclerview/widget/RecyclerView$b;)V"}
-    1:8:boolean hasObservers():7499:7499 -> g
-    1:8:void setHasStableIds(boolean):7373 -> g
-    9:11:void setHasStableIds(boolean):7377:7377 -> g
-    12:17:void setHasStableIds(boolean):7374:7374 -> g
     1:3:long getItemId(int):0:0 -> getItemId
     1:2:int getItemViewType(int):0:0 -> getItemViewType
-    1:6:void unregisterAdapterDataObserver(androidx.recyclerview.widget.RecyclerView$AdapterDataObserver):7531:7531 -> h
+    1:8:boolean hasObservers():7499:7499 -> h
+    1:8:void setHasStableIds(boolean):7373 -> h
+    9:11:void setHasStableIds(boolean):7377:7377 -> h
+    12:17:void setHasStableIds(boolean):7374:7374 -> h
+    1:6:void unregisterAdapterDataObserver(androidx.recyclerview.widget.RecyclerView$AdapterDataObserver):7531:7531 -> i
       # {"id":"com.android.tools.r8.residualsignature","signature":"(Landroidx/recyclerview/widget/RecyclerView$b;)V"}
+    1:4:void onBindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,java.util.List):7254:7254 -> onBindViewHolder
+      # {"id":"com.android.tools.r8.residualsignature","signature":"(Landroidx/recyclerview/widget/RecyclerView$j;ILjava/util/List;)V"}
+    void onBindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int) -> onBindViewHolder
+      # {"id":"com.android.tools.r8.residualsignature","signature":"(Landroidx/recyclerview/widget/RecyclerView$j;I)V"}
     1:1:void onViewRecycled(androidx.recyclerview.widget.RecyclerView$ViewHolder):0:0 -> onViewRecycled
       # {"id":"com.android.tools.r8.residualsignature","signature":"(Landroidx/recyclerview/widget/RecyclerView$j;)V"}
 androidx.recyclerview.widget.RecyclerView$AdapterDataObservable -> androidx.recyclerview.widget.d0:
@@ -75150,9 +75160,7 @@ androidx.recyclerview.widget.RecyclerView$AdapterDataObservable -> androidx.recy
     1:10:void notifyChanged():12652:12652 -> b
     11:25:void notifyChanged():12653:12653 -> b
     1:10:void notifyItemRangeChanged(int,int,java.lang.Object):12673:12673 -> c
-    1:10:void notifyItemRangeChanged(int,int):12664 -> c
-    11:26:void notifyItemRangeChanged(int,int,java.lang.Object):12674:12674 -> c
-    11:26:void notifyItemRangeChanged(int,int):12664 -> c
+    11:25:void notifyItemRangeChanged(int,int,java.lang.Object):12674:12674 -> c
     1:10:void notifyItemRangeInserted(int,int):12683:12683 -> d
       # {"id":"com.android.tools.r8.residualsignature","signature":"(I)V"}
     11:25:void notifyItemRangeInserted(int,int):12684:12684 -> d
@@ -76697,104 +76705,100 @@ androidx.recyclerview.widget.RecyclerView$Recycler -> androidx.recyclerview.widg
     182:183:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7336:7337 -> j
     182:183:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
     182:183:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    184:184:void androidx.recyclerview.widget.RecyclerView$Adapter.onBindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,java.util.List):7254:7254 -> j
-    184:184:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7337 -> j
-    184:184:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
-    184:184:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    185:186:void androidx.recyclerview.widget.RecyclerView$ViewHolder.clearPayload():11677:11678 -> j
-    185:186:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7339 -> j
-    185:186:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
-    185:186:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    187:187:void androidx.recyclerview.widget.RecyclerView$ViewHolder.clearPayload():11680:11680 -> j
-    187:187:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7339 -> j
-    187:187:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
-    187:187:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    188:190:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7340:7342 -> j
-    188:190:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
-    188:190:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    191:191:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7344:7344 -> j
+    184:185:void androidx.recyclerview.widget.RecyclerView$ViewHolder.clearPayload():11677:11678 -> j
+    184:185:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7339 -> j
+    184:185:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
+    184:185:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    186:186:void androidx.recyclerview.widget.RecyclerView$ViewHolder.clearPayload():11680:11680 -> j
+    186:186:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7339 -> j
+    186:186:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
+    186:186:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    187:189:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7340:7342 -> j
+    187:189:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
+    187:189:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    190:190:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7344:7344 -> j
+    190:190:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
+    190:190:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    191:191:void androidx.core.os.TraceCompat.endSection():119:119 -> j
+    191:191:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7344 -> j
     191:191:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
     191:191:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    192:192:void androidx.core.os.TraceCompat.endSection():119:119 -> j
-    192:192:void androidx.recyclerview.widget.RecyclerView$Adapter.bindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int):7344 -> j
-    192:192:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6194 -> j
-    192:192:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    193:194:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6195:6196 -> j
-    193:194:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    195:195:int androidx.recyclerview.widget.RecyclerView$ViewHolder.getItemViewType():11588:11588 -> j
+    192:193:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6195:6196 -> j
+    192:193:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    194:194:int androidx.recyclerview.widget.RecyclerView$ViewHolder.getItemViewType():11588:11588 -> j
+    194:194:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
+    194:194:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    195:195:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5948:5948 -> j
     195:195:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
-    195:195:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    196:196:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5948:5948 -> j
-    196:196:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
       # {"id":"com.android.tools.r8.rewriteFrame","conditions":["throws(Ljava/lang/NullPointerException;)"],"actions":["removeInnerFrames(1)"]}
+    195:195:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    196:196:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5949:5949 -> j
+    196:196:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
     196:196:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    197:197:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5949:5949 -> j
+    197:197:long androidx.recyclerview.widget.RecyclerView$RecycledViewPool.runningAverage(long,long):5938:5938 -> j
+    197:197:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5949 -> j
     197:197:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
     197:197:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    198:198:long androidx.recyclerview.widget.RecyclerView$RecycledViewPool.runningAverage(long,long):5938:5938 -> j
-    198:198:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5949 -> j
+    198:198:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5949:5949 -> j
     198:198:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
     198:198:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    199:199:void androidx.recyclerview.widget.RecyclerView$RecycledViewPool.factorInBindTime(int,long):5949:5949 -> j
-    199:199:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6196 -> j
+    199:199:boolean androidx.recyclerview.widget.RecyclerView.isAccessibilityEnabled():3820:3820 -> j
+    199:199:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6480 -> j
+    199:199:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     199:199:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    200:200:boolean androidx.recyclerview.widget.RecyclerView.isAccessibilityEnabled():3820:3820 -> j
-    200:200:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6480 -> j
-    200:200:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
-    200:200:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    201:202:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6481:6482 -> j
-    201:202:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
-    201:202:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    203:203:int androidx.core.view.ViewCompat.getImportantForAccessibility(android.view.View):1399:1399 -> j
-    203:203:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6482 -> j
+    200:201:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6481:6482 -> j
+    200:201:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
+    200:201:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    202:202:int androidx.core.view.ViewCompat.getImportantForAccessibility(android.view.View):1399:1399 -> j
+    202:202:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6482 -> j
+    202:202:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
+    202:202:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    203:203:void androidx.core.view.ViewCompat.setImportantForAccessibility(android.view.View,int):1427:1427 -> j
+    203:203:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6484 -> j
     203:203:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     203:203:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    204:204:void androidx.core.view.ViewCompat.setImportantForAccessibility(android.view.View,int):1427:1427 -> j
-    204:204:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6484 -> j
+    204:204:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6487:6487 -> j
     204:204:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     204:204:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    205:205:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6487:6487 -> j
+    205:205:androidx.core.view.AccessibilityDelegateCompat androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate.getItemDelegate():99:99 -> j
+    205:205:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6490 -> j
+      # {"id":"com.android.tools.r8.rewriteFrame","conditions":["throws(Ljava/lang/NullPointerException;)"],"actions":["removeInnerFrames(1)"]}
     205:205:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     205:205:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    206:206:androidx.core.view.AccessibilityDelegateCompat androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate.getItemDelegate():99:99 -> j
-    206:206:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6490 -> j
-      # {"id":"com.android.tools.r8.rewriteFrame","conditions":["throws(Ljava/lang/NullPointerException;)"],"actions":["removeInnerFrames(1)"]}
+    206:206:androidx.core.view.AccessibilityDelegateCompat androidx.core.view.ViewCompat.getAccessibilityDelegate(android.view.View):1221:1221 -> j
+    206:206:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):128 -> j
+    206:206:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
     206:206:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     206:206:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    207:207:androidx.core.view.AccessibilityDelegateCompat androidx.core.view.ViewCompat.getAccessibilityDelegate(android.view.View):1221:1221 -> j
-    207:207:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):128 -> j
-    207:207:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
-    207:207:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
-    207:207:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    208:209:androidx.core.view.AccessibilityDelegateCompat androidx.core.view.ViewCompat.getAccessibilityDelegate(android.view.View):1225:1226 -> j
-    208:209:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):128 -> j
-    208:209:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
-    208:209:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
-    208:209:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    210:210:androidx.core.view.AccessibilityDelegateCompat androidx.core.view.ViewCompat.getAccessibilityDelegate(android.view.View):1228:1228 -> j
-    210:210:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):128 -> j
+    207:208:androidx.core.view.AccessibilityDelegateCompat androidx.core.view.ViewCompat.getAccessibilityDelegate(android.view.View):1225:1226 -> j
+    207:208:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):128 -> j
+    207:208:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
+    207:208:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
+    207:208:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    209:209:androidx.core.view.AccessibilityDelegateCompat androidx.core.view.ViewCompat.getAccessibilityDelegate(android.view.View):1228:1228 -> j
+    209:209:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):128 -> j
+    209:209:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
+    209:209:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
+    209:209:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    210:210:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):130:130 -> j
     210:210:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
     210:210:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     210:210:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    211:211:void androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate$ItemDelegate.saveOriginalDelegate(android.view.View):130:130 -> j
-    211:211:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6495 -> j
+    211:211:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6497:6497 -> j
     211:211:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
     211:211:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    212:212:void attachAccessibilityDelegateOnBind(androidx.recyclerview.widget.RecyclerView$ViewHolder):6497:6497 -> j
-    212:212:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6197 -> j
-    212:212:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    213:213:boolean androidx.recyclerview.widget.RecyclerView$State.isPreLayout():12898:12898 -> j
-    213:213:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6198 -> j
+    212:212:boolean androidx.recyclerview.widget.RecyclerView$State.isPreLayout():12898:12898 -> j
+    212:212:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6198 -> j
       # {"id":"com.android.tools.r8.rewriteFrame","conditions":["throws(Ljava/lang/NullPointerException;)"],"actions":["removeInnerFrames(1)"]}
+    212:212:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
+    213:213:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6199:6199 -> j
     213:213:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    214:214:boolean tryBindViewHolderByDeadline(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,int,long):6199:6199 -> j
-    214:214:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6460 -> j
-    215:215:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6463:6463 -> j
-    216:220:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6466:6470 -> j
-    221:221:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6472:6472 -> j
-    222:223:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6474:6475 -> j
-    224:226:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6324:6326 -> j
-    227:229:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6324:6326 -> j
+    214:214:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6463:6463 -> j
+    215:219:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6466:6470 -> j
+    220:220:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6472:6472 -> j
+    221:222:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6474:6475 -> j
+    223:225:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6324:6326 -> j
+    226:228:androidx.recyclerview.widget.RecyclerView$ViewHolder tryGetViewHolderForPositionByDeadline(int,boolean,long):6324:6326 -> j
     1:4:void unscrapView(androidx.recyclerview.widget.RecyclerView$ViewHolder):6775:6775 -> k
       # {"id":"com.android.tools.r8.residualsignature","signature":"(Landroidx/recyclerview/widget/RecyclerView$j;)V"}
     5:10:void unscrapView(androidx.recyclerview.widget.RecyclerView$ViewHolder):6776:6776 -> k

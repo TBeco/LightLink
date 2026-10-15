@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    Bottom Sheet RF 채널 정보 상자 배경.
+
+    기존 LightLink의 어두운 배경색을 유지하며
+    식별하기 버튼과 동일하게 10dp 둥근 모서리를 적용한다.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <solid android:color="#29272C" />
+
+    <corners android:radius="10dp" />
+
+</shape>

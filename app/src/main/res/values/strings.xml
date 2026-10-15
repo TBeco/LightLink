@@ -67,8 +67,27 @@
     <string name="identify_warning_read_unsupported">※ The base station may be using older firmware. Before using Identify, turn on the base station and make sure its LED is green.</string>
     <string name="identify_command_failed">Identify command failed: %1$s</string>
 
-    <!-- Future Features -->
-    <string name="device_channel_future">Channel change · May be added later</string>
+    <!-- RF Channel Management / Bottom Sheet -->
+
+    <!-- Section Title -->
+    <string name="device_channel_title">RF Channel Management</string>
+
+    <!-- Current Channel -->
+    <string name="device_channel_current_placeholder">Current channel —</string>
+    <string name="device_channel_current_format">Current channel %1$d</string>
+
+    <!-- Channel Conflict -->
+    <string name="device_channel_conflict">Used by another base station</string>
+
+    <!-- Channel Description -->
+    <string name="device_channel_description">Base stations in the same play area should use different RF channels.</string>
+
+    <!-- Change Channel Button -->
+    <string name="device_channel_change_button">Change channel</string>
+    <string name="device_channel_change_description">Choose an RF channel for this base station</string>
+
+    <!-- Channel Change Restrictions -->
+    <string name="device_channel_awake_required">※ Channel changes are available only while the base station is Awake.</string>
 
     <!-- ==================================================
          03. dialog_manual_power.xml / Manual Power Control

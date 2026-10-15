@@ -61,8 +61,27 @@
     <string name="identify_warning_read_unsupported">※ 이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 LED가 초록색인지 확인해 주세요.</string>
     <string name="identify_command_failed">식별 명령 실패: %1$s</string>
 
-    <!-- 향후 기능 -->
-    <string name="device_channel_future">채널 변경 · 추후 추가 가능</string>
+    <!-- RF 채널 관리 / 장치 관리 Bottom Sheet -->
+
+    <!-- 영역 제목 -->
+    <string name="device_channel_title">RF 채널 관리</string>
+
+    <!-- 현재 채널 -->
+    <string name="device_channel_current_placeholder">현재 채널 —</string>
+    <string name="device_channel_current_format">현재 채널 %1$d</string>
+
+    <!-- 채널 중복 안내 -->
+    <string name="device_channel_conflict">다른 장치와 중복</string>
+
+    <!-- 채널 설명 -->
+    <string name="device_channel_description">같은 공간의 베이스스테이션은 서로 다른 RF 채널을 사용하는 것이 좋습니다.</string>
+
+    <!-- 채널 변경 버튼 -->
+    <string name="device_channel_change_button">채널 변경</string>
+    <string name="device_channel_change_description">이 베이스스테이션의 RF 채널 선택하기</string>
+
+    <!-- 채널 변경 제한 안내 -->
+    <string name="device_channel_awake_required">※ 채널 변경은 베이스스테이션이 Awake 상태일 때만 사용할 수 있습니다.</string>
 
     <!-- ==================================================
          03. dialog_manual_power.xml / 수동 전원 제어
