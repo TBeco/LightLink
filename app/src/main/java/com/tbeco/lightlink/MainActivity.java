@@ -982,28 +982,6 @@ public class MainActivity extends AppCompatActivity {
                 dialog.findViewById(R.id.buttonIdentify);
 
         /*
-         * 채널 관리 영역의 현재 RF 채널 표시.
-         *
-         * 기존 BLE 상태 조회 과정에서 저장한 채널 정보를 사용한다.
-         * 추가적인 GATT 연결이나 READ는 실행하지 않는다.
-         */
-        TextView textSheetCurrentChannel =
-                dialog.findViewById(
-                        R.id.textSheetCurrentChannel
-                );
-
-        /*
-         * 채널 관리 영역의 RF 채널 중복 경고.
-         *
-         * 현재 장치와 동일한 채널을 사용하는
-         * 다른 Base Station이 존재할 때만 표시한다.
-         */
-        TextView textSheetChannelConflict =
-                dialog.findViewById(
-                        R.id.textSheetChannelConflict
-                );
-
-        /*
          * Power State READ 미지원 장치 전용 안내 영역.
          *
          * 안내 기호(※)와 본문을 함께 표시하거나
@@ -1018,56 +996,6 @@ public class MainActivity extends AppCompatActivity {
                 );
 
         deviceName.setText(device.getName());
-
-        /*
-         * 현재 Base Station의 RF 채널 표시.
-         *
-         * 1~16 범위의 채널이 확인되었다면
-         * 시스템 언어에 맞는 문자열로 표시한다.
-         *
-         * 아직 채널을 확인하지 못했거나
-         * 유효하지 않은 값이라면 기본 안내(—)를 유지한다.
-         */
-        Integer channel = device.getChannel();
-
-        if (channel != null && channel >= 1 && channel <= 16) {
-
-            textSheetCurrentChannel.setText(
-                    getString(
-                            R.string.device_channel_current_format,
-                            channel
-                    )
-            );
-
-        } else {
-
-            textSheetCurrentChannel.setText(
-                    R.string.device_channel_current_placeholder
-            );
-        }
-
-        /*
-         * 현재 장치의 RF 채널 중복 여부 확인.
-         *
-         * 기존 RfChannelConflictChecker를 재사용한다.
-         * 같은 채널을 사용하는 장치가 2대 이상일 때
-         * 중복 경고를 표시한다.
-         *
-         * 이미 저장된 채널 정보만 비교하므로
-         * 추가적인 BLE 연결이나 GATT READ는 수행하지 않는다.
-         */
-        boolean isChannelDuplicated =
-                RfChannelConflictChecker.isChannelDuplicated(
-                        deviceList,
-                        channel
-                );
-
-        textSheetChannelConflict.setVisibility(
-                isChannelDuplicated
-                        ? View.VISIBLE
-                        : View.GONE
-        );
-
 
         currentDeviceSheet = dialog;
         currentSheetDevice = device;
@@ -1097,10 +1025,14 @@ public class MainActivity extends AppCompatActivity {
 
         /*
          * Bottom Sheet를 열기 전에
-         * Identify 버튼과 현재 전원 상태를 갱신한다.
+         * 현재 장치의 UI 정보를 갱신한다.
+         *
+         * 기존 Identify 기능과 전원 상태 표시를 유지하면서
+         * RF 채널 정보도 함께 갱신한다.
          */
         refreshIdentifyButton();
         refreshSheetChannelState();
+        refreshSheetChannelInfo();
 
         dialog.show();
     }
@@ -1186,6 +1118,126 @@ public class MainActivity extends AppCompatActivity {
                             : View.GONE
             );
         }
+    }
+
+    /*
+     * 현재 열려 있는 Bottom Sheet의 RF 채널 정보 갱신.
+     *
+     * 기존 BleDeviceItem에 저장된 채널 정보를 사용한다.
+     * 추가적인 BLE 연결이나 GATT READ는 수행하지 않는다.
+     *
+     * 1. 현재 채널 번호 표시
+     * 2. 다른 Base Station과의 채널 중복 여부 표시
+     *
+     * 채널 정보가 없거나 현재 검색 목록에서 제거된 장치는
+     * 채널 번호 대신 기본 안내(—)를 표시하고
+     * 중복 경고를 숨긴다.
+     *
+     * RecyclerView는 갱신하지 않는다.
+     */
+    private void refreshSheetChannelInfo() {
+
+        if (currentDeviceSheet == null
+                || currentSheetDevice == null) {
+            return;
+        }
+
+        /*
+         * Bottom Sheet의 채널 정보 UI.
+         *
+         * 별도의 필드에 보관하지 않고
+         * 현재 열려 있는 Dialog에서 가져온다.
+         */
+        TextView textSheetCurrentChannel =
+                currentDeviceSheet.findViewById(
+                        R.id.textSheetCurrentChannel
+                );
+
+        TextView textSheetChannelConflict =
+                currentDeviceSheet.findViewById(
+                        R.id.textSheetChannelConflict
+                );
+
+        if (textSheetCurrentChannel == null
+                || textSheetChannelConflict == null) {
+            return;
+        }
+
+        /*
+         * 현재 장치가 검색 목록에 존재하는지 확인한다.
+         *
+         * 재검색이나 Bluetooth OFF로 제거된 장치의
+         * 이전 채널 정보를 표시하지 않는다.
+         */
+        if (!deviceList.contains(currentSheetDevice)) {
+
+            textSheetCurrentChannel.setText(
+                    R.string.device_channel_current_placeholder
+            );
+
+            textSheetChannelConflict.setVisibility(
+                    View.GONE
+            );
+
+            return;
+        }
+
+        /*
+         * 기존에 저장된 RF 채널을 가져온다.
+         */
+        Integer channel =
+                currentSheetDevice.getChannel();
+
+        /*
+         * RF 채널 1~16만 정상적인 값으로 처리한다.
+         *
+         * 채널 정보가 없거나 범위를 벗어나면
+         * 기본 안내(—)를 표시한다.
+         */
+        if (channel == null
+                || channel < 1
+                || channel > 16) {
+
+            textSheetCurrentChannel.setText(
+                    R.string.device_channel_current_placeholder
+            );
+
+            textSheetChannelConflict.setVisibility(
+                    View.GONE
+            );
+
+            return;
+        }
+
+        /*
+         * 현재 RF 채널 번호 표시.
+         *
+         * 기존 한국어 / 영어 문자열 리소스를 사용한다.
+         */
+        textSheetCurrentChannel.setText(
+                getString(
+                        R.string.device_channel_current_format,
+                        channel
+                )
+        );
+
+        /*
+         * 기존 RfChannelConflictChecker를 사용하여
+         * 같은 채널을 사용하는 장치가 있는지 확인한다.
+         *
+         * 중복이 확인된 경우에만 경고를 표시한다.
+         */
+        boolean isChannelDuplicated =
+                RfChannelConflictChecker.isChannelDuplicated(
+                        deviceList,
+                        channel
+                );
+
+        textSheetChannelConflict.setVisibility(
+                isChannelDuplicated
+                        ? View.VISIBLE
+                        : View.GONE
+        );
     }
 
     /*
@@ -2165,6 +2217,15 @@ public class MainActivity extends AppCompatActivity {
          * UI 관련 작업은 메인 스레드에서 수행한다.
          */
         runOnUiThread(() -> {
+
+            /*
+             * Bottom Sheet가 열려 있다면
+             * 현재 RF 채널 번호와 중복 경고도 함께 갱신한다.
+             *
+             * 기존에 저장된 채널 정보만 사용하며
+             * 추가적인 BLE 연결이나 READ는 수행하지 않는다.
+             */
+            refreshSheetChannelInfo();
 
             /*
              * 안내 UI가 준비되지 않았다면

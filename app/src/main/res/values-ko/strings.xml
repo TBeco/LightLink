@@ -80,7 +80,7 @@
 
     <!-- 채널 관련 주의사항 -->
     <string name="device_channel_usage_warning">같은 공간의 베이스스테이션은 서로 다른 RF 채널을 사용하는 것이 좋습니다.</string>
-    <string name="device_channel_awake_required">채널 변경은 베이스스테이션이 Awake 상태일 때만 사용할 수 있습니다.</string>
+    <string name="device_channel_power_warning">채널을 변경하기 전에 베이스스테이션이 켜져 있는지 확인하세요.</string>
 
     <!-- ==================================================
          03. dialog_manual_power.xml / 수동 전원 제어
