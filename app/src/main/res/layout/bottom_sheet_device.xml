@@ -274,7 +274,14 @@
                     android:accessibilityHeading="true"
                     tools:ignore="UnusedAttribute" />
 
-                <!-- 실제 상태를 읽어 확인했을 때 MainActivity에서 표시한다. -->
+                <!--
+                    현재 장치 상태 표시.
+
+                    Awake / Sleep뿐 아니라 Checking, Processing,
+                    READ 미지원 및 오류 상태도 표시한다.
+
+                    실제 문자열과 색상은 MainActivity에서 관리한다.
+                -->
                 <TextView
                     android:id="@+id/textSheetChannelState"
                     android:layout_width="wrap_content"
@@ -334,9 +341,15 @@
                 android:lineSpacingExtra="2dp" />
 
             <!--
-                채널 변경 버튼: 식별 버튼과 크기 및 모서리 디자인을 통일한다.
-                현재는 UI 단계이므로 비활성화하며, 추후 Awake 여부와 지원 여부를
-                확인한 뒤 4×4 선택 다이얼로그에 연결한다.
+                RF 채널 변경 버튼.
+
+                기존 식별 버튼과 크기 및 모서리 디자인을 통일한다.
+
+                현재는 UI 단계이므로 비활성화한다.
+                향후 4×4 채널 선택 다이얼로그와 BLE WRITE를 연결한다.
+
+                채널 변경 가능 조건은 실제 장치 및
+                펌웨어별 테스트 결과에 따라 결정한다.
             -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSheetChangeChannel"

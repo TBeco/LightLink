@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    Base Station 2.0 RF 채널 선택 다이얼로그.
+
+    1~16번 채널을 4×4 그리드로 표시한다.
+
+    실제 채널 버튼은 MainActivity에서 동적으로 생성하며,
+    현재 채널 / 선택 채널 / 다른 장치의 사용 여부에 따라
+    표시 상태를 변경한다.
+
+    좁은 화면과 글꼴 확대 환경을 고려하여
+    전체 콘텐츠에 세로 스크롤을 지원한다.
+
+    실제 BLE 채널 변경 기능은 추후 연결한다.
+-->
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true"
+    android:background="@drawable/dialog_manual_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+
+        android:paddingStart="20dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="20dp">
+
+        <!--
+            다이얼로그 제목.
+
+            기존 채널 변경 버튼과 동일한 문자열을 사용한다.
+        -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:text="@string/device_channel_change_button"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+
+            android:accessibilityHeading="true"
+            tools:ignore="UnusedAttribute" />
+
+        <!--
+            현재 RF 채널 안내.
+
+            다이얼로그를 열 때 실제 채널 번호로 갱신한다.
+            채널을 읽지 못했다면 기본 안내(—)를 유지한다.
+        -->
+        <TextView
+            android:id="@+id/textChannelPickerCurrent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+
+            android:text="@string/device_channel_current_placeholder"
+            android:textColor="#BDBDBD"
+            android:textSize="14sp"
+
+            tools:text="현재 채널 3" />
+
+        <!--
+            RF 채널 선택 그리드.
+
+            항상 4개의 열을 유지한다.
+
+            Java에서 item_channel_option.xml을
+            16개 생성하여 이 영역에 추가한다.
+        -->
+        <GridLayout
+            android:id="@+id/gridChannelOptions"
+
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+
+            android:columnCount="4"
+            android:orientation="horizontal" />
+
+        <!--
+            RF 채널 선택 표시 안내.
+
+            실제 채널 버튼에 사용되는 색상과
+            안내 문구의 색상을 일치시킨다.
+
+            1. 현재 채널: 파란색 테두리
+            2. 다른 장치가 사용 중인 채널: 주황색 점
+
+            색상 설명과 의미를 별도의 TextView로 분리하여
+            시스템 언어 및 글꼴 확대 환경에서도
+            각 문구의 색상을 독립적으로 관리한다.
+        -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical">
+
+            <!-- 현재 채널 표시 안내 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- 실제 현재 채널 테두리 색상 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/channel_picker_legend_current_label"
+                    android:textColor="#7EAEFF"
+                    android:textSize="12sp" />
+
+                <!-- 현재 채널 설명 -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/channel_picker_legend_current_description"
+                    android:textColor="#AAAAAA"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- 다른 장치의 채널 사용 여부 안내 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- 실제 채널 사용 표시 색상 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/channel_picker_legend_used_label"
+                    android:textColor="@color/warning_text_color"
+                    android:textSize="12sp" />
+
+                <!-- 다른 장치가 사용 중이라는 설명 -->
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/channel_picker_legend_used_description"
+                    android:textColor="#AAAAAA"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!--
+            RF 채널 선택 상태 안내.
+
+            최초 실행 시에는 채널 선택을 안내한다.
+
+            선택한 채널에 따라 다음 내용을 표시한다.
+            1. 사용 가능한 채널
+            2. 다른 장치와 중복된 채널
+            3. 현재 사용 중인 채널
+
+            안내 영역을 항상 유지하여
+            채널 선택 시 다이얼로그의 높이 변화를 최소화한다.
+
+            실제 문구 및 색상은 MainActivity에서 관리한다.
+        -->
+        <TextView
+            android:id="@+id/textChannelPickerConflictWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+
+            android:minHeight="48dp"
+            android:gravity="center_vertical"
+
+            android:text="@string/channel_picker_select_prompt"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp"
+
+            android:visibility="visible" />
+
+        <!--
+            하단 작업 버튼.
+
+            취소는 다이얼로그만 닫는다.
+            변경 버튼은 채널 선택 전까지 비활성화한다.
+
+            실제 BLE WRITE는 추후 연결한다.
+        -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+
+            android:orientation="horizontal">
+
+            <!-- 취소 버튼 -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/buttonChannelPickerCancel"
+
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="0.6"
+
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+
+                android:background="@drawable/dialog_action_button_background"
+                android:backgroundTint="@null"
+
+                android:text="@string/channel_picker_cancel"
+                android:textAllCaps="false"
+                android:textColor="#FF6B6B"
+                android:textSize="15sp" />
+
+            <!--
+                변경 확정 버튼.
+
+                채널 선택 및 BLE 기능을 연결하기 전까지
+                비활성화 상태를 유지한다.
+            -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/buttonChannelPickerConfirm"
+
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="50dp"
+
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+
+                android:background="@drawable/dialog_action_button_background"
+                android:backgroundTint="@null"
+
+                android:text="@string/channel_picker_confirm"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+
+                android:enabled="false" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

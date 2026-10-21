@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    RF 채널 선택 그리드의 개별 항목.
+
+    하나의 항목은 다음 요소로 구성된다.
+
+    1. 채널 번호 버튼
+    2. 다른 장치에서 사용 중임을 나타내는 주황색 점
+
+    현재 채널 / 선택 채널 / 사용 중 여부는
+    MainActivity에서 설정한다.
+
+    접근성 설명도 실제 채널 번호와 상태를
+    조합하여 Java에서 설정한다.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+
+    android:layout_width="match_parent"
+    android:layout_height="56dp">
+
+    <!--
+        RF 채널 번호 버튼.
+
+        기본 상태는 어두운 배경과 회색 테두리다.
+
+        현재 채널은 파란색 테두리,
+        선택한 채널은 파란색 배경으로 변경한다.
+
+        채널 번호는 Java에서 설정한다.
+    -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonChannelOption"
+
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+
+        android:minWidth="0dp"
+        android:minHeight="48dp"
+
+        android:padding="0dp"
+
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+
+        app:backgroundTint="#29272C"
+        app:cornerRadius="10dp"
+        app:strokeColor="#55545A"
+        app:strokeWidth="1dp"
+
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+
+        tools:text="3" />
+
+    <!--
+        다른 Base Station에서 사용하는 채널 표시.
+
+        버튼 안에 긴 설명을 넣지 않고
+        작은 주황색 점만 표시한다.
+
+        해당 채널이 사용 중일 때만 표시한다.
+
+        장식 요소이므로 TalkBack에서는 읽지 않으며,
+        채널 버튼의 접근성 설명에서 사용 여부를 안내한다.
+    -->
+    <TextView
+        android:id="@+id/textChannelInUseDot"
+
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+
+        android:layout_marginTop="3dp"
+        android:layout_marginEnd="10dp"
+
+        android:text="●"
+        android:textColor="@color/warning_text_color"
+        android:textSize="12sp"
+
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+
+        tools:ignore="HardcodedText"
+        tools:visibility="visible" />
+
+</FrameLayout>

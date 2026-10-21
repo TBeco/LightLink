@@ -51,6 +51,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
@@ -64,6 +65,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.PopupWindow;
 import android.widget.RadioGroup;
@@ -951,8 +953,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
-     * 장치 관리 Bottom Sheet. 식별 진행 타이머/진행 문구는 표시하지 않는다.
-     * 단순 상태 표시(버튼 어둡게/클릭 불가)만 장치 상태에 맞춰 관리한다.
+     * Base Station 장치 관리 Bottom Sheet.
+     *
+     * 1. 장치 식별(Identify) 기능 제공
+     * 2. 현재 장치 상태 표시
+     * 3. RF 채널 정보 및 중복 경고 표시
+     *
+     * Identify 진행 타이머는 표시하지 않는다.
+     * RF 채널 변경 기능은 추후 연결한다.
      */
     private void showDeviceManagementSheet(BleDeviceItem device) {
         if (currentDeviceSheet != null) currentDeviceSheet.dismiss();
@@ -982,6 +990,14 @@ public class MainActivity extends AppCompatActivity {
                 dialog.findViewById(R.id.buttonIdentify);
 
         /*
+         * RF 채널 선택 다이얼로그 실행 버튼.
+         */
+        View buttonChangeChannel =
+                dialog.findViewById(
+                        R.id.buttonSheetChangeChannel
+                );
+
+        /*
          * Power State READ 미지원 장치 전용 안내 영역.
          *
          * 안내 기호(※)와 본문을 함께 표시하거나
@@ -1006,6 +1022,31 @@ public class MainActivity extends AppCompatActivity {
 
         buttonClose.setOnClickListener(v -> dialog.dismiss());
         buttonIdentify.setOnClickListener(v -> startIdentify(device));
+
+        /*
+         * RF 채널 선택 다이얼로그 연결.
+         *
+         * 현재는 UI 미리보기 단계이므로
+         * 실제 BLE 채널 변경 명령은 전송하지 않는다.
+         *
+         * 채널 변경 가능 조건은
+         * 향후 펌웨어별 실기기 테스트를 통해 확정한다.
+         */
+        buttonChangeChannel.setOnClickListener(
+                v -> showChannelPickerDialog(device)
+        );
+
+        /*
+         * UI 테스트를 위한 임시 활성화.
+         *
+         * 다이얼로그 내부의 '변경' 버튼은 여전히 비활성화되어
+         * 실제 장치의 채널이 변경되지 않는다.
+         *
+         * BLE WRITE 구현 시 이 임시 처리를 제거하고
+         * 정식 활성화 조건으로 대체한다.
+         */
+        buttonChangeChannel.setEnabled(true);
+        buttonChangeChannel.setAlpha(1.0f);
 
         dialog.setOnDismissListener(ignored -> {
             if (currentDeviceSheet == dialog) {
@@ -1035,6 +1076,483 @@ public class MainActivity extends AppCompatActivity {
         refreshSheetChannelInfo();
 
         dialog.show();
+    }
+
+    /*
+     * Base Station 2.0 RF 채널 선택 다이얼로그.
+     *
+     * 1~16번 채널을 4×4 그리드로 표시한다.
+     *
+     * 현재 채널:
+     * 파란색 테두리로 구분한다.
+     *
+     * 다른 Base Station이 사용하는 채널:
+     * 주황색 점으로 표시한다.
+     *
+     * 선택한 채널:
+     * 파란색 배경으로 강조한다.
+     *
+     * 중복 채널도 선택할 수 있지만
+     * 별도의 주의사항을 표시한다.
+     *
+     * 현재는 UI 구현 단계이므로
+     * 실제 BLE WRITE는 수행하지 않는다.
+     */
+    private void showChannelPickerDialog(BleDeviceItem device) {
+
+        /*
+         * 검색 목록에서 제거된 장치는
+         * 채널 선택창을 열지 않는다.
+         */
+        if (device == null
+                || !deviceList.contains(device)) {
+            return;
+        }
+
+        /*
+         * 채널 선택 다이얼로그 레이아웃 생성.
+         */
+        View dialogView =
+                getLayoutInflater().inflate(
+                        R.layout.dialog_channel_select,
+                        null
+                );
+
+        AlertDialog dialog =
+                new AlertDialog.Builder(this)
+                        .setView(dialogView)
+                        .create();
+
+        /*
+         * 다이얼로그 내부 UI 연결.
+         */
+        GridLayout gridChannelOptions =
+                dialogView.findViewById(
+                        R.id.gridChannelOptions
+                );
+
+        TextView textCurrentChannel =
+                dialogView.findViewById(
+                        R.id.textChannelPickerCurrent
+                );
+
+        TextView textConflictWarning =
+                dialogView.findViewById(
+                        R.id.textChannelPickerConflictWarning
+                );
+
+        View buttonCancel =
+                dialogView.findViewById(
+                        R.id.buttonChannelPickerCancel
+                );
+
+        View buttonConfirm =
+                dialogView.findViewById(
+                        R.id.buttonChannelPickerConfirm
+                );
+
+        /*
+         * 현재 장치의 RF 채널.
+         *
+         * 채널 정보가 없는 경우에는
+         * 기본 안내(—)를 표시한다.
+         */
+        Integer currentChannel =
+                device.getChannel();
+
+        if (currentChannel != null
+                && currentChannel >= 1
+                && currentChannel <= 16) {
+
+            textCurrentChannel.setText(
+                    getString(
+                            R.string.device_channel_current_format,
+                            currentChannel
+                    )
+            );
+
+        } else {
+
+            textCurrentChannel.setText(
+                    R.string.device_channel_current_placeholder
+            );
+        }
+
+        /*
+         * 다른 Base Station이 사용 중인 RF 채널.
+         *
+         * 배열의 0번은 사용하지 않는다.
+         *
+         * 현재 선택한 장치 자체는 제외한다.
+         *
+         * 이미 저장된 채널 정보만 사용하며
+         * 추가적인 BLE READ는 수행하지 않는다.
+         */
+        boolean[] channelsInUse =
+                new boolean[17];
+
+        for (BleDeviceItem otherDevice : deviceList) {
+
+            if (otherDevice == null
+                    || otherDevice == device) {
+                continue;
+            }
+
+            Integer otherChannel =
+                    otherDevice.getChannel();
+
+            if (otherChannel != null
+                    && otherChannel >= 1
+                    && otherChannel <= 16) {
+
+                channelsInUse[otherChannel] = true;
+            }
+        }
+
+        /*
+         * 채널 버튼과 선택 상태.
+         *
+         * selectedChannel[0] = 0:
+         * 아직 아무 채널도 선택하지 않음.
+         */
+        MaterialButton[] channelButtons =
+                new MaterialButton[17];
+
+        final int[] selectedChannel = {0};
+
+        /*
+         * 화면 밀도에 맞는 크기 계산.
+         */
+        float density =
+                getResources().getDisplayMetrics().density;
+
+        int cellMargin =
+                Math.round(4 * density);
+
+        int cellHeight =
+                Math.round(56 * density);
+
+        int normalStrokeWidth =
+                Math.max(1, Math.round(density));
+
+        int highlightedStrokeWidth =
+                Math.max(1, Math.round(2 * density));
+
+        /*
+         * 채널 버튼의 선택 상태를 갱신한다.
+         *
+         * 현재 채널과 선택 채널은 서로 구분한다.
+         * 채널 변경을 확정하기 전까지
+         * 실제 BleDeviceItem의 값은 수정하지 않는다.
+         */
+        Runnable refreshChannelSelection = () -> {
+
+            for (int channel = 1; channel <= 16; channel++) {
+
+                MaterialButton button =
+                        channelButtons[channel];
+
+                if (button == null) {
+                    continue;
+                }
+
+                boolean isCurrent =
+                        currentChannel != null
+                                && currentChannel == channel;
+
+                boolean isSelected =
+                        selectedChannel[0] == channel;
+
+                /*
+                 * 선택된 채널은 파란색 배경.
+                 *
+                 * 현재 채널은 파란색 테두리.
+                 *
+                 * 나머지는 기본 회색 테두리.
+                 */
+                int backgroundColor =
+                        isSelected
+                                ? Color.parseColor("#315991")
+                                : Color.parseColor("#29272C");
+
+                int borderColor =
+                        (isSelected || isCurrent)
+                                ? Color.parseColor("#7EAEFF")
+                                : Color.parseColor("#55545A");
+
+                int borderWidth =
+                        (isSelected || isCurrent)
+                                ? highlightedStrokeWidth
+                                : normalStrokeWidth;
+
+                button.setBackgroundTintList(
+                        ColorStateList.valueOf(
+                                backgroundColor
+                        )
+                );
+
+                button.setStrokeColor(
+                        ColorStateList.valueOf(
+                                borderColor
+                        )
+                );
+
+                button.setStrokeWidth(
+                        borderWidth
+                );
+
+                /*
+                 * TalkBack 접근성 설명.
+                 *
+                 * 숫자뿐 아니라 현재 채널,
+                 * 선택 여부와 사용 중 여부도 안내한다.
+                 */
+                String description =
+                        getString(
+                                R.string.channel_picker_accessibility_channel,
+                                channel
+                        );
+
+                if (isCurrent) {
+                    description += ", " + getString(
+                            R.string.channel_picker_accessibility_current
+                    );
+                }
+
+                if (channelsInUse[channel]) {
+                    description += ", " + getString(
+                            R.string.channel_picker_accessibility_used
+                    );
+                }
+
+                if (isSelected) {
+                    description += ", " + getString(
+                            R.string.channel_picker_accessibility_selected
+                    );
+                }
+
+                button.setContentDescription(
+                        description
+                );
+            }
+
+            /*
+             * RF 채널 선택 상태 안내.
+             *
+             * 최초 실행 시에는 채널 선택을 안내한다.
+             *
+             * 다른 장치가 사용하는 채널은 주황색 경고,
+             * 사용 가능한 채널은 흰색으로 표시한다.
+             *
+             * 현재 채널을 다시 선택한 경우에는
+             * 기존 채널이라는 사실을 안내한다.
+             *
+             * 중복 채널이 현재 채널인 경우에는
+             * 중복 경고를 우선 표시한다.
+             *
+             * 안내 영역을 항상 유지하여
+             * 다이얼로그 높이 변화를 최소화한다.
+             */
+            int selected = selectedChannel[0];
+
+            if (selected == 0) {
+
+                /*
+                 * 아직 채널을 선택하지 않은 상태.
+                 */
+                textConflictWarning.setText(
+                        R.string.channel_picker_select_prompt
+                );
+
+                textConflictWarning.setTextColor(
+                        Color.parseColor("#AAAAAA")
+                );
+
+            } else if (channelsInUse[selected]) {
+
+                /*
+                 * 다른 Base Station에서 사용 중인 채널.
+                 */
+                textConflictWarning.setText(
+                        R.string.channel_picker_conflict_warning
+                );
+
+                textConflictWarning.setTextColor(
+                        getColor(R.color.warning_text_color)
+                );
+
+            } else if (currentChannel != null
+                    && currentChannel == selected) {
+
+                /*
+                 * 현재 장치에서 사용 중인 채널.
+                 */
+                textConflictWarning.setText(
+                        R.string.channel_picker_current_selected
+                );
+
+                textConflictWarning.setTextColor(
+                        Color.parseColor("#AAAAAA")
+                );
+
+            } else {
+
+                /*
+                 * 검색된 다른 Base Station과
+                 * 중복되지 않는 채널.
+                 */
+                textConflictWarning.setText(
+                        R.string.channel_picker_available
+                );
+
+                textConflictWarning.setTextColor(
+                        Color.parseColor("#FFFFFF")
+                );
+            }
+
+            /*
+             * 상태 안내는 항상 표시한다.
+             * 선택에 따라 문구와 색상만 변경한다.
+             */
+            textConflictWarning.setVisibility(
+                    View.VISIBLE
+            );
+        };
+
+        /*
+         * RF 채널 1~16 버튼을 생성한다.
+         *
+         * 4개의 열에 동일한 비율로 배치한다.
+         * 각 항목은 기존 item_channel_option.xml을 사용한다.
+         */
+        for (int channel = 1; channel <= 16; channel++) {
+
+            final int channelNumber = channel;
+
+            View itemView =
+                    getLayoutInflater().inflate(
+                            R.layout.item_channel_option,
+                            gridChannelOptions,
+                            false
+                    );
+
+            MaterialButton button =
+                    itemView.findViewById(
+                            R.id.buttonChannelOption
+                    );
+
+            View inUseDot =
+                    itemView.findViewById(
+                            R.id.textChannelInUseDot
+                    );
+
+            /*
+             * 버튼에 채널 번호만 표시한다.
+             */
+            button.setText(
+                    String.valueOf(channelNumber)
+            );
+
+            channelButtons[channelNumber] =
+                    button;
+
+            /*
+             * 다른 장치가 사용 중인 채널에는
+             * 주황색 점을 표시한다.
+             */
+            inUseDot.setVisibility(
+                    channelsInUse[channelNumber]
+                            ? View.VISIBLE
+                            : View.GONE
+            );
+
+            /*
+             * 채널 선택.
+             *
+             * 선택된 번호와 UI만 갱신하며
+             * 실제 장치에 명령을 보내지 않는다.
+             */
+            button.setOnClickListener(v -> {
+
+                selectedChannel[0] =
+                        channelNumber;
+
+                refreshChannelSelection.run();
+            });
+
+            /*
+             * 4×4 GridLayout 배치.
+             *
+             * 4개 열에 동일한 가중치를 주어
+             * 화면 너비에 맞게 배치한다.
+             */
+            int row =
+                    (channelNumber - 1) / 4;
+
+            int column =
+                    (channelNumber - 1) % 4;
+
+            GridLayout.LayoutParams params =
+                    new GridLayout.LayoutParams(
+                            GridLayout.spec(row),
+                            GridLayout.spec(column, 1f)
+                    );
+
+            params.width = 0;
+            params.height = cellHeight;
+
+            params.setMargins(
+                    cellMargin,
+                    cellMargin,
+                    cellMargin,
+                    cellMargin
+            );
+
+            gridChannelOptions.addView(
+                    itemView,
+                    params
+            );
+        }
+
+        /*
+         * 최초 표시 상태 설정.
+         *
+         * 현재 채널 테두리와 접근성 설명을 적용한다.
+         */
+        refreshChannelSelection.run();
+
+        /*
+         * 아직 BLE WRITE가 구현되지 않았으므로
+         * 변경 확정 버튼은 비활성화한다.
+         */
+        buttonConfirm.setEnabled(false);
+
+        /*
+         * 취소 버튼.
+         *
+         * 장치 상태를 변경하지 않고
+         * 다이얼로그만 닫는다.
+         */
+        buttonCancel.setOnClickListener(
+                v -> dialog.dismiss()
+        );
+
+        /*
+         * 다이얼로그 표시.
+         */
+        dialog.show();
+
+        /*
+         * 기본 AlertDialog 배경을 투명하게 하여
+         * XML의 둥근 모서리 디자인을 적용한다.
+         */
+        if (dialog.getWindow() != null) {
+
+            dialog.getWindow()
+                    .setBackgroundDrawableResource(
+                            android.R.color.transparent
+                    );
+        }
     }
 
     /*
@@ -2208,8 +2726,10 @@ public class MainActivity extends AppCompatActivity {
      * 이미 저장된 채널 정보만 사용하므로
      * 추가적인 BLE 연결이나 GATT READ는 실행하지 않는다.
      *
-     * RecyclerView는 갱신하지 않고
-     * 검색 버튼 왼쪽의 안내 영역만 변경한다.
+     * RecyclerView는 갱신하지 않는다.
+     *
+     * 검색 버튼 왼쪽의 채널 중복 안내와
+     * 현재 열려 있는 Bottom Sheet의 채널 정보를 갱신한다.
      */
     private void updateChannelConflictWarning() {
 
