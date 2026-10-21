@@ -82,21 +82,19 @@
     <string name="device_channel_usage_warning">같은 공간의 베이스스테이션은 서로 다른 RF 채널을 사용하는 것이 좋습니다.</string>
     <string name="device_channel_power_warning">채널을 변경하기 전에 베이스스테이션이 켜져 있는지 확인하세요.</string>
 
-    <!-- ==================================================
-         03. dialog_manual_power.xml / 수동 전원 제어
-         ================================================== -->
+    <!-- RF 채널 WRITE / 변경 확인 -->
+    <string name="channel_write_confirm_title">채널 변경 확인</string>
+    <string name="channel_write_confirm_message">RF 채널을 %1$d번으로 변경할까요?\n\n변경 과정에서 베이스스테이션의 추적이 잠시 중단될 수 있습니다.</string>
+    <string name="channel_write_confirm_conflict">채널 %1$d번은 다른 베이스스테이션에서 사용 중입니다.\n\n그래도 해당 채널로 변경하시겠습니까?</string>
 
-    <!-- 제목 · 본문 · 취소 -->
-    <string name="manual_power_title">수동 전원 제어 필요</string>
-    <string name="manual_power_message">이 베이스스테이션은 현재 전원 상태를 확인할 수 없습니다.\n\n일부 이전 버전의 베이스스테이션 펌웨어에서 발생할 수 있습니다.\n\n원하는 전원 상태를 직접 선택해주세요.</string>
-    <string name="manual_power_cancel">취소</string>
-
-    <!-- Sleep / Wake 접근성 -->
-    <string name="manual_power_sleep_accessibility">이 베이스스테이션에 Sleep 명령 보내기</string>
-    <string name="manual_power_wake_accessibility">이 베이스스테이션에 Wake 명령 보내기</string>
+    <!-- RF 채널 WRITE / 결과 안내 -->
+    <string name="channel_write_sent">채널 WRITE 요청이 처리되었습니다. 실제 변경 여부는 다시 검색하여 확인하세요.</string>
+    <string name="channel_write_unconfirmed">채널 변경 결과를 확인하지 못했습니다. 재시도하기 전에 다시 검색하여 확인하세요.</string>
+    <string name="channel_write_unavailable">현재 채널을 변경할 수 없습니다. 베이스스테이션 상태를 확인한 뒤 다시 시도하세요.</string>
+    <string name="channel_write_16_unsupported">16번 채널은 BLE 값이 검증될 때까지 변경할 수 없습니다.</string>
 
     <!-- ==================================================
-         04. dialog_channel_select.xml / RF 채널 선택
+         03. dialog_channel_select.xml / RF 채널 선택
          ================================================== -->
 
     <!-- 채널 선택 상태 -->
@@ -122,6 +120,19 @@
     <string name="channel_picker_accessibility_current">현재 채널</string>
     <string name="channel_picker_accessibility_used">다른 장치가 사용 중</string>
     <string name="channel_picker_accessibility_selected">선택됨</string>
+
+    <!-- ==================================================
+         04. dialog_manual_power.xml / 수동 전원 제어
+         ================================================== -->
+
+    <!-- 제목 · 본문 · 취소 -->
+    <string name="manual_power_title">수동 전원 제어 필요</string>
+    <string name="manual_power_message">이 베이스스테이션은 현재 전원 상태를 확인할 수 없습니다.\n\n일부 이전 버전의 베이스스테이션 펌웨어에서 발생할 수 있습니다.\n\n원하는 전원 상태를 직접 선택해주세요.</string>
+    <string name="manual_power_cancel">취소</string>
+
+    <!-- Sleep / Wake 접근성 -->
+    <string name="manual_power_sleep_accessibility">이 베이스스테이션에 Sleep 명령 보내기</string>
+    <string name="manual_power_wake_accessibility">이 베이스스테이션에 Wake 명령 보내기</string>
 
     <!-- ==================================================
          05. dialog_settings_action.xml / 권한 · 설정 안내

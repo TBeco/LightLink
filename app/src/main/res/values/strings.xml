@@ -116,6 +116,17 @@
     <string name="channel_picker_accessibility_used">Used by another base station</string>
     <string name="channel_picker_accessibility_selected">Selected</string>
 
+    <!-- RF Channel WRITE / Confirmation -->
+    <string name="channel_write_confirm_title">Confirm Channel Change</string>
+    <string name="channel_write_confirm_message">Change RF channel to %1$d?\n\nThe base station may briefly interrupt tracking.</string>
+    <string name="channel_write_confirm_conflict">Channel %1$d is already used by another base station.\n\nDo you still want to change to this channel?</string>
+
+    <!-- RF Channel WRITE / Result -->
+    <string name="channel_write_sent">Channel WRITE request completed. Scan again to verify the actual channel.</string>
+    <string name="channel_write_unconfirmed">Channel change could not be confirmed. Scan again before retrying.</string>
+    <string name="channel_write_unavailable">Channel change is currently unavailable. Check the base station and try again.</string>
+    <string name="channel_write_16_unsupported">Channel 16 cannot be selected for WRITE until its BLE value is verified.</string>
+
     <!-- ==================================================
          04. dialog_manual_power.xml / Manual Power Control
          ================================================== -->

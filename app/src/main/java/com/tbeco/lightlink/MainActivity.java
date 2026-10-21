@@ -465,6 +465,18 @@ public class MainActivity extends AppCompatActivity {
     private final Map<String, BaseStationGattController> powerControllers =
             new HashMap<>();
 
+    /*
+     * Base Station 2.0 RF 채널 변경 전용 Controller.
+     *
+     * 기존 Wake / Sleep 및 Identify Controller와
+     * 독립적인 GATT 연결을 사용한다.
+     *
+     * 현재는 한 번에 하나의 RF 채널 변경 작업만 처리한다.
+     *
+     * 실제 Controller 객체는 처음 사용할 때 생성한다.
+     */
+    private BaseStationChannelController channelController;
+
 
     /*
      * 상태 확인이 너무 오래 걸리면
@@ -1374,6 +1386,23 @@ public class MainActivity extends AppCompatActivity {
                         Color.parseColor("#AAAAAA")
                 );
 
+            } else if (selected == 16) {
+
+                /*
+                 * 16번 채널은 UI에서 선택할 수 있지만,
+                 * 아직 실제 BLE WRITE 값이 검증되지 않았다.
+                 *
+                 * 잘못된 값이 전송되지 않도록
+                 * 안내 문구를 표시하고 변경을 제한한다.
+                 */
+                textChannelStatus.setText(
+                        R.string.channel_write_16_unsupported
+                );
+
+                textChannelStatus.setTextColor(
+                        getColor(R.color.warning_text_color)
+                );
+
             } else if (channelsInUse[selected]) {
 
                 /*
@@ -1473,10 +1502,13 @@ public class MainActivity extends AppCompatActivity {
             );
 
             /*
-             * 채널 선택.
+             * RF 채널 선택.
              *
-             * 선택된 번호와 UI만 갱신하며
-             * 실제 장치에 명령을 보내지 않는다.
+             * 채널 번호를 선택하면 UI와 변경 버튼 상태를 갱신한다.
+             * 실제 BLE WRITE는 변경 확인창에서 승인한 후 실행한다.
+             *
+             * 현재 채널과 동일한 번호는 변경하지 않는다.
+             * 16번 채널은 BLE WRITE 값 검증 전까지 제한한다.
              */
             button.setOnClickListener(v -> {
 
@@ -1484,6 +1516,20 @@ public class MainActivity extends AppCompatActivity {
                         channelNumber;
 
                 refreshChannelSelection.run();
+
+                /*
+                 * 유효한 채널이 선택되었고
+                 * 다른 BLE 작업이 진행 중이지 않을 때만
+                 * 변경 버튼을 활성화한다.
+                 */
+                boolean canConfirm =
+                        channelNumber >= 1
+                                && channelNumber <= 15
+                                && (currentChannel == null
+                                || currentChannel != channelNumber)
+                                && canChangeRfChannel(device);
+
+                buttonConfirm.setEnabled(canConfirm);
             });
 
             /*
@@ -1534,6 +1580,30 @@ public class MainActivity extends AppCompatActivity {
         buttonConfirm.setEnabled(false);
 
         /*
+         * RF 채널 변경 확정 버튼.
+         *
+         * 선택한 채널 번호를 전달하여
+         * 사용자에게 최종 변경 확인창을 표시한다.
+         *
+         * 확인창에서 변경을 승인한 경우에만
+         * 실제 BLE WRITE를 실행한다.
+         *
+         * 채널 선택창은 최종 승인이 이루어진 후 닫는다.
+         * 확인창에서 취소하면 기존 선택 상태를 유지한다.
+         */
+        buttonConfirm.setOnClickListener(v -> {
+
+            int requestedChannel =
+                    selectedChannel[0];
+
+            requestRfChannelChange(
+                    device,
+                    requestedChannel,
+                    dialog::dismiss
+            );
+        });
+
+        /*
          * 취소 버튼.
          *
          * 장치 상태를 변경하지 않고
@@ -1562,28 +1632,438 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
+     * Base Station 2.0 RF 채널 변경 요청.
+     *
+     * 사용자가 4×4 채널 선택창에서
+     * 변경 버튼을 눌렀을 때 호출한다.
+     *
+     * 1. 선택 채널의 유효성 확인
+     * 2. 현재 채널과 동일한지 확인
+     * 3. 다른 장치와의 채널 중복 여부 확인
+     * 4. 최종 변경 확인창 표시
+     * 5. BaseStationChannelController를 통한 BLE WRITE
+     *
+     * 채널 번호:
+     * 현재 실기기에서 확인한 15번 채널과
+     * 기존 READ 처리 방식을 기준으로 한다.
+     *
+     * 이번 최초 테스트에서는 1~15번만 WRITE한다.
+     * 16번 채널의 원시 값은 추후 별도로 검증한다.
+     *
+     * WRITE 결과만으로 실제 채널 변경을 확정하지 않는다.
+     * BleDeviceItem의 채널 값도 임의로 수정하지 않는다.
+     */
+    private void requestRfChannelChange(
+            BleDeviceItem device,
+            int requestedChannel,
+            Runnable onConfirmed) {
+
+        /*
+         * 변경 가능 상태인지 확인한다.
+         */
+        if (!canChangeRfChannel(device)) {
+
+            Toast.makeText(
+                    this,
+                    R.string.channel_write_unavailable,
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return;
+        }
+
+        /*
+         * 실제 WRITE를 허용할 채널 범위.
+         *
+         * 현재는 1~15번만 허용한다.
+         */
+        if (requestedChannel < 1
+                || requestedChannel > 15) {
+
+            Toast.makeText(
+                    this,
+                    R.string.channel_write_unavailable,
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return;
+        }
+
+        /*
+         * 현재 사용 중인 채널과 같다면
+         * 불필요한 WRITE를 실행하지 않는다.
+         */
+        Integer currentChannel =
+                device.getChannel();
+
+        if (currentChannel != null
+                && currentChannel == requestedChannel) {
+            return;
+        }
+
+        /*
+         * 기존 채널 중복 검사 기능 재사용.
+         *
+         * 다른 Base Station에서 사용하는 채널도
+         * 변경 자체를 차단하지 않는다.
+         *
+         * 대신 사용자에게 명확하게 경고한다.
+         */
+        boolean duplicated =
+                RfChannelConflictChecker.isChannelDuplicated(
+                        deviceList,
+                        requestedChannel
+                );
+
+        String confirmationMessage =
+                duplicated
+                        ? getString(
+                        R.string.channel_write_confirm_conflict,
+                        requestedChannel
+                )
+                        : getString(
+                        R.string.channel_write_confirm_message,
+                        requestedChannel
+                );
+
+        /*
+         * 기존 LightLink 스타일의 확인창 사용.
+         *
+         * 취소:
+         * 아무런 BLE 명령을 보내지 않는다.
+         *
+         * 변경:
+         * 현재 상태를 다시 검사한 후 WRITE를 시작한다.
+         */
+        showStyledActionDialog(
+                getString(R.string.channel_write_confirm_title),
+                confirmationMessage,
+                getString(R.string.channel_picker_confirm),
+                () -> {
+
+                    /*
+                     * 확인창을 띄운 사이에도
+                     * Bluetooth 상태나 다른 BLE 작업이
+                     * 변경되었을 수 있으므로 재검사한다.
+                     */
+                    if (!canChangeRfChannel(device)) {
+
+                        Toast.makeText(
+                                this,
+                                R.string.channel_write_unavailable,
+                                Toast.LENGTH_SHORT
+                        ).show();
+
+                        return;
+                    }
+
+                    /*
+                     * 확인창을 띄운 사이에 채널 정보가
+                     * 갱신되었다면 동일 채널 WRITE를 방지한다.
+                     */
+                    Integer latestChannel =
+                            device.getChannel();
+
+                    if (latestChannel != null
+                            && latestChannel == requestedChannel) {
+                        return;
+                    }
+
+                    /*
+                     * 실제 RF 채널 WRITE 요청.
+                     *
+                     * 현재 확인된 채널 번호를
+                     * 별도의 -1 변환 없이 전송한다.
+                     *
+                     * 이 대응 관계는 최초 실기기 테스트에서
+                     * 다시 확인해야 한다.
+                     */
+                    int rawChannel =
+                            requestedChannel;
+
+                    BaseStationChannelController controller =
+                            getChannelController();
+
+                    /*
+                     * 사용자 확인이 완료되었으므로
+                     * 기존 채널 선택창을 닫는다.
+                     */
+                    if (onConfirmed != null) {
+                        onConfirmed.run();
+                    }
+
+                    AppLog.d(
+                            "[Channel] User confirmed WRITE"
+                                    + " / device = "
+                                    + device.getName()
+                                    + " / target = "
+                                    + requestedChannel
+                                    + " / raw = "
+                                    + rawChannel
+                    );
+
+                    /*
+                     * 독립적인 ChannelController에서
+                     * GATT 연결 및 WRITE를 처리한다.
+                     *
+                     * 실제 채널 변경 결과는
+                     * 다음 검색에서 다시 확인한다.
+                     */
+                    controller.writeRawChannel(
+                            device.getAddress(),
+                            rawChannel,
+                            (accepted, acknowledged, reason) -> {
+
+                                runOnUiThread(() -> {
+
+                                    AppLog.d(
+                                            "[Channel] WRITE callback"
+                                                    + " / device = "
+                                                    + device.getName()
+                                                    + " / target = "
+                                                    + requestedChannel
+                                                    + " / accepted = "
+                                                    + accepted
+                                                    + " / acknowledged = "
+                                                    + acknowledged
+                                                    + " / reason = "
+                                                    + reason
+                                    );
+
+                                    /*
+                                     * WRITE 작업이 끝났으므로
+                                     * 검색 버튼 상태를 복구한다.
+                                     */
+                                    updateScanButton();
+
+                                    /*
+                                     * WRITE 요청 처리 여부와
+                                     * 실제 채널 변경 성공 여부는 구분한다.
+                                     *
+                                     * 실패 또는 연결 끊김으로 반환되어도
+                                     * 명령이 이미 전달되었을 가능성이 있다.
+                                     *
+                                     * 따라서 즉시 재전송하지 않는다.
+                                     */
+                                    int messageId =
+                                            accepted
+                                                    ? R.string.channel_write_sent
+                                                    : R.string.channel_write_unconfirmed;
+
+                                    Toast.makeText(
+                                            this,
+                                            messageId,
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                });
+                            }
+                    );
+
+                    /*
+                     * WRITE가 시작되었으므로
+                     * 진행 중에는 Search 버튼을 비활성화한다.
+                     */
+                    updateScanButton();
+                }
+        );
+    }
+
+    /*
+     * RF 채널 변경 Controller 가져오기.
+     *
+     * 최초 호출 시 Controller를 생성하고
+     * 이후에는 동일한 객체를 재사용한다.
+     *
+     * 장치별로 Controller를 여러 개 생성하지 않고
+     * 하나의 Controller에서 채널 변경을 순차적으로 처리한다.
+     *
+     * 기존 Power / Identify Controller와는 독립적으로 관리한다.
+     */
+    private BaseStationChannelController getChannelController() {
+
+        if (channelController == null) {
+
+            channelController =
+                    new BaseStationChannelController(
+                            this,
+                            bluetoothAdapter
+                    );
+        }
+
+        return channelController;
+    }
+
+    /*
+     * RF 채널 변경 작업 진행 여부.
+     *
+     * Controller가 아직 생성되지 않았다면
+     * 진행 중인 작업이 없는 것으로 판단한다.
+     */
+    private boolean isChannelWriteBusy() {
+
+        return channelController != null
+                && channelController.isBusy();
+    }
+
+    /*
+     * RF 채널 변경 Controller 정리.
+     *
+     * Bluetooth OFF 또는 Activity 종료 시
+     * 진행 중인 명령을 취소하고 GATT 연결을 해제한다.
+     *
+     * 장치에 이미 전달된 WRITE는
+     * 이 메서드로 되돌릴 수 없다.
+     */
+    private void clearChannelController() {
+
+        if (channelController == null) {
+            return;
+        }
+
+        channelController.close();
+
+        channelController = null;
+    }
+
+    /*
+     * Base Station 2.0 RF 채널 변경 가능 여부 확인.
+     *
+     * 1. 현재 검색 목록에 존재하는 장치인지 확인한다.
+     * 2. Bluetooth 활성 상태와 권한을 확인한다.
+     * 3. BLE 검색 및 초기 상태 조회 중에는 변경하지 않는다.
+     * 4. Power / Identify / Channel 작업과 충돌하지 않도록 한다.
+     * 5. 현재 장치의 Power State를 확인한다.
+     *
+     * Power State READ를 지원하지 않는 구형 펌웨어도
+     * 수동 전원 제어가 가능하다면 변경 후보에 포함한다.
+     *
+     * 단, READ 미지원 장치는 실제 Awake 여부를
+     * 앱에서 확인할 수 없으므로 사용자에게
+     * 전원이 켜져 있는지 확인하도록 안내해야 한다.
+     *
+     * 실제 RF 채널 WRITE 지원 여부는
+     * GATT 서비스 검색 이후 Controller에서 확인한다.
+     *
+     * 현재는 최초 실기기 테스트를 위해
+     * Awake 또는 READ 미지원 수동 제어 가능 장치만 허용한다.
+     */
+    private boolean canChangeRfChannel(BleDeviceItem device) {
+
+        /*
+         * 유효한 검색 장치인지 확인한다.
+         */
+        if (device == null
+                || !deviceList.contains(device)) {
+            return false;
+        }
+
+        /*
+         * Bluetooth 객체 및 권한 확인.
+         */
+        if (bluetoothAdapter == null
+                || !canCheckBluetoothState()
+                || !getMissingPermissions().isEmpty()) {
+            return false;
+        }
+
+        try {
+
+            if (!bluetoothAdapter.isEnabled()) {
+                return false;
+            }
+
+        } catch (SecurityException | IllegalStateException e) {
+
+            return false;
+        }
+
+        /*
+         * 검색 또는 초기 상태 확인 중에는
+         * 새로운 RF 채널 변경 작업을 시작하지 않는다.
+         */
+        if (scanning || readingStatus) {
+            return false;
+        }
+
+        /*
+         * 다른 BLE 작업과의 충돌 방지.
+         *
+         * 최초 구현에서는 장치 구분 없이
+         * 다른 명령이 진행 중이라면 채널 변경을 제한한다.
+         */
+        if (isAnyPowerControllerBusy()
+                || isAnyIdentifyBusy()
+                || isChannelWriteBusy()) {
+
+            return false;
+        }
+
+        /*
+         * 현재 장치의 전원 상태 확인.
+         *
+         * FW 3008:
+         * Awake 상태를 READ로 확인할 수 있다.
+         *
+         * FW 3002:
+         * Power State READ가 지원되지 않을 수 있으나
+         * 수동 전원 제어가 가능하다면 변경 후보로 허용한다.
+         *
+         * 실제 WRITE 가능 여부는 별도 검증한다.
+         */
+        String status =
+                device.getStatus();
+
+        if ("Awake".equals(status)) {
+            return true;
+        }
+
+        return "State read unsupported".equals(status)
+                && device.isStateReadUnsupported()
+                && device.isManualPowerControlAvailable();
+    }
+
+    /*
      * 식별 허용: Awake, Sleep, State read unsupported(수동 Power WRITE 가능)만.
      * Checking / Processing / Stuck / NOWRITE / Connection failed 등은 비활성.
-     * 실제 Identify Characteristic 지원 여부는 BLE 연결 후에 별도로 확인한다.
+     *
+     * RF 채널 WRITE 진행 중에는 Identify를 시작하지 않는다.
+     *
+     * 실제 Identify Characteristic 지원 여부는
+     * BLE 연결 후에 별도로 확인한다.
      */
     private boolean canIdentify(BleDeviceItem device) {
         if (device == null || !deviceList.contains(device)
                 || bluetoothAdapter == null || !canCheckBluetoothState()) return false;
+
         try {
             if (!bluetoothAdapter.isEnabled()) return false;
         } catch (SecurityException | IllegalStateException e) {
             return false;
         }
+
+        /*
+         * RF 채널 변경 작업과 Identify의 GATT 연결 충돌 방지.
+         *
+         * 채널 WRITE가 진행 중이라면
+         * 새로운 Identify 작업을 시작하지 않는다.
+         */
+        if (isChannelWriteBusy()) {
+            return false;
+        }
+
         String status = device.getStatus();
         boolean allowedState = "Awake".equals(status) || "Sleep".equals(status)
                 || ("State read unsupported".equals(status)
                 && device.isStateReadUnsupported()
                 && device.isManualPowerControlAvailable());
+
         if (!allowedState || isIdentifyBusy(device)) return false;
 
         BaseStationGattController powerController =
                 powerControllers.get(device.getAddress());
+
         if (powerController != null && powerController.isBusy()) return false;
+
         return SystemClock.elapsedRealtime() >= identifyCooldownUntil.getOrDefault(
                 device.getAddress(), 0L);
     }
@@ -2065,17 +2545,33 @@ public class MainActivity extends AppCompatActivity {
     /*
      * Base Station 전원 명령 전송
      */
+    /*
+     * Base Station 전원 명령 전송
+     */
     private void sendPowerCommand(
             BaseStationGattController controller,
             BleDeviceItem device,
             BaseStationGattController.TargetState target,
             String previousStatus) {
 
+        /*
+         * RF 채널 WRITE 진행 중에는
+         * Wake / Sleep 명령을 시작하지 않는다.
+         *
+         * 독립적인 GATT Controller 사이의
+         * BLE 작업 충돌을 방지한다.
+         */
+        if (isChannelWriteBusy()) {
+            AppLog.d(
+                    "Power command ignored: RF channel WRITE in progress"
+            );
+            return;
+        }
+
         if (isIdentifyBusy(device)) {
             AppLog.d("Power command ignored: Identify GATT is busy");
             return;
         }
-
 
         /*
          * 여기서 Search 버튼을 무조건 비활성화하지 않는다.
@@ -2432,13 +2928,24 @@ public class MainActivity extends AppCompatActivity {
             BleDeviceItem device,
             BaseStationGattController.TargetState target) {
 
-
-        if (controller == null
-                || controller.isBusy()) {
-
+        /*
+         * RF 채널 WRITE 진행 중에는
+         * 수동 Wake / Sleep 명령을 시작하지 않는다.
+         *
+         * FW 3002처럼 Power State READ를 지원하지 않는
+         * 장치에서도 GATT 작업이 충돌하지 않도록 한다.
+         */
+        if (isChannelWriteBusy()) {
+            AppLog.d(
+                    "Manual power command ignored: RF channel WRITE in progress"
+            );
             return;
         }
 
+        if (controller == null
+                || controller.isBusy()) {
+            return;
+        }
 
         /*
          * 버튼 중복 입력을 막기 위해
@@ -3749,7 +4256,9 @@ public class MainActivity extends AppCompatActivity {
      *      앱은 위치 서비스를 강제로 켜지 않고 시스템 설정 화면으로 안내한다.
      */
     private void checkPermissionAndScan() {
-        if (isAnyPowerControllerBusy() || isAnyIdentifyBusy()) {
+        if (isAnyPowerControllerBusy()
+                || isAnyIdentifyBusy()
+                || isChannelWriteBusy()) {
             AppLog.d("Scan ignored: power command in progress");
             return;
         }
@@ -3804,7 +4313,9 @@ public class MainActivity extends AppCompatActivity {
          * 권한 요청 화면을 거친 사이 전원 작업이 시작됐을 수도 있으므로
          * 실제 Scan 직전에도 한 번 더 확인한다.
          */
-        if (isAnyPowerControllerBusy() || isAnyIdentifyBusy()) {
+        if (isAnyPowerControllerBusy()
+                || isAnyIdentifyBusy()
+                || isChannelWriteBusy()) {
 
             AppLog.d(
                     "Scan ignored: power command in progress"
@@ -4279,6 +4790,7 @@ public class MainActivity extends AppCompatActivity {
         resetStatusReads();
         clearPowerControllers();
         clearIdentifyControllers();
+        clearChannelController();
         bleScanner = null;
 
         /*
@@ -6272,6 +6784,7 @@ public class MainActivity extends AppCompatActivity {
 
         clearPowerControllers();
         clearIdentifyControllers();
+        clearChannelController();
 
 
         handler.removeCallbacksAndMessages(
