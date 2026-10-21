@@ -96,7 +96,35 @@
     <string name="manual_power_wake_accessibility">이 베이스스테이션에 Wake 명령 보내기</string>
 
     <!-- ==================================================
-         04. dialog_settings_action.xml / 권한 · 설정 안내
+         04. dialog_channel_select.xml / RF 채널 선택
+         ================================================== -->
+
+    <!-- 채널 선택 상태 -->
+    <string name="channel_picker_select_prompt">사용할 채널을 선택하세요.</string>
+    <string name="channel_picker_available">사용 가능한 채널입니다.</string>
+    <string name="channel_picker_current_selected">현재 사용 중인 채널입니다.</string>
+    <string name="channel_picker_conflict_warning">다른 베이스스테이션에서 사용 중인 채널입니다.</string>
+
+    <!-- 표시 안내 · 현재 채널 -->
+    <string name="channel_picker_legend_current_label">파란색 테두리:</string>
+    <string name="channel_picker_legend_current_description">현재 채널</string>
+
+    <!-- 표시 안내 · 다른 장치가 사용 중인 채널 -->
+    <string name="channel_picker_legend_used_label">주황색 점:</string>
+    <string name="channel_picker_legend_used_description">다른 장치가 사용 중</string>
+
+    <!-- 다이얼로그 버튼 -->
+    <string name="channel_picker_cancel">취소</string>
+    <string name="channel_picker_confirm">변경</string>
+
+    <!-- 채널 접근성 안내 -->
+    <string name="channel_picker_accessibility_channel">채널 %1$d</string>
+    <string name="channel_picker_accessibility_current">현재 채널</string>
+    <string name="channel_picker_accessibility_used">다른 장치가 사용 중</string>
+    <string name="channel_picker_accessibility_selected">선택됨</string>
+
+    <!-- ==================================================
+         05. dialog_settings_action.xml / 권한 · 설정 안내
          ================================================== -->
 
     <!-- 공통 버튼 -->
@@ -121,7 +149,7 @@
     <string name="location_services_disabled_message">현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 위치 기능을 활성화해 주세요.</string>
 
     <!-- ==================================================
-         05. item_ble_device.xml / 베이스스테이션 목록
+         06. item_ble_device.xml / 베이스스테이션 목록
          ================================================== -->
 
     <!-- 기본 접근성 -->
@@ -152,7 +180,7 @@
 
 
     <!-- ==================================================
-         06. popup_main_menu.xml / 메인 메뉴
+         07. popup_main_menu.xml / 메인 메뉴
          ================================================== -->
 
     <!-- 언어 설정 메뉴 -->
@@ -170,7 +198,7 @@
 
 
     <!-- ==================================================
-         07. dialog_language.xml / 언어 설정
+         08. dialog_language.xml / 언어 설정
          ================================================== -->
 
     <!-- 팝업 제목 -->
@@ -185,44 +213,5 @@
 
     <!-- 언어 변경 제한 안내 -->
     <string name="language_change_busy">블루투스 작업이 완료된 후 언어를 변경해 주세요.</string>
-
-
-
-
-
-    <!-- 나중에 수정해야함 -->
-    <!-- RF 채널 선택 / 표시 안내 -->
-
-    <!-- 현재 채널 표시 -->
-    <string name="channel_picker_legend_current_label">파란색 테두리:</string>
-    <string name="channel_picker_legend_current_description">현재 채널</string>
-
-    <!-- 다른 장치가 사용 중인 채널 표시 -->
-    <string name="channel_picker_legend_used_label">주황색 점:</string>
-    <string name="channel_picker_legend_used_description">다른 장치가 사용 중</string>
-
-    <!-- 채널 선택 주의사항 -->
-    <string name="channel_picker_conflict_warning">다른 베이스스테이션에서 사용 중인 채널입니다.</string>
-
-    <!-- 다이얼로그 버튼 -->
-    <string name="channel_picker_cancel">취소</string>
-    <string name="channel_picker_confirm">변경</string>
-
-    <!-- RF 채널 선택 / 접근성 안내 -->
-    <string name="channel_picker_accessibility_channel">채널 %1$d</string>
-    <string name="channel_picker_accessibility_current">현재 채널</string>
-    <string name="channel_picker_accessibility_used">다른 장치가 사용 중</string>
-    <string name="channel_picker_accessibility_selected">선택됨</string>
-
-    <!-- RF 채널 선택 상태 안내 -->
-
-    <!-- 최초 선택 안내 -->
-    <string name="channel_picker_select_prompt">사용할 채널을 선택하세요.</string>
-
-    <!-- 사용 가능한 채널 -->
-    <string name="channel_picker_available">사용 가능한 채널입니다.</string>
-
-    <!-- 현재 채널 선택 -->
-    <string name="channel_picker_current_selected">현재 사용 중인 채널입니다.</string>
 
 </resources>

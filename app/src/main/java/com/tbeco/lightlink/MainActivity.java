@@ -958,9 +958,12 @@ public class MainActivity extends AppCompatActivity {
      * 1. 장치 식별(Identify) 기능 제공
      * 2. 현재 장치 상태 표시
      * 3. RF 채널 정보 및 중복 경고 표시
+     * 4. RF 채널 선택 다이얼로그 실행
      *
      * Identify 진행 타이머는 표시하지 않는다.
-     * RF 채널 변경 기능은 추후 연결한다.
+     *
+     * RF 채널 선택 UI는 연결되어 있지만,
+     * 실제 BLE WRITE 기능은 아직 구현하지 않았다.
      */
     private void showDeviceManagementSheet(BleDeviceItem device) {
         if (currentDeviceSheet != null) currentDeviceSheet.dismiss();
@@ -1092,8 +1095,11 @@ public class MainActivity extends AppCompatActivity {
      * 선택한 채널:
      * 파란색 배경으로 강조한다.
      *
-     * 중복 채널도 선택할 수 있지만
-     * 별도의 주의사항을 표시한다.
+     * 중복 채널도 선택할 수 있으며,
+     * 선택한 채널의 상태를 하단 안내 영역에 표시한다.
+     *
+     * 최초 선택 안내 / 사용 가능 / 현재 채널 /
+     * 다른 장치와 중복된 채널을 구분한다.
      *
      * 현재는 UI 구현 단계이므로
      * 실제 BLE WRITE는 수행하지 않는다.
@@ -1136,9 +1142,9 @@ public class MainActivity extends AppCompatActivity {
                         R.id.textChannelPickerCurrent
                 );
 
-        TextView textConflictWarning =
+        TextView textChannelStatus =
                 dialogView.findViewById(
-                        R.id.textChannelPickerConflictWarning
+                        R.id.textChannelPickerStatus
                 );
 
         View buttonCancel =
@@ -1360,11 +1366,11 @@ public class MainActivity extends AppCompatActivity {
                 /*
                  * 아직 채널을 선택하지 않은 상태.
                  */
-                textConflictWarning.setText(
+                textChannelStatus.setText(
                         R.string.channel_picker_select_prompt
                 );
 
-                textConflictWarning.setTextColor(
+                textChannelStatus.setTextColor(
                         Color.parseColor("#AAAAAA")
                 );
 
@@ -1373,11 +1379,11 @@ public class MainActivity extends AppCompatActivity {
                 /*
                  * 다른 Base Station에서 사용 중인 채널.
                  */
-                textConflictWarning.setText(
+                textChannelStatus.setText(
                         R.string.channel_picker_conflict_warning
                 );
 
-                textConflictWarning.setTextColor(
+                textChannelStatus.setTextColor(
                         getColor(R.color.warning_text_color)
                 );
 
@@ -1387,11 +1393,11 @@ public class MainActivity extends AppCompatActivity {
                 /*
                  * 현재 장치에서 사용 중인 채널.
                  */
-                textConflictWarning.setText(
+                textChannelStatus.setText(
                         R.string.channel_picker_current_selected
                 );
 
-                textConflictWarning.setTextColor(
+                textChannelStatus.setTextColor(
                         Color.parseColor("#AAAAAA")
                 );
 
@@ -1401,11 +1407,11 @@ public class MainActivity extends AppCompatActivity {
                  * 검색된 다른 Base Station과
                  * 중복되지 않는 채널.
                  */
-                textConflictWarning.setText(
+                textChannelStatus.setText(
                         R.string.channel_picker_available
                 );
 
-                textConflictWarning.setTextColor(
+                textChannelStatus.setTextColor(
                         Color.parseColor("#FFFFFF")
                 );
             }
@@ -1414,7 +1420,7 @@ public class MainActivity extends AppCompatActivity {
              * 상태 안내는 항상 표시한다.
              * 선택에 따라 문구와 색상만 변경한다.
              */
-            textConflictWarning.setVisibility(
+            textChannelStatus.setVisibility(
                     View.VISIBLE
             );
         };

@@ -178,7 +178,7 @@
             실제 문구 및 색상은 MainActivity에서 관리한다.
         -->
         <TextView
-            android:id="@+id/textChannelPickerConflictWarning"
+            android:id="@+id/textChannelPickerStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -196,10 +196,14 @@
         <!--
             하단 작업 버튼.
 
-            취소는 다이얼로그만 닫는다.
-            변경 버튼은 채널 선택 전까지 비활성화한다.
+            취소 버튼은 다이얼로그만 닫는다.
 
-            실제 BLE WRITE는 추후 연결한다.
+            변경 버튼은 BLE WRITE 미구현으로
+            채널 선택 여부와 관계없이 비활성화한다.
+
+            실제 채널 변경 기능을 구현한 이후
+            선택 상태 및 장치 지원 여부에 따른
+            활성화 조건을 적용한다.
         -->
         <LinearLayout
             android:layout_width="match_parent"

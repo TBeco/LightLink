@@ -89,7 +89,35 @@
     <string name="device_channel_power_warning">Before changing channels, make sure the base station is powered on.</string>
 
     <!-- ==================================================
-         03. dialog_manual_power.xml / Manual Power Control
+         03. dialog_channel_select.xml / RF Channel Picker
+         ================================================== -->
+
+    <!-- Channel Selection Status -->
+    <string name="channel_picker_select_prompt">Select a channel to use.</string>
+    <string name="channel_picker_available">This channel is available.</string>
+    <string name="channel_picker_current_selected">This is the current channel.</string>
+    <string name="channel_picker_conflict_warning">This channel is already used by another base station.</string>
+
+    <!-- Legend · Current Channel -->
+    <string name="channel_picker_legend_current_label">Blue border:</string>
+    <string name="channel_picker_legend_current_description">Current channel</string>
+
+    <!-- Legend · Channel In Use -->
+    <string name="channel_picker_legend_used_label">Orange dot:</string>
+    <string name="channel_picker_legend_used_description">Used by another base station</string>
+
+    <!-- Dialog Actions -->
+    <string name="channel_picker_cancel">Cancel</string>
+    <string name="channel_picker_confirm">Change</string>
+
+    <!-- Channel Accessibility -->
+    <string name="channel_picker_accessibility_channel">Channel %1$d</string>
+    <string name="channel_picker_accessibility_current">Current channel</string>
+    <string name="channel_picker_accessibility_used">Used by another base station</string>
+    <string name="channel_picker_accessibility_selected">Selected</string>
+
+    <!-- ==================================================
+         04. dialog_manual_power.xml / Manual Power Control
          ================================================== -->
 
     <!-- Title · Message · Cancel -->
@@ -106,7 +134,7 @@
     <string name="manual_power_wake_accessibility">Send Wake command to this base station</string>
 
     <!-- ==================================================
-         04. dialog_settings_action.xml / Permissions · Settings Dialog
+         05. dialog_settings_action.xml / Permissions · Settings Dialog
          ================================================== -->
 
     <!-- Dialog Buttons -->
@@ -131,7 +159,7 @@
     <string name="location_services_disabled_message">Location services are currently turned off on your device.\n\nPlease enable location services to scan for base stations with LightLink.</string>
 
     <!-- ==================================================
-         05. item_ble_device.xml / Base Station List
+         06. item_ble_device.xml / Base Station List
          ================================================== -->
 
     <!-- Default Accessibility -->
@@ -162,7 +190,7 @@
 
 
     <!-- ==================================================
-         06. popup_main_menu.xml / Main Menu
+         07. popup_main_menu.xml / Main Menu
          ================================================== -->
 
     <!-- Language menu -->
@@ -180,7 +208,7 @@
 
 
     <!-- ==================================================
-         07. dialog_language.xml / Language Settings
+         08. dialog_language.xml / Language Settings
          ================================================== -->
 
     <!-- Dialog title -->
@@ -197,45 +225,5 @@
 
     <!-- Language change restriction -->
     <string name="language_change_busy">Please wait until the Bluetooth operation is complete.</string>
-
-
-
-
-
-
-    <!-- 나중에 수정해야함 -->
-    <!-- RF Channel Picker / Legend -->
-
-    <!-- Current Channel Indicator -->
-    <string name="channel_picker_legend_current_label">Blue border:</string>
-    <string name="channel_picker_legend_current_description">Current channel</string>
-
-    <!-- Channel In Use Indicator -->
-    <string name="channel_picker_legend_used_label">Orange dot:</string>
-    <string name="channel_picker_legend_used_description">Used by another base station</string>
-
-    <!-- Channel Selection Warning -->
-    <string name="channel_picker_conflict_warning">This channel is already used by another base station.</string>
-
-    <!-- Dialog Actions -->
-    <string name="channel_picker_cancel">Cancel</string>
-    <string name="channel_picker_confirm">Change</string>
-
-    <!-- RF Channel Picker / Accessibility -->
-    <string name="channel_picker_accessibility_channel">Channel %1$d</string>
-    <string name="channel_picker_accessibility_current">Current channel</string>
-    <string name="channel_picker_accessibility_used">Used by another base station</string>
-    <string name="channel_picker_accessibility_selected">Selected</string>
-
-    <!-- RF Channel Selection Status -->
-
-    <!-- Initial Selection Guide -->
-    <string name="channel_picker_select_prompt">Select a channel to use.</string>
-
-    <!-- Available Channel -->
-    <string name="channel_picker_available">This channel is available.</string>
-
-    <!-- Current Channel Selected -->
-    <string name="channel_picker_current_selected">This is the current channel.</string>
 
 </resources>
