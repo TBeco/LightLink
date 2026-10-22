@@ -1,19 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    LightLink 공통 다이얼로그 버튼 배경.
+
+    활성화 상태:
+    - 기본 배경색을 표시한다.
+
+    비활성화 상태:
+    - 더 어두운 배경색을 표시하여
+      버튼을 사용할 수 없음을 구분한다.
+
+    기존 둥근 모서리(10dp)와
+    Ripple 효과는 유지한다.
+
+    글자색은 각 버튼의 XML에서 별도로 관리한다.
+-->
+<ripple
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="#616161">
 
-    <!-- 평상시 버튼 배경 -->
     <item>
+        <selector>
 
-        <shape android:shape="rectangle">
+            <!-- 비활성화 상태 -->
+            <item android:state_enabled="false">
+                <shape android:shape="rectangle">
+                    <solid android:color="#0F0D11" />
+                    <corners android:radius="10dp" />
+                </shape>
+            </item>
 
-            <solid android:color="#29272C" />
+            <!-- 활성화 상태 -->
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#29272C" />
+                    <corners android:radius="10dp" />
+                </shape>
+            </item>
 
-            <corners android:radius="10dp" />
-
-        </shape>
-
+        </selector>
     </item>
 
 </ripple>

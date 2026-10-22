@@ -125,7 +125,6 @@
     <string name="channel_write_sent">Channel WRITE request completed. Scan again to verify the actual channel.</string>
     <string name="channel_write_unconfirmed">Channel change could not be confirmed. Scan again before retrying.</string>
     <string name="channel_write_unavailable">Channel change is currently unavailable. Check the base station and try again.</string>
-    <string name="channel_write_16_unsupported">Channel 16 cannot be selected for WRITE until its BLE value is verified.</string>
 
     <!-- ==================================================
          04. dialog_manual_power.xml / Manual Power Control

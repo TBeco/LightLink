@@ -342,16 +342,21 @@
 
             <!--
                 RF 채널 변경 버튼.
-                기존 식별 버튼과 크기 및 모서리 디자인을 통일한다.
+
+                기존 Identify 버튼과 크기 및 디자인을 통일한다.
 
                 XML에서는 기본적으로 비활성화한다.
-                현재는 MainActivity에서 UI 테스트용으로 활성화하여
-                4×4 채널 선택 다이얼로그를 실행한다.
 
-                실제 BLE WRITE는 아직 구현하지 않았다.
+                MainActivity의 refreshSheetChannelChangeButton()에서
+                실제 장치 상태에 따라 활성화 여부를 결정한다.
 
-                향후 장치 및 펌웨어별 테스트 결과에 따라
-                정식 활성화 조건을 적용한다.
+                Awake 상태에서는 활성화한다.
+
+                Power State READ를 지원하지 않더라도
+                수동 전원 제어가 가능한 장치를 활성화한다.
+
+                실제 BLE WRITE는 사용자가 채널 선택 다이얼로그에서
+                최종 변경을 승인한 경우에만 실행한다.
             -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSheetChangeChannel"

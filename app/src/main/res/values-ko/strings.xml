@@ -91,7 +91,6 @@
     <string name="channel_write_sent">채널 WRITE 요청이 처리되었습니다. 실제 변경 여부는 다시 검색하여 확인하세요.</string>
     <string name="channel_write_unconfirmed">채널 변경 결과를 확인하지 못했습니다. 재시도하기 전에 다시 검색하여 확인하세요.</string>
     <string name="channel_write_unavailable">현재 채널을 변경할 수 없습니다. 베이스스테이션 상태를 확인한 뒤 다시 시도하세요.</string>
-    <string name="channel_write_16_unsupported">16번 채널은 BLE 값이 검증될 때까지 변경할 수 없습니다.</string>
 
     <!-- ==================================================
          03. dialog_channel_select.xml / RF 채널 선택

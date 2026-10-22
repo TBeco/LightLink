@@ -1041,27 +1041,25 @@ public class MainActivity extends AppCompatActivity {
         /*
          * RF 채널 선택 다이얼로그 연결.
          *
-         * 현재는 UI 미리보기 단계이므로
-         * 실제 BLE 채널 변경 명령은 전송하지 않는다.
+         * 버튼의 활성화 여부는
+         * refreshSheetChannelChangeButton()에서 관리한다.
          *
-         * 채널 변경 가능 조건은
-         * 향후 펌웨어별 실기기 테스트를 통해 확정한다.
+         * 실제 채널 WRITE는 선택 다이얼로그에서
+         * 사용자가 최종 변경을 승인한 뒤 실행한다.
          */
-        buttonChangeChannel.setOnClickListener(
-                v -> showChannelPickerDialog(device)
-        );
+        buttonChangeChannel.setOnClickListener(v -> {
 
-        /*
-         * UI 테스트를 위한 임시 활성화.
-         *
-         * 다이얼로그 내부의 '변경' 버튼은 여전히 비활성화되어
-         * 실제 장치의 채널이 변경되지 않는다.
-         *
-         * BLE WRITE 구현 시 이 임시 처리를 제거하고
-         * 정식 활성화 조건으로 대체한다.
-         */
-        buttonChangeChannel.setEnabled(true);
-        buttonChangeChannel.setAlpha(1.0f);
+            /*
+             * 버튼 상태가 갱신되기 전에 장치 상태가
+             * 변경되었을 가능성이 있으므로 다시 확인한다.
+             */
+            if (!canChangeRfChannel(device)) {
+                refreshSheetChannelChangeButton();
+                return;
+            }
+
+            showChannelPickerDialog(device);
+        });
 
         dialog.setOnDismissListener(ignored -> {
             if (currentDeviceSheet == dialog) {
@@ -1089,6 +1087,7 @@ public class MainActivity extends AppCompatActivity {
         refreshIdentifyButton();
         refreshSheetChannelState();
         refreshSheetChannelInfo();
+        refreshSheetChannelChangeButton();
 
         dialog.show();
     }
@@ -1386,23 +1385,6 @@ public class MainActivity extends AppCompatActivity {
                         Color.parseColor("#AAAAAA")
                 );
 
-            } else if (selected == 16) {
-
-                /*
-                 * 16번 채널은 UI에서 선택할 수 있지만,
-                 * 아직 실제 BLE WRITE 값이 검증되지 않았다.
-                 *
-                 * 잘못된 값이 전송되지 않도록
-                 * 안내 문구를 표시하고 변경을 제한한다.
-                 */
-                textChannelStatus.setText(
-                        R.string.channel_write_16_unsupported
-                );
-
-                textChannelStatus.setTextColor(
-                        getColor(R.color.warning_text_color)
-                );
-
             } else if (channelsInUse[selected]) {
 
                 /*
@@ -1524,7 +1506,7 @@ public class MainActivity extends AppCompatActivity {
                  */
                 boolean canConfirm =
                         channelNumber >= 1
-                                && channelNumber <= 15
+                                && channelNumber <= 16
                                 && (currentChannel == null
                                 || currentChannel != channelNumber)
                                 && canChangeRfChannel(device);
@@ -1674,11 +1656,9 @@ public class MainActivity extends AppCompatActivity {
 
         /*
          * 실제 WRITE를 허용할 채널 범위.
-         *
-         * 현재는 1~15번만 허용한다.
          */
         if (requestedChannel < 1
-                || requestedChannel > 15) {
+                || requestedChannel > 16) {
 
             Toast.makeText(
                     this,
@@ -2245,6 +2225,75 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
+     * 현재 열려 있는 Bottom Sheet의 RF 채널 변경 버튼 갱신
+     *
+     * 기존 canChangeRFChannel()의 조건을 재사용한다.
+     *
+     * 활성화:
+     * 1. Awake 상태인 Base Station
+     * 2. Power State READ 미지원이지만
+     *    수동 전원 제어가 가능한 Base Station
+     *
+     * 비활성화:
+     * Sleep / Standby / Checking / Processing / Stuck 등
+     * 채널 변경이 허용되지 않는 상태
+     *
+     * Bluetooth 검색, 초기 상태 조회 또는 다른 BLE 작업이
+     * 진행 중인 경우에도 버튼을 비활성화한다.
+     *
+     * 버튼의 투명도는 기존 Identify 버튼과 동일하게 적용한다.
+     *
+     * 추가적인 BLE 연결이나 GATT READ는 수행하지 않는다.
+     */
+    private void refreshSheetChannelChangeButton() {
+
+        /*
+         * 현재 열려 있는 Bottom Sheet가 없다면
+         * 별도의 UI 갱신을 수행하지 않는다,
+         */
+        if (currentDeviceSheet == null
+                || currentSheetDevice == null) {
+            return;
+        }
+
+        /*
+         * Bottom Sheet의 RF 채널 변경 버튼
+         */
+        View buttonChangeChannel =
+                currentDeviceSheet.findViewById(
+                        R.id.buttonSheetChangeChannel
+                );
+
+        if (buttonChangeChannel == null) {
+            return;
+        }
+
+        /*
+         * 기존 채널 변경 가능 조건을 재사용한다.
+         *
+         * Power State READ 미지원 장치도
+         * 조건을 만족하면 활성화한다.
+         */
+        boolean enabled =
+                canChangeRfChannel(currentSheetDevice);
+
+        /*
+         * 실제 버튼의 클릭 가능 여부 설정
+         */
+        buttonChangeChannel.setEnabled(enabled);
+
+        /*
+         * 활성화 여부를 시각적으로 구분한다.
+         *
+         * 활성화: 기본 밝기
+         * 비활성화: 기존 Identify 버튼과 동일한 투명도
+         */
+        buttonChangeChannel.setAlpha(
+                enabled ? 1.0f : 0.43f
+        );
+    }
+
+    /*
      * 현재 열려 있는 Bottom Sheet의 장치 상태 표시.
      *
      * 기존 BleDeviceItem에 저장된 상태 정보를 사용한다.
@@ -2428,16 +2477,19 @@ public class MainActivity extends AppCompatActivity {
      * 현재 Bottom Sheet에서 관리 중인 장치의 상태가
      * 변경되었을 때 관련 UI를 갱신한다.
      *
-     * 기존 Identify 버튼 갱신 동작은 유지하고
-     * 채널 관리 영역의 전원 상태 표시도 함께 갱신한다.
+     * 1. Identify 버튼 활성화 상태
+     * 2. 채널 관리 영역의 전원 상태 표시
+     * 3. RF 채널 변경 버튼 활성화 상태
+     *
+     * 기존 BLE 통신 동작에는 영향을 주지 않는다.
      */
     private void refreshIdentifyButtonFor(BleDeviceItem device) {
 
         if (device == currentSheetDevice) {
 
             refreshIdentifyButton();
-
             refreshSheetChannelState();
+            refreshSheetChannelChangeButton();
         }
     }
 
@@ -6800,6 +6852,16 @@ public class MainActivity extends AppCompatActivity {
      * 검색 버튼 아이콘과 활성 상태를 변경
      */
     private void updateScanButton() {
+
+        /*
+         * BLE 검색 및 다른 작업 상태가 변경될 때
+         * 열려 있는 Bottom Sheet의 채널 변경 버튼도 갱싱한다.
+         *
+         * 검색 중에는 비활성화하고,
+         * 검색 및 상태 조회가 끝나면
+         * canChangeRFChannel() 조건에 따라 다시 활성화한다.
+         */
+        refreshSheetChannelChangeButton();
 
         /*
          * BLE 검색 중
