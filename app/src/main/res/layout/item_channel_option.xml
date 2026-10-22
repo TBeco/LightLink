@@ -79,6 +79,8 @@
         android:layout_marginTop="3dp"
         android:layout_marginEnd="10dp"
 
+        android:elevation="8dp"
+
         android:text="●"
         android:textColor="@color/warning_text_color"
         android:textSize="12sp"

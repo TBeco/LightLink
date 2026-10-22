@@ -343,6 +343,17 @@ public class MainActivity extends AppCompatActivity {
     private BleDeviceItem currentSheetDevice;
     private View currentIdentifyButton;
 
+    /*
+     * 현재 열려 있는 RF 채널 선택 다이얼로그.
+     *
+     * RF READ 결과가 나중에 도착하더라도
+     * 열린 선택창을 다시 그릴 수 있도록 참조를 유지한다.
+     *
+     * 다이얼로그가 닫히면 참조를 해제한다.
+     */
+    private AlertDialog currentChannelPickerDialog;
+    private Runnable currentChannelPickerRefresh;
+
     // READ 미지원 장치 전용 안내 문구
     private View currentIdentifyWarningUnsupported;
 
@@ -974,8 +985,10 @@ public class MainActivity extends AppCompatActivity {
      *
      * Identify 진행 타이머는 표시하지 않는다.
      *
-     * RF 채널 선택 UI는 연결되어 있지만,
-     * 실제 BLE WRITE 기능은 아직 구현하지 않았다.
+     * RF 채널 선택 UI와 BLE WRITE 기능이 구현되어 있다.
+     *
+     * 실제 채널 변경은 사용자가 최종 확인창에서
+     * 승인한 이후에만 요청한다.
      */
     private void showDeviceManagementSheet(BleDeviceItem device) {
         if (currentDeviceSheet != null) currentDeviceSheet.dismiss();
@@ -1112,8 +1125,10 @@ public class MainActivity extends AppCompatActivity {
      * 최초 선택 안내 / 사용 가능 / 현재 채널 /
      * 다른 장치와 중복된 채널을 구분한다.
      *
-     * 현재는 UI 구현 단계이므로
-     * 실제 BLE WRITE는 수행하지 않는다.
+     * RF 채널 1~16 선택 및 BLE WRITE를 지원한다.
+     *
+     * 사용자가 최종 변경을 승인한 경우에만 WRITE를 요청한다.
+     * 실제 채널 변경 여부는 이후 READ 결과로 확인한다.
      */
     private void showChannelPickerDialog(BleDeviceItem device) {
 
@@ -1169,62 +1184,17 @@ public class MainActivity extends AppCompatActivity {
                 );
 
         /*
-         * 현재 장치의 RF 채널.
-         *
-         * 채널 정보가 없는 경우에는
-         * 기본 안내(—)를 표시한다.
-         */
-        Integer currentChannel =
-                device.getChannel();
-
-        if (currentChannel != null
-                && currentChannel >= 1
-                && currentChannel <= 16) {
-
-            textCurrentChannel.setText(
-                    getString(
-                            R.string.device_channel_current_format,
-                            currentChannel
-                    )
-            );
-
-        } else {
-
-            textCurrentChannel.setText(
-                    R.string.device_channel_current_placeholder
-            );
-        }
-
-        /*
          * 다른 Base Station이 사용 중인 RF 채널.
          *
          * 배열의 0번은 사용하지 않는다.
          *
-         * 현재 선택한 장치 자체는 제외한다.
+         * 채널 사용 현황은 refreshChannelSelection()에서
+         * 최신 장치 정보를 기준으로 다시 계산한다.
          *
-         * 이미 저장된 채널 정보만 사용하며
          * 추가적인 BLE READ는 수행하지 않는다.
          */
         boolean[] channelsInUse =
                 new boolean[17];
-
-        for (BleDeviceItem otherDevice : deviceList) {
-
-            if (otherDevice == null
-                    || otherDevice == device) {
-                continue;
-            }
-
-            Integer otherChannel =
-                    otherDevice.getChannel();
-
-            if (otherChannel != null
-                    && otherChannel >= 1
-                    && otherChannel <= 16) {
-
-                channelsInUse[otherChannel] = true;
-            }
-        }
 
         /*
          * 채널 버튼과 선택 상태.
@@ -1234,6 +1204,17 @@ public class MainActivity extends AppCompatActivity {
          */
         MaterialButton[] channelButtons =
                 new MaterialButton[17];
+
+        /*
+         * 각 RF 채널의 사용 중 표시(주황색 점).
+         *
+         * RF READ 결과가 갱신되면
+         * 해당 채널의 표시 상태를 변경하기 위해 사용한다.
+         *
+         * 배열의 0번은 사용하지 않는다.
+         */
+        View[] channelInUseDots =
+                new View[17];
 
         final int[] selectedChannel = {0};
 
@@ -1258,12 +1239,84 @@ public class MainActivity extends AppCompatActivity {
         /*
          * 채널 버튼의 선택 상태를 갱신한다.
          *
-         * 현재 채널과 선택 채널은 서로 구분한다.
+         * 다른 장치의 RF 채널 사용 현황도
+         * 최신 정보를 기준으로 다시 계산한다.
+         *
          * 채널 변경을 확정하기 전까지
          * 실제 BleDeviceItem의 값은 수정하지 않는다.
          */
         Runnable refreshChannelSelection = () -> {
 
+            /*
+             * 현재 장치의 최신 RF 채널 정보.
+             *
+             * 선택창을 열었을 당시의 값이 아닌
+             * 가장 최근에 저장된 READ 결과를 사용한다.
+             */
+            Integer currentChannel =
+                    device.getChannel();
+
+            /*
+             * 현재 채널 안내 갱신.
+             *
+             * 유효한 채널 정보가 없는 경우
+             * 기본 안내(—)를 표시한다.
+             */
+            if (currentChannel != null
+                    && currentChannel >= 1
+                    && currentChannel <= 16) {
+
+                textCurrentChannel.setText(
+                        getString(
+                                R.string.device_channel_current_format,
+                                currentChannel
+                        )
+                );
+
+            } else {
+
+                textCurrentChannel.setText(
+                        R.string.device_channel_current_placeholder
+                );
+            }
+
+            /*
+             * 이전 채널 사용 현황 초기화.
+             *
+             * 다른 장치의 채널이 변경되었을 때
+             * 이전 정보가 남지 않도록 한다.
+             */
+            for (int channel = 1; channel <= 16; channel++) {
+                channelsInUse[channel] = false;
+            }
+
+            /*
+             * 검색 목록에 있는 다른 Base Station의
+             * 최신 RF 채널 정보를 확인한다.
+             *
+             * 현재 선택한 장치 자체는 제외한다.
+             */
+            for (BleDeviceItem otherDevice : deviceList) {
+
+                if (otherDevice == null
+                        || otherDevice == device) {
+                    continue;
+                }
+
+                Integer otherChannel =
+                        otherDevice.getChannel();
+
+                if (otherChannel != null
+                        && otherChannel >= 1
+                        && otherChannel <= 16) {
+
+                    channelsInUse[otherChannel] = true;
+                }
+            }
+
+            /*
+             * 채널 버튼 UI 갱신.
+             */
             for (int channel = 1; channel <= 16; channel++) {
 
                 MaterialButton button =
@@ -1271,6 +1324,27 @@ public class MainActivity extends AppCompatActivity {
 
                 if (button == null) {
                     continue;
+                }
+
+                /*
+                 * 다른 Base Station이 사용하는 채널 표시.
+                 *
+                 * 최신 RF 채널 사용 현황에 따라
+                 * 주황색 점의 표시 여부를 갱신한다.
+                 *
+                 * 사용 중이면 VISIBLE,
+                 * 사용 중이지 않으면 GONE으로 처리한다.
+                 */
+                View inUseDot =
+                        channelInUseDots[channel];
+
+                if (inUseDot != null) {
+
+                    inUseDot.setVisibility(
+                            channelsInUse[channel]
+                                    ? View.VISIBLE
+                                    : View.GONE
+                    );
                 }
 
                 boolean isCurrent =
@@ -1434,6 +1508,26 @@ public class MainActivity extends AppCompatActivity {
             textChannelStatus.setVisibility(
                     View.VISIBLE
             );
+
+            /*
+             * 변경 확정 버튼 활성화 조건.
+             *
+             * 1. 유효한 채널을 선택했는지 확인한다.
+             * 2. 현재 채널과 동일한지 확인한다.
+             * 3. 현재 BLE 작업 상태에서 변경 가능한지 확인한다.
+             *
+             * 채널 정보가 새로 갱신되더라도
+             * 최신 상태를 기준으로 버튼을 다시 설정한다.
+             */
+            boolean canConfirm =
+                    selected >= 1
+                            && selected <= 16
+                            && (currentChannel == null
+                            || currentChannel != selected)
+                            && canChangeRfChannel(device);
+
+            buttonConfirm.setEnabled(canConfirm);
+
         };
 
         /*
@@ -1474,14 +1568,13 @@ public class MainActivity extends AppCompatActivity {
                     button;
 
             /*
-             * 다른 장치가 사용 중인 채널에는
-             * 주황색 점을 표시한다.
+             * 주황색 점도 채널 번호에 맞춰 저장한다.
+             *
+             * 실제 표시 여부는 refreshChannelSelection()에서
+             * 최신 채널 정보를 기준으로 갱신한다.
              */
-            inUseDot.setVisibility(
-                    channelsInUse[channelNumber]
-                            ? View.VISIBLE
-                            : View.GONE
-            );
+            channelInUseDots[channelNumber] =
+                    inUseDot;
 
             /*
              * RF 채널 선택.
@@ -1490,28 +1583,25 @@ public class MainActivity extends AppCompatActivity {
              * 실제 BLE WRITE는 변경 확인창에서 승인한 후 실행한다.
              *
              * 현재 채널과 동일한 번호는 변경하지 않는다.
-             * 16번 채널은 BLE WRITE 값 검증 전까지 제한한다.
+             *
+             * RF 채널 1~16번의 WRITE 및 READ 동작은
+             * Base Station 2.0 실기기에서 확인했다.
              */
             button.setOnClickListener(v -> {
 
+                /*
+                 * 사용자가 선택한 채널 번호를 저장한다.
+                 *
+                 * 실제 RF 채널은 변경하지 않는다.
+                 */
                 selectedChannel[0] =
                         channelNumber;
 
-                refreshChannelSelection.run();
-
                 /*
-                 * 유효한 채널이 선택되었고
-                 * 다른 BLE 작업이 진행 중이지 않을 때만
-                 * 변경 버튼을 활성화한다.
+                 * 현재 채널, 선택 상태, 채널 사용 현황,
+                 * 변경 확정 버튼을 함께 갱신한다.
                  */
-                boolean canConfirm =
-                        channelNumber >= 1
-                                && channelNumber <= 16
-                                && (currentChannel == null
-                                || currentChannel != channelNumber)
-                                && canChangeRfChannel(device);
-
-                buttonConfirm.setEnabled(canConfirm);
+                refreshChannelSelection.run();
             });
 
             /*
@@ -1551,15 +1641,10 @@ public class MainActivity extends AppCompatActivity {
         /*
          * 최초 표시 상태 설정.
          *
-         * 현재 채널 테두리와 접근성 설명을 적용한다.
+         * 현재 채널, 사용 중인 채널, 선택 상태,
+         * 변경 확정 버튼 및 접근성 설명을 적용한다.
          */
         refreshChannelSelection.run();
-
-        /*
-         * 아직 BLE WRITE가 구현되지 않았으므로
-         * 변경 확정 버튼은 비활성화한다.
-         */
-        buttonConfirm.setEnabled(false);
 
         /*
          * RF 채널 변경 확정 버튼.
@@ -1596,6 +1681,52 @@ public class MainActivity extends AppCompatActivity {
         );
 
         /*
+         * 현재 열려 있는 채널 선택창을 등록한다.
+         *
+         * 외부에서 RF 채널 정보가 갱신되면
+         * refreshChannelSelection()을 다시 실행할 수 있도록 한다.
+         */
+        currentChannelPickerDialog = dialog;
+
+        currentChannelPickerRefresh = () -> {
+
+            /*
+             * 새로운 검색 등으로 기존 장치가
+             * 목록에서 제거되었다면 선택창을 닫는다.
+             *
+             * 이전 검색 결과로 채널을 변경하는 것을 방지한다.
+             */
+            if (!deviceList.contains(device)) {
+                dialog.dismiss();
+                return;
+            }
+
+            /*
+             * 최신 RF 채널 정보로 UI 갱신.
+             *
+             * 현재 채널, 주황색 점, 선택 상태,
+             * 변경 확정 버튼을 함께 갱신한다.
+             */
+            refreshChannelSelection.run();
+        };
+
+        /*
+         * 다이얼로그가 닫히면 참조를 해제한다.
+         *
+         * 새로운 다이얼로그가 열려 있는 경우
+         * 이전 다이얼로그의 종료 이벤트가
+         * 새로운 참조를 제거하지 않도록 확인한다.
+         */
+        dialog.setOnDismissListener(ignored -> {
+
+            if (currentChannelPickerDialog == dialog) {
+
+                currentChannelPickerDialog = null;
+                currentChannelPickerRefresh = null;
+            }
+        });
+
+        /*
          * 다이얼로그 표시.
          */
         dialog.show();
@@ -1614,6 +1745,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
+     * 현재 열려 있는 RF 채널 선택창 갱신.
+     *
+     * 기존 BleDeviceItem에 저장된 채널 정보를 사용한다.
+     * 추가적인 BLE 연결이나 GATT READ는 수행하지 않는다.
+     *
+     * 다이얼로그가 닫혀 있거나
+     * 갱신 작업이 등록되지 않은 경우에는 아무것도 하지 않는다.
+     *
+     * UI 스레드에서 호출한다.
+     */
+    private void refreshOpenChannelPicker() {
+
+        /*
+         * 선택창이 열려 있는지 확인한다.
+         */
+        if (currentChannelPickerDialog == null
+                || !currentChannelPickerDialog.isShowing()
+                || currentChannelPickerRefresh == null) {
+
+            return;
+        }
+
+        /*
+         * 현재 열려 있는 선택창의 UI 갱신.
+         */
+        currentChannelPickerRefresh.run();
+    }
+
+    /*
      * Base Station 2.0 RF 채널 변경 요청.
      *
      * 사용자가 4×4 채널 선택창에서
@@ -1625,12 +1785,13 @@ public class MainActivity extends AppCompatActivity {
      * 4. 최종 변경 확인창 표시
      * 5. BaseStationChannelController를 통한 BLE WRITE
      *
-     * 채널 번호:
-     * 현재 실기기에서 확인한 15번 채널과
-     * 기존 READ 처리 방식을 기준으로 한다.
+     * RF 채널 번호:
      *
-     * 이번 최초 테스트에서는 1~15번만 WRITE한다.
-     * 16번 채널의 원시 값은 추후 별도로 검증한다.
+     * Base Station 2.0 실기기에서
+     * 1~16번 채널의 WRITE 및 READ 동작을 확인했다.
+     *
+     * READ 결과와 WRITE 요청에 동일한
+     * 채널 번호를 사용한다.
      *
      * WRITE 결과만으로 실제 채널 변경을 확정하지 않는다.
      * BleDeviceItem의 채널 값도 임의로 수정하지 않는다.
@@ -1755,8 +1916,8 @@ public class MainActivity extends AppCompatActivity {
                      * 현재 확인된 채널 번호를
                      * 별도의 -1 변환 없이 전송한다.
                      *
-                     * 이 대응 관계는 최초 실기기 테스트에서
-                     * 다시 확인해야 한다.
+                     * 채널 번호와 WRITE 값의 대응 관계는
+                     * 실기기에서 1~16번까지 확인했다.
                      */
                     int rawChannel =
                             requestedChannel;
@@ -3305,12 +3466,25 @@ public class MainActivity extends AppCompatActivity {
 
             /*
              * Bottom Sheet가 열려 있다면
-             * 현재 RF 채널 번호와 중복 경고도 함께 갱신한다.
+             * 현재 RF 채널 번호와 중복 경고를 갱신한다.
              *
              * 기존에 저장된 채널 정보만 사용하며
              * 추가적인 BLE 연결이나 READ는 수행하지 않는다.
              */
             refreshSheetChannelInfo();
+
+            /*
+             * RF 채널 선택창이 열려 있다면
+             * 최신 채널 정보를 선택창에도 반영한다.
+             *
+             * 1. 현재 RF 채널
+             * 2. 다른 장치의 채널 사용 현황
+             * 3. 주황색 중복 표시
+             * 4. 변경 확정 버튼 활성화 상태
+             *
+             * 기존 BLE READ 결과만 사용한다.
+             */
+            refreshOpenChannelPicker();
 
             /*
              * 안내 UI가 준비되지 않았다면
@@ -6855,13 +7029,18 @@ public class MainActivity extends AppCompatActivity {
 
         /*
          * BLE 검색 및 다른 작업 상태가 변경될 때
-         * 열려 있는 Bottom Sheet의 채널 변경 버튼도 갱싱한다.
-         *
-         * 검색 중에는 비활성화하고,
-         * 검색 및 상태 조회가 끝나면
-         * canChangeRFChannel() 조건에 따라 다시 활성화한다.
+         * 열려 있는 Bottom Sheet의 채널 변경 버튼을 갱신한다.
          */
         refreshSheetChannelChangeButton();
+
+        /*
+         * RF 채널 선택창이 열려 있다면
+         * 변경 확정 버튼 상태도 함께 갱신한다.
+         *
+         * 검색이나 상태 조회가 진행 중이면
+         * canChangeRfChannel() 조건에 따라 비활성화한다.
+         */
+        refreshOpenChannelPicker();
 
         /*
          * BLE 검색 중
