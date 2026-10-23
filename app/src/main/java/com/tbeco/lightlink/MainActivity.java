@@ -146,6 +146,16 @@ public class MainActivity extends AppCompatActivity {
      */
     private static final int STATUS_MAX_RETRIES = 3;
 
+    /*
+     * 채널 변경 이후 확인용 READ 재시도 횟수.
+     *
+     * 최초 1회 + 추가 재시도 2회 = 최대 3회.
+     *
+     * 기존 Power State 재시도 횟수와 별도로 관리한다.
+     * WRITE 명령은 자동 재전송하지 않는다.
+     */
+    private static final int CHANNEL_VERIFY_MAX_RETRIES = 2;
+
 
     /*
      * Power State READ에서 0x01을 실제로 확인했을 때 표시하는 상태.
@@ -164,6 +174,14 @@ public class MainActivity extends AppCompatActivity {
      * 잠깐 쉬었다가 다시 시도한다.
      */
     private static final long STATUS_RETRY_DELAY = 1200;
+
+    /*
+     * 채널 확인 재시도 사이의 대기 시간.
+     *
+     * 기존 상태 조회와 동일한 1.2초를 사용한다.
+     */
+    private static final long CHANNEL_VERIFY_RETRY_DELAY =
+            STATUS_RETRY_DELAY;
 
 
     /*
@@ -388,10 +406,18 @@ public class MainActivity extends AppCompatActivity {
 
         Integer confirmedChannel;
 
+        /*
+         * 채널 확인을 위해 추가로 재시도한 횟수.
+         *
+         * 최초 READ는 포함하지 않는다.
+         */
+        int readRetryCount;
+
         ChannelVerificationInfo(int requestedChannel) {
             this.requestedChannel = requestedChannel;
             this.state = ChannelVerificationState.WRITING;
             this.confirmedChannel = null;
+            this.readRetryCount = 0;
         }
     }
 
@@ -482,6 +508,16 @@ public class MainActivity extends AppCompatActivity {
      * 채널 READ가 지원되지 않거나 Characteristic이 없으면 null이다.
      */
     private BluetoothGattCharacteristic currentModeCharacteristic;
+
+    /*
+     * 현재 GATT 상태 조회에서
+     * 유효한 채널을 읽었는지 기록한다.
+     *
+     * READ 결과를 UI 스레드에 반영하기 전에
+     * 연결 종료 처리가 실행되더라도
+     * 성공한 READ를 실패로 판단하지 않도록 한다.
+     */
+    private volatile boolean channelReadSucceededThisAttempt = false;
 
 
     /*
@@ -5397,6 +5433,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        /*
+         * 새로운 GATT 조회를 시작하므로
+         * 이전 연결의 채널 READ 성공 기록을 초기화한다.
+         */
+        channelReadSucceededThisAttempt = false;
 
         currentStatusDevice =
                 nextDevice;
@@ -6239,6 +6280,17 @@ public class MainActivity extends AppCompatActivity {
                     && channel <= 16
                     && currentStatusDevice != null) {
 
+                /*
+                 * 이번 GATT 조회에서 유효한 채널을 읽었음을 기록한다.
+                 *
+                 * WRITE 이후 채널 확인 작업에서는
+                 * 이 값을 이용해 READ 성공 여부를 판단한다.
+                 *
+                 * 기존에 저장된 채널 번호와 관계없이
+                 * 이번 조회에서 실제로 읽은 경우에만 true로 설정한다.
+                 */
+                channelReadSucceededThisAttempt = true;
+
 
                 /*
                  * 현재 채널을 조회한 장치를 보관한다.
@@ -7005,8 +7057,131 @@ public class MainActivity extends AppCompatActivity {
         boolean retryScheduled =
                 false;
 
+        /*
+         * 채널 변경 이후 확인 작업인지 확인한다.
+         */
+        ChannelVerificationInfo verificationInfo =
+                finishedDevice != null
+                        ? channelVerificationStates.get(
+                        finishedDevice.getAddress()
+                )
+                        : null;
 
+        boolean channelVerificationPending =
+                verificationInfo != null
+                        && verificationInfo.state
+                        == ChannelVerificationState.READING;
+
+        /*
+         * 채널 확인 작업이 진행 중이지만
+         * 이번 연결에서 유효한 채널을 읽지 못한 경우.
+         */
+        if (channelVerificationPending
+                && !channelReadSucceededThisAttempt) {
+
+            /*
+             * 남은 재시도 횟수가 있는 경우.
+             */
+            if (verificationInfo.readRetryCount
+                    < CHANNEL_VERIFY_MAX_RETRIES) {
+
+                verificationInfo.readRetryCount++;
+
+                retryScheduled = true;
+
+                int retryGeneration =
+                        statusReadGeneration;
+
+                ChannelVerificationInfo expectedInfo =
+                        verificationInfo;
+
+                BleDeviceItem retryDevice =
+                        finishedDevice;
+
+                AppLog.d(
+                        "[Channel] Verification READ retry"
+                                + " / device = "
+                                + retryDevice.getName()
+                                + " / retry = "
+                                + verificationInfo.readRetryCount
+                                + "/"
+                                + CHANNEL_VERIFY_MAX_RETRIES
+                );
+
+                /*
+                 * 기존 GATT 연결이 종료되었으므로
+                 * 잠시 대기한 뒤 새로운 연결로 재확인한다.
+                 */
+                handler.postDelayed(() -> {
+
+                    /*
+                     * 검색 세대가 변경되었거나
+                     * 기존 장치가 목록에서 제거되었다면
+                     * 오래된 재시도를 실행하지 않는다.
+                     */
+                    if (retryGeneration != statusReadGeneration
+                            || !deviceList.contains(retryDevice)) {
+                        return;
+                    }
+
+                    /*
+                     * 그사이 새로운 채널 변경 작업이 시작되거나
+                     * 확인 상태가 달라졌다면 재시도하지 않는다.
+                     */
+                    if (channelVerificationStates.get(
+                            retryDevice.getAddress()
+                    ) != expectedInfo
+                            || expectedInfo.state
+                            != ChannelVerificationState.READING) {
+                        return;
+                    }
+
+                    statusQueue.offer(retryDevice);
+
+                    processNextStatusRead();
+
+                }, CHANNEL_VERIFY_RETRY_DELAY);
+
+            } else {
+
+                /*
+                 * 최초 READ와 추가 재시도 2회가
+                 * 모두 실패한 경우.
+                 *
+                 * 해당 장치만 채널 변경을 제한한다.
+                 */
+                verificationInfo.state =
+                        ChannelVerificationState.READ_FAILED;
+
+                verificationInfo.confirmedChannel = null;
+
+                AppLog.d(
+                        "[Channel] Verification READ failed"
+                                + " / device = "
+                                + finishedDevice.getName()
+                                + " / attempts = 3"
+                );
+
+                /*
+                 * 최종 실패 상태를 Bottom Sheet에 반영한다.
+                 */
+                handler.post(() -> {
+                    refreshSheetChannelVerification();
+                    refreshSheetChannelChangeButton();
+                    refreshOpenChannelPicker();
+                    updateScanButton();
+                });
+            }
+        }
+
+        /*
+         * 기존 Power State 재시도 처리.
+         *
+         * 채널 확인 작업이 진행 중이라면
+         * 별도의 Power State 재시도를 중첩하지 않는다.
+         */
         if (finishedDevice != null
+                && !channelVerificationPending
                 && shouldRetryStatus(statusText)) {
 
 
