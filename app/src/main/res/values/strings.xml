@@ -64,7 +64,7 @@
 
     <!-- Identify Warnings · Error Message -->
     <string name="identify_warning_default">Using Identify while the base station is in Sleep mode may wake it up.</string>
-    <string name="identify_warning_read_unsupported">The base station may be using older firmware. Before using Identify, turn on the base station and make sure its LED is green.</string>
+    <string name="identify_warning_read_unsupported">The base station may be using older firmware. Before using Identify, turn on the base station and make sure its status light is green or white.</string>
     <string name="identify_command_failed">Identify command failed: %1$s</string>
 
     <!-- Section Title -->
@@ -91,7 +91,7 @@
 
     <!-- Channel Warnings -->
     <string name="device_channel_usage_warning">Base stations in the same play area should use different channels.</string>
-    <string name="device_channel_power_warning">Before changing channels, make sure the base station is powered on.</string>
+    <string name="device_channel_power_warning">Before changing channels, make sure the base station\'s status LED is green or white.</string>
 
     <!-- ==================================================
          03. dialog_channel_select.xml / RF Channel Picker
@@ -130,6 +130,7 @@
     <string name="channel_write_sent">Channel WRITE request completed. Scan again to verify the actual channel.</string>
     <string name="channel_write_unconfirmed">Channel change could not be confirmed. Scan again before retrying.</string>
     <string name="channel_write_unavailable">Channel change is currently unavailable. Check the base station and try again.</string>
+    <string name="channel_verify_mismatch">Requested channel %1$d, but the current channel is %2$d. Check that the base station is powered on before trying again.</string>
 
     <!-- ==================================================
          04. dialog_manual_power.xml / Manual Power Control

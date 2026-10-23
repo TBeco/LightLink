@@ -58,7 +58,7 @@
 
     <!-- Identify 안내 · 실패 메시지 -->
     <string name="identify_warning_default">Sleep 상태에서는 장치가 깨어날 수 있습니다.</string>
-    <string name="identify_warning_read_unsupported">이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 LED가 초록색인지 확인해 주세요.</string>
+    <string name="identify_warning_read_unsupported">이전 버전의 펌웨어를 사용 중일 수 있습니다. 식별 기능을 사용하기 전에 베이스스테이션을 켜고 상태 표시등이 초록색 또는 흰색인지 확인해 주세요.</string>
     <string name="identify_command_failed">식별 명령 실패: %1$s</string>
 
     <!-- 영역 제목 -->
@@ -85,7 +85,7 @@
 
     <!-- 채널 관련 주의사항 -->
     <string name="device_channel_usage_warning">같은 공간의 베이스스테이션은 서로 다른 채널을 사용하는 것이 좋습니다.</string>
-    <string name="device_channel_power_warning">채널을 변경하기 전에 베이스스테이션이 켜져 있는지 확인하세요.</string>
+    <string name="device_channel_power_warning">채널 변경 전, 상태 표시등이 초록색 또는 흰색인지 확인하세요.</string>
 
     <!-- RF 채널 WRITE / 변경 확인 -->
     <string name="channel_write_confirm_title">채널 변경 확인</string>
@@ -96,6 +96,7 @@
     <string name="channel_write_sent">채널 WRITE 요청이 처리되었습니다. 실제 변경 여부는 다시 검색하여 확인하세요.</string>
     <string name="channel_write_unconfirmed">채널 변경 결과를 확인하지 못했습니다. 재시도하기 전에 다시 검색하여 확인하세요.</string>
     <string name="channel_write_unavailable">현재 채널을 변경할 수 없습니다. 베이스스테이션 상태를 확인한 뒤 다시 시도하세요.</string>
+    <string name="channel_verify_mismatch">요청한 채널은 %1$d번이지만, 현재 채널은 %2$d번입니다. 베이스스테이션의 전원을 확인한 후 다시 시도하세요.</string>
 
     <!-- ==================================================
          03. dialog_channel_select.xml / RF 채널 선택

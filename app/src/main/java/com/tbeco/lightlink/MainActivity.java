@@ -875,10 +875,32 @@ public class MainActivity extends AppCompatActivity {
 
                         // 각 Base Station의 전원 버튼이 눌렸을 때 호출
                         device -> {
-
-                            // 같은 장치의 Identify 전송 중에는 Power 명령을 시작하지 않는다.
+                            /*
+                             * 같은 장치의 Identify 작업 중에는
+                             * 전원 명령을 시작하지 않는다.
+                             */
                             if (isIdentifyBusy(device)) {
                                 AppLog.d("Power ignored: Identify GATT is busy");
+                                return;
+                            }
+
+                            /*
+                             * 해당 Base Station의 채널 변경 또는
+                             * 후속 확인 작업 중에는 전원 명령을 제한한다.
+                             *
+                             * 다른 Base Station의 전원 제어는 허용한다.
+                             *
+                             * 실제 전원 명령을 보내기 전에 검사하여
+                             * 상태가 Checking...으로 잘못 변경되는 것을 방지한다.
+                             */
+                            if (isChannelVerificationBusyForDevice(device)) {
+
+                                AppLog.d(
+                                        "Power ignored: channel verification in progress"
+                                                + " / device = "
+                                                + device.getName()
+                                );
+
                                 return;
                             }
 
@@ -1038,6 +1060,20 @@ public class MainActivity extends AppCompatActivity {
                 );
 
 
+
+        /*
+         * Base Station별 채널 변경 상태를 Adapter에 전달한다.
+         *
+         * Adapter는 이 정보를 이용하여
+         * 채널 변경 중인 장치의 전원 버튼을
+         * 어두운 색상으로 표시하고 비활성화한다.
+         *
+         * 다른 Base Station의 전원 버튼에는
+         * 영향을 주지 않는다.
+         */
+        deviceAdapter.setChannelVerificationBusyChecker(
+                this::isChannelVerificationBusyForDevice
+        );
 
         recyclerBaseStations.setAdapter(
                 deviceAdapter
@@ -2066,6 +2102,17 @@ public class MainActivity extends AppCompatActivity {
                     );
 
                     /*
+                     * 채널 변경을 시작했으므로
+                     * 해당 Base Station의 전원 버튼을 갱신한다.
+                     *
+                     * Adapter에서 채널 변경 상태를 확인하여
+                     * 어두운 색상과 비활성화 상태를 적용한다.
+                     *
+                     * 다른 Base Station에는 영향을 주지 않는다.
+                     */
+                    updateDeviceRow(device);
+
+                    /*
                      * 채널 변경 버튼 잠금 및
                      * 작업 진행 상태를 즉시 반영한다.
                      */
@@ -2307,6 +2354,46 @@ public class MainActivity extends AppCompatActivity {
 
         return false;
     }
+
+    /*
+     * 특정 Base Station의 채널 변경 및 확인 작업 진행 여부.
+     *
+     * 다른 장치의 채널 변경 작업은 영향을 주지 않는다.
+     */
+    private boolean isChannelVerificationBusyForDevice(
+            BleDeviceItem device) {
+
+        if (device == null) {
+            return false;
+        }
+
+        ChannelVerificationInfo info =
+                channelVerificationStates.get(
+                        device.getAddress()
+                );
+
+        if (info == null) {
+            return false;
+        }
+
+        if (info.state == ChannelVerificationState.WRITING
+                || info.state == ChannelVerificationState.READING) {
+            return true;
+        }
+
+        /*
+         * 채널 READ에 성공했더라도
+         * 해당 장치의 GATT 조회가 아직 진행 중이라면
+         * 연결 정리가 끝날 때까지 제한한다.
+         */
+        return info.state == ChannelVerificationState.READ_COMPLETE
+                && readingStatus
+                && currentStatusDevice != null
+                && device.getAddress().equals(
+                currentStatusDevice.getAddress()
+        );
+    }
+
 
     /*
      * RF 채널 변경 Controller 정리.
@@ -2814,6 +2901,8 @@ public class MainActivity extends AppCompatActivity {
          * 기존 완료 시각을 기준으로 판단한다.
          */
         if (info.state == ChannelVerificationState.READ_COMPLETE
+                && info.confirmedChannel != null
+                && info.confirmedChannel == info.requestedChannel
                 && info.completedAtElapsedRealtime >= 0L) {
 
             long elapsed =
@@ -2866,16 +2955,44 @@ public class MainActivity extends AppCompatActivity {
 
                 if (info.confirmedChannel != null) {
 
-                    textVerification.setText(
-                            getString(
-                                    R.string.channel_verify_success,
-                                    info.confirmedChannel
-                            )
-                    );
+                    /*
+                     * 요청한 채널과 실제 읽어낸 채널이 일치하면
+                     * 정상적으로 변경된 것으로 판단한다.
+                     */
+                    if (info.confirmedChannel == info.requestedChannel) {
 
-                    textVerification.setTextColor(
-                            Color.parseColor("#81C784")
-                    );
+                        textVerification.setText(
+                                getString(
+                                        R.string.channel_verify_success,
+                                        info.confirmedChannel
+                                )
+                        );
+
+                        textVerification.setTextColor(
+                                Color.parseColor("#81C784")
+                        );
+
+                    } else {
+
+                        /*
+                         * READ 자체는 성공했지만
+                         * 요청한 채널과 실제 채널이 다른 경우.
+                         *
+                         * 실제 전원이 켜져 있지 않은 구형 펌웨어
+                         * 장치 등에서 발생할 수 있다.
+                         */
+                        textVerification.setText(
+                                getString(
+                                        R.string.channel_verify_mismatch,
+                                        info.requestedChannel,
+                                        info.confirmedChannel
+                                )
+                        );
+
+                        textVerification.setTextColor(
+                                getColor(R.color.warning_text_color)
+                        );
+                    }
 
                 } else {
 
@@ -3222,16 +3339,22 @@ public class MainActivity extends AppCompatActivity {
             String previousStatus) {
 
         /*
-         * RF 채널 WRITE 진행 중에는
-         * Wake / Sleep 명령을 시작하지 않는다.
+         * 해당 Base Station의 채널 변경 작업과
+         * 전원 제어 작업이 충돌하지 않도록 한다.
          *
-         * 독립적인 GATT Controller 사이의
-         * BLE 작업 충돌을 방지한다.
+         * 채널 WRITE뿐 아니라 후속 READ 확인과
+         * 재시도 대기 상태까지 포함한다.
+         *
+         * 다른 Base Station의 전원 제어에는 영향을 주지 않는다.
          */
-        if (isChannelWriteBusy()) {
+        if (isChannelVerificationBusyForDevice(device)) {
+
             AppLog.d(
-                    "Power command ignored: RF channel WRITE in progress"
+                    "Power command ignored: channel verification in progress"
+                            + " / device = "
+                            + device.getName()
             );
+
             return;
         }
 
@@ -3596,16 +3719,22 @@ public class MainActivity extends AppCompatActivity {
             BaseStationGattController.TargetState target) {
 
         /*
-         * RF 채널 WRITE 진행 중에는
-         * 수동 Wake / Sleep 명령을 시작하지 않는다.
+         * 해당 Base Station의 채널 변경 및
+         * 후속 확인 작업 중에는 수동 전원 제어를 제한한다.
          *
-         * FW 3002처럼 Power State READ를 지원하지 않는
-         * 장치에서도 GATT 작업이 충돌하지 않도록 한다.
+         * Power State READ를 지원하지 않는 장치에서도
+         * 채널 변경 작업과 전원 명령이 충돌하지 않도록 한다.
+         *
+         * 다른 Base Station의 수동 전원 제어는 허용한다.
          */
-        if (isChannelWriteBusy()) {
+        if (isChannelVerificationBusyForDevice(device)) {
+
             AppLog.d(
-                    "Manual power command ignored: RF channel WRITE in progress"
+                    "Manual power command ignored: channel verification in progress"
+                            + " / device = "
+                            + device.getName()
             );
+
             return;
         }
 
@@ -8247,8 +8376,11 @@ public class MainActivity extends AppCompatActivity {
     /*
      * 진행 중인 BLE 작업이 있는지 확인한다.
      *
-     * 언어 변경으로 Activity가 재생성되는 동안
-     * BLE 작업이 중단되는 상황을 방지한다.
+     * 언어 변경으로 Activity가 재생성되면
+     * BLE 연결 및 진행 중인 작업이 중단될 수 있다.
+     *
+     * 따라서 채널 WRITE와 후속 READ 확인,
+     * READ 재시도 대기 중에도 언어 변경을 제한한다.
      */
     private boolean isLanguageChangeBusy() {
 
@@ -8257,6 +8389,8 @@ public class MainActivity extends AppCompatActivity {
                 || !statusQueue.isEmpty()
                 || !statusRetryCounts.isEmpty()
                 || isAnyPowerControllerBusy()
-                || isAnyIdentifyBusy();
+                || isAnyIdentifyBusy()
+                || isChannelWriteBusy()
+                || isChannelVerificationBusy();
     }
 }

@@ -72,6 +72,18 @@ public class BleDeviceAdapter
             Color.parseColor("#616161");
 
     /*
+     * Awake 상태에서 채널 변경 중 사용할 어두운 초록색.
+     */
+    private static final int POWER_COLOR_AWAKE_CHANNEL =
+            Color.parseColor("#2B6731");
+
+    /*
+     * 수동 전원 제어 장치에서 채널 변경 중 사용할 어두운 주황색.
+     */
+    private static final int POWER_COLOR_MANUAL_CHANNEL =
+            Color.parseColor("#9A5800");
+
+    /*
      * Stuck (0x01)
      *
      * Power State READ에서 0x01이 반복되어
@@ -146,6 +158,23 @@ public class BleDeviceAdapter
 
     // 장치별 Identify 진행 여부를 확인한다.
     private final IdentifyBusyChecker identifyBusyChecker;
+
+    /*
+     * 특정 Base Station의 채널 변경 및 확인 작업 진행 여부.
+     *
+     * 실제 작업 상태는 MainActivity에서 관리하며,
+     * Adapter는 전원 버튼 표시를 위해서만 조회한다.
+     */
+    private ChannelVerificationBusyChecker channelVerificationBusyChecker;
+
+    /*
+     * MainActivity에서 장치별 채널 변경 상태 확인 함수를 연결한다.
+     */
+    public void setChannelVerificationBusyChecker(
+            ChannelVerificationBusyChecker checker) {
+
+        this.channelVerificationBusyChecker = checker;
+    }
 
 
     /*
@@ -894,6 +923,62 @@ public class BleDeviceAdapter
             return;
         }
 
+        /*
+         * 채널 변경 및 확인 작업 중인 Base Station의
+         * 전원 버튼을 일시적으로 비활성화한다.
+         *
+         * 실제 전원 상태는 변경하지 않는다.
+         *
+         * Awake:
+         * 기존 초록색보다 어두운 초록색 사용.
+         *
+         * State read unsupported:
+         * 기존 주황색보다 어두운 주황색 사용.
+         *
+         * 다른 Base Station의 전원 버튼에는 영향을 주지 않는다.
+         */
+        boolean channelBusy =
+                channelVerificationBusyChecker != null
+                        && channelVerificationBusyChecker
+                        .isChannelVerificationBusy(device);
+
+        /*
+         * 채널 변경이 허용되는 두 가지 상태에서만
+         * 별도의 비활성화 색상을 적용한다.
+         */
+        if (channelBusy
+                && ("Awake".equals(status)
+                || (device.isStateReadUnsupported()
+                && device.isManualPowerControlAvailable()))) {
+
+            int disabledColor =
+                    "Awake".equals(status)
+                            ? POWER_COLOR_AWAKE_CHANNEL
+                            : POWER_COLOR_MANUAL_CHANNEL;
+
+            /*
+             * 해당 장치의 전원 버튼만 비활성화한다.
+             */
+            holder.buttonPower.setEnabled(false);
+
+            holder.buttonPower.setBackgroundTintList(
+                    ColorStateList.valueOf(
+                            disabledColor
+                    )
+            );
+
+            /*
+             * 전원 제어를 현재 사용할 수 없음을 안내한다.
+             */
+            setPowerButtonDescription(
+                    holder,
+                    device,
+                    R.string.device_power_unavailable
+            );
+
+            return;
+        }
+
 
         /*
          * Awake
@@ -1222,6 +1307,19 @@ public class BleDeviceAdapter
     public interface IdentifyBusyChecker {
 
         boolean isIdentifyBusy(
+                BleDeviceItem device
+        );
+    }
+
+    /*
+     * 특정 Base Station의 채널 변경 및
+     * 후속 확인 작업 진행 여부를 조회한다.
+     *
+     * 다른 Base Station의 작업 상태는 영향을 주지 않는다.
+     */
+    public interface ChannelVerificationBusyChecker {
+
+        boolean isChannelVerificationBusy(
                 BleDeviceItem device
         );
     }
