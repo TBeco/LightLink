@@ -74,6 +74,11 @@
     <string name="device_channel_current_placeholder">Current channel —</string>
     <string name="device_channel_current_format">Current channel %1$d</string>
 
+    <string name="channel_verify_writing">Changing channel to %1$d...</string>
+    <string name="channel_verify_reading">Checking channel...</string>
+    <string name="channel_verify_success">Channel %1$d confirmed.</string>
+    <string name="channel_verify_failed">Unable to confirm the channel. Channel changes are disabled for this device.</string>
+
     <!-- Channel Conflict -->
     <string name="device_channel_conflict">Used by another base station</string>
 
@@ -82,10 +87,10 @@
 
     <!-- Change Channel Button -->
     <string name="device_channel_change_button">Change channel</string>
-    <string name="device_channel_change_description">Choose an RF channel for this base station</string>
+    <string name="device_channel_change_description">Choose a channel for this base station</string>
 
     <!-- Channel Warnings -->
-    <string name="device_channel_usage_warning">Base stations in the same play area should use different RF channels.</string>
+    <string name="device_channel_usage_warning">Base stations in the same play area should use different channels.</string>
     <string name="device_channel_power_warning">Before changing channels, make sure the base station is powered on.</string>
 
     <!-- ==================================================
@@ -118,7 +123,7 @@
 
     <!-- RF Channel WRITE / Confirmation -->
     <string name="channel_write_confirm_title">Confirm Channel Change</string>
-    <string name="channel_write_confirm_message">Change RF channel to %1$d?\n\nThe base station may briefly interrupt tracking.</string>
+    <string name="channel_write_confirm_message">Change to channel %1$d?\n\nThe base station may briefly interrupt tracking.</string>
     <string name="channel_write_confirm_conflict">Channel %1$d is already used by another base station.\n\nDo you still want to change to this channel?</string>
 
     <!-- RF Channel WRITE / Result -->

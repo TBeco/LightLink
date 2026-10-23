@@ -330,6 +330,31 @@
 
             </LinearLayout>
 
+            <!--
+                RF 채널 변경 및 확인 결과 표시.
+
+                WRITE와 READ 작업 상태를 사용자에게 안내한다.
+
+                Bottom Sheet를 닫았다 다시 열어도
+                MainActivity에 저장된 장치별 작업 상태를 기준으로
+                최신 결과를 표시한다.
+
+                기본적으로 숨겨 두며,
+                실제 작업이 시작되면 MainActivity에서 갱신한다.
+            -->
+            <TextView
+                android:id="@+id/textSheetChannelVerification"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textColor="#A5C4FF"
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp"
+                android:visibility="gone"
+                android:accessibilityLiveRegion="polite"
+                tools:text="채널 확인 중..."
+                tools:visibility="visible" />
+
             <!-- 회색 설명: 주의사항이 아니라 '채널 변경' 버튼의 기능을 안내한다. -->
             <TextView
                 android:layout_width="match_parent"

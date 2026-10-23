@@ -68,6 +68,11 @@
     <string name="device_channel_current_placeholder">현재 채널 —</string>
     <string name="device_channel_current_format">현재 채널 %1$d</string>
 
+    <string name="channel_verify_writing">채널 %1$d 변경 요청 중...</string>
+    <string name="channel_verify_reading">채널 확인 중...</string>
+    <string name="channel_verify_success">채널 %1$d 확인 완료.</string>
+    <string name="channel_verify_failed">채널 정보를 확인하지 못했습니다. 이 장치의 채널 변경이 제한됩니다.</string>
+
     <!-- 채널 중복 안내 -->
     <string name="device_channel_conflict">다른 장치와 중복</string>
 
@@ -76,15 +81,15 @@
 
     <!-- 채널 변경 버튼 -->
     <string name="device_channel_change_button">채널 변경</string>
-    <string name="device_channel_change_description">이 베이스스테이션의 RF 채널 선택하기</string>
+    <string name="device_channel_change_description">이 베이스스테이션의 채널 선택하기</string>
 
     <!-- 채널 관련 주의사항 -->
-    <string name="device_channel_usage_warning">같은 공간의 베이스스테이션은 서로 다른 RF 채널을 사용하는 것이 좋습니다.</string>
+    <string name="device_channel_usage_warning">같은 공간의 베이스스테이션은 서로 다른 채널을 사용하는 것이 좋습니다.</string>
     <string name="device_channel_power_warning">채널을 변경하기 전에 베이스스테이션이 켜져 있는지 확인하세요.</string>
 
     <!-- RF 채널 WRITE / 변경 확인 -->
     <string name="channel_write_confirm_title">채널 변경 확인</string>
-    <string name="channel_write_confirm_message">RF 채널을 %1$d번으로 변경할까요?\n\n변경 과정에서 베이스스테이션의 추적이 잠시 중단될 수 있습니다.</string>
+    <string name="channel_write_confirm_message">채널을 %1$d번으로 변경할까요?\n\n변경 과정에서 베이스스테이션의 추적이 잠시 중단될 수 있습니다.</string>
     <string name="channel_write_confirm_conflict">채널 %1$d번은 다른 베이스스테이션에서 사용 중입니다.\n\n그래도 해당 채널로 변경하시겠습니까?</string>
 
     <!-- RF 채널 WRITE / 결과 안내 -->

@@ -354,6 +354,55 @@ public class MainActivity extends AppCompatActivity {
     private AlertDialog currentChannelPickerDialog;
     private Runnable currentChannelPickerRefresh;
 
+    /*
+     * 채널 변경 이후 확인 작업의 진행 상태.
+     *
+     * WRITING:
+     * 채널 변경 명령을 전송하는 중.
+     *
+     * READING:
+     * 변경 이후 실제 채널을 확인하는 중.
+     *
+     * READ_COMPLETE:
+     * 새로운 READ에서 유효한 채널을 확인함.
+     * 요청한 채널과 일치한다는 의미는 아니다.
+     *
+     * READ_FAILED:
+     * 채널 확인에 실패하여 추가 변경을 제한함.
+     */
+    private enum ChannelVerificationState {
+        WRITING,
+        READING,
+        READ_COMPLETE,
+        READ_FAILED
+    }
+
+    /*
+     * Base Station별 채널 변경 및 확인 정보.
+     */
+    private static class ChannelVerificationInfo {
+
+        final int requestedChannel;
+
+        ChannelVerificationState state;
+
+        Integer confirmedChannel;
+
+        ChannelVerificationInfo(int requestedChannel) {
+            this.requestedChannel = requestedChannel;
+            this.state = ChannelVerificationState.WRITING;
+            this.confirmedChannel = null;
+        }
+    }
+
+    /*
+     * MAC 주소를 기준으로 채널 확인 상태를 관리한다.
+     *
+     * Bottom Sheet를 닫더라도 상태는 유지된다.
+     */
+    private final Map<String, ChannelVerificationInfo>
+            channelVerificationStates = new HashMap<>();
+
     // READ 미지원 장치 전용 안내 문구
     private View currentIdentifyWarningUnsupported;
 
@@ -1102,6 +1151,14 @@ public class MainActivity extends AppCompatActivity {
         refreshSheetChannelInfo();
         refreshSheetChannelChangeButton();
 
+        /*
+         * 현재 장치의 채널 변경 및 확인 상태를 표시한다.
+         *
+         * Bottom Sheet를 다시 열더라도
+         * MAC 주소별로 저장된 상태를 복원한다.
+         */
+        refreshSheetChannelVerification();
+
         dialog.show();
     }
 
@@ -1582,7 +1639,9 @@ public class MainActivity extends AppCompatActivity {
              * 채널 번호를 선택하면 UI와 변경 버튼 상태를 갱신한다.
              * 실제 BLE WRITE는 변경 확인창에서 승인한 후 실행한다.
              *
-             * 현재 채널과 동일한 번호는 변경하지 않는다.
+             * 현재 채널과 동일한 번호도 선택할 수 있지만
+             * 불필요한 WRITE를 방지하기 위해
+             * 변경 확정 버튼은 비활성화한다.
              *
              * RF 채널 1~16번의 WRITE 및 READ 동작은
              * Base Station 2.0 실기기에서 확인했다.
@@ -1922,6 +1981,36 @@ public class MainActivity extends AppCompatActivity {
                     int rawChannel =
                             requestedChannel;
 
+                    /*
+                     * 채널 변경 및 확인 작업 시작.
+                     *
+                     * WRITE를 요청하기 전에 잠금 상태를 기록한다.
+                     *
+                     * MAC 주소를 기준으로 관리하므로
+                     * Bottom Sheet를 닫아도 상태가 유지된다.
+                     *
+                     * 기존에 저장된 채널 번호는
+                     * 새로운 READ가 완료되기 전까지
+                     * 검증 결과로 사용하지 않는다.
+                     */
+                    ChannelVerificationInfo verificationInfo =
+                            new ChannelVerificationInfo(
+                                    requestedChannel
+                            );
+
+                    channelVerificationStates.put(
+                            device.getAddress(),
+                            verificationInfo
+                    );
+
+                    /*
+                     * 채널 변경 버튼 잠금 및
+                     * 작업 진행 상태를 즉시 반영한다.
+                     */
+                    refreshSheetChannelChangeButton();
+                    refreshSheetChannelVerification();
+                    refreshOpenChannelPicker();
+
                     BaseStationChannelController controller =
                             getChannelController();
 
@@ -1947,8 +2036,11 @@ public class MainActivity extends AppCompatActivity {
                      * 독립적인 ChannelController에서
                      * GATT 연결 및 WRITE를 처리한다.
                      *
-                     * 실제 채널 변경 결과는
-                     * 다음 검색에서 다시 확인한다.
+                     * WRITE 작업이 종료되면
+                     * 기존 상태 조회 기능을 이용하여
+                     * 실제 채널을 다시 확인한다.
+                     *
+                     * WRITE 응답만으로 변경 성공을 확정하지 않는다.
                      */
                     controller.writeRawChannel(
                             device.getAddress(),
@@ -1972,30 +2064,80 @@ public class MainActivity extends AppCompatActivity {
                                     );
 
                                     /*
-                                     * WRITE 작업이 끝났으므로
-                                     * 검색 버튼 상태를 복구한다.
+                                     * WRITE 이후 채널 확인 작업을 시작한다.
+                                     *
+                                     * WRITE 요청이 실패한 것으로 보고되더라도
+                                     * 명령이 실제 장치에 전달되었을 가능성이 있으므로
+                                     * WRITE를 재전송하지 않고 READ를 시도한다.
                                      */
-                                    updateScanButton();
+                                    ChannelVerificationInfo info =
+                                            channelVerificationStates.get(
+                                                    device.getAddress()
+                                            );
 
                                     /*
-                                     * WRITE 요청 처리 여부와
-                                     * 실제 채널 변경 성공 여부는 구분한다.
-                                     *
-                                     * 실패 또는 연결 끊김으로 반환되어도
-                                     * 명령이 이미 전달되었을 가능성이 있다.
-                                     *
-                                     * 따라서 즉시 재전송하지 않는다.
+                                     * 현재 진행 중인 변경 작업이 없다면
+                                     * 늦게 도착한 콜백으로 판단한다.
                                      */
-                                    int messageId =
-                                            accepted
-                                                    ? R.string.channel_write_sent
-                                                    : R.string.channel_write_unconfirmed;
+                                    if (info == null
+                                            || info.state != ChannelVerificationState.WRITING) {
 
-                                    Toast.makeText(
-                                            this,
-                                            messageId,
-                                            Toast.LENGTH_LONG
-                                    ).show();
+                                        updateScanButton();
+                                        return;
+                                    }
+
+                                    /*
+                                     * 기존 검색 목록에서 장치가 제거되었다면
+                                     * 이전 장치 객체로 READ를 시작하지 않는다.
+                                     */
+                                    if (!deviceList.contains(device)) {
+
+                                        info.state =
+                                                ChannelVerificationState.READ_FAILED;
+
+                                        refreshSheetChannelVerification();
+                                        refreshSheetChannelChangeButton();
+                                        updateScanButton();
+
+                                        return;
+                                    }
+
+                                    /*
+                                     * WRITE 작업 종료 후 READ 단계로 전환한다.
+                                     *
+                                     * 기존 채널 값은 새로운 READ 결과로
+                                     * 확인되기 전까지 사용하지 않는다.
+                                     */
+                                    info.state =
+                                            ChannelVerificationState.READING;
+
+                                    info.confirmedChannel = null;
+
+                                    /*
+                                     * Bottom Sheet에 "채널 확인 중..."을 표시한다.
+                                     */
+                                    refreshSheetChannelVerification();
+
+                                    /*
+                                     * 기존 상태 조회 Queue를 재사용한다.
+                                     *
+                                     * 새로운 GATT 연결을 통해
+                                     * Power State → Channel → RSSI 순서로 조회한다.
+                                     *
+                                     * 기존 READ 결과가 다시 도착하면
+                                     * 채널 정보가 갱신된다.
+                                     */
+                                    statusQueue.offer(device);
+
+                                    processNextStatusRead();
+
+                                    /*
+                                     * 채널 변경 버튼과 검색 버튼의
+                                     * 활성화 상태를 갱신한다.
+                                     */
+                                    refreshSheetChannelChangeButton();
+                                    refreshOpenChannelPicker();
+                                    updateScanButton();
                                 });
                             }
                     );
@@ -2085,8 +2227,13 @@ public class MainActivity extends AppCompatActivity {
      * 실제 RF 채널 WRITE 지원 여부는
      * GATT 서비스 검색 이후 Controller에서 확인한다.
      *
-     * 현재는 최초 실기기 테스트를 위해
-     * Awake 또는 READ 미지원 수동 제어 가능 장치만 허용한다.
+     * RF 채널 변경은 Awake 상태에서 허용한다.
+     *
+     * Power State READ를 지원하지 않는 장치도
+     * 수동 전원 제어가 가능하다면 변경을 허용한다.
+     *
+     * Sleep 및 상태 확인 중인 장치는
+     * RF 채널 변경을 제한한다.
      */
     private boolean canChangeRfChannel(BleDeviceItem device) {
 
@@ -2095,6 +2242,29 @@ public class MainActivity extends AppCompatActivity {
          */
         if (device == null
                 || !deviceList.contains(device)) {
+            return false;
+        }
+
+        /*
+         * 채널 변경 이후 확인 상태 검사.
+         *
+         * WRITE 진행 중이거나 채널 확인 중이면
+         * 동일 장치에 추가 변경 명령을 보내지 않는다.
+         *
+         * 확인에 실패한 경우에도 잠금을 유지한다.
+         *
+         * READ_COMPLETE는 채널 정보를 확인한 상태이므로
+         * 기존 변경 가능 조건에 따라 다시 허용한다.
+         */
+        ChannelVerificationInfo verificationInfo =
+                channelVerificationStates.get(
+                        device.getAddress()
+                );
+
+        if (verificationInfo != null
+                && verificationInfo.state
+                != ChannelVerificationState.READ_COMPLETE) {
+
             return false;
         }
 
@@ -2129,8 +2299,10 @@ public class MainActivity extends AppCompatActivity {
         /*
          * 다른 BLE 작업과의 충돌 방지.
          *
-         * 최초 구현에서는 장치 구분 없이
-         * 다른 명령이 진행 중이라면 채널 변경을 제한한다.
+         * 장치 구분 없이 다른 BLE 명령이 진행 중이라면
+         * RF 채널 변경 작업을 제한한다.
+         *
+         * 서로 다른 GATT 작업 간 충돌을 방지한다.
          */
         if (isAnyPowerControllerBusy()
                 || isAnyIdentifyBusy()
@@ -2451,6 +2623,132 @@ public class MainActivity extends AppCompatActivity {
          */
         buttonChangeChannel.setAlpha(
                 enabled ? 1.0f : 0.43f
+        );
+    }
+
+    /*
+     * 현재 열려 있는 Bottom Sheet의
+     * 채널 변경 및 확인 상태를 갱신한다.
+     *
+     * MAC 주소별로 저장된 작업 상태를 사용한다.
+     *
+     * Bottom Sheet를 닫았다 다시 열더라도
+     * 기존 작업 상태를 다시 표시할 수 있다.
+     *
+     * 추가적인 BLE 통신은 수행하지 않는다.
+     */
+    private void refreshSheetChannelVerification() {
+
+        if (currentDeviceSheet == null
+                || currentSheetDevice == null) {
+            return;
+        }
+
+        TextView textVerification =
+                currentDeviceSheet.findViewById(
+                        R.id.textSheetChannelVerification
+                );
+
+        if (textVerification == null) {
+            return;
+        }
+
+        /*
+         * 현재 장치의 채널 확인 상태 조회.
+         */
+        ChannelVerificationInfo info =
+                channelVerificationStates.get(
+                        currentSheetDevice.getAddress()
+                );
+
+        /*
+         * 진행 중이거나 기록된 작업이 없다면
+         * 결과 안내 영역을 숨긴다.
+         */
+        if (info == null) {
+
+            textVerification.setVisibility(
+                    View.GONE
+            );
+
+            return;
+        }
+
+        /*
+         * 작업 상태에 따라 안내 문구와 색상을 설정한다.
+         */
+        switch (info.state) {
+
+            case WRITING:
+
+                textVerification.setText(
+                        getString(
+                                R.string.channel_verify_writing,
+                                info.requestedChannel
+                        )
+                );
+
+                textVerification.setTextColor(
+                        Color.parseColor("#A5C4FF")
+                );
+
+                break;
+
+            case READING:
+
+                textVerification.setText(
+                        R.string.channel_verify_reading
+                );
+
+                textVerification.setTextColor(
+                        Color.parseColor("#A5C4FF")
+                );
+
+                break;
+
+            case READ_COMPLETE:
+
+                if (info.confirmedChannel != null) {
+
+                    textVerification.setText(
+                            getString(
+                                    R.string.channel_verify_success,
+                                    info.confirmedChannel
+                            )
+                    );
+
+                    textVerification.setTextColor(
+                            Color.parseColor("#81C784")
+                    );
+
+                } else {
+
+                    textVerification.setText(
+                            R.string.channel_verify_failed
+                    );
+
+                    textVerification.setTextColor(
+                            getColor(R.color.warning_text_color)
+                    );
+                }
+
+                break;
+
+            case READ_FAILED:
+
+                textVerification.setText(
+                        R.string.channel_verify_failed
+                );
+
+                textVerification.setTextColor(
+                        getColor(R.color.warning_text_color)
+                );
+
+                break;
+        }
+
+        textVerification.setVisibility(
+                View.VISIBLE
         );
     }
 
@@ -6004,6 +6302,74 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
+                    /*
+                     * 채널 변경 이후 READ 확인 결과 처리.
+                     *
+                     * WRITE 이후 READING 상태인 장치에 대해서만
+                     * 새롭게 읽은 채널 정보를 반영한다.
+                     *
+                     * 요청한 채널과 일치하지 않더라도
+                     * 유효한 채널을 읽었다면 READ_COMPLETE로 처리한다.
+                     *
+                     * 기존에 저장된 채널 값만으로는
+                     * 확인 완료 상태로 전환하지 않는다.
+                     */
+                    ChannelVerificationInfo verificationInfo =
+                            channelVerificationStates.get(
+                                    updatedChannelDevice.getAddress()
+                            );
+
+                    if (verificationInfo != null
+                            && verificationInfo.state
+                            == ChannelVerificationState.READING) {
+
+                        /*
+                         * 이번 READ에서 확인된 채널 번호를 저장한다.
+                         */
+                        verificationInfo.confirmedChannel =
+                                channel;
+
+                        /*
+                         * 채널 READ가 정상적으로 완료되었으므로
+                         * 해당 장치의 채널 변경 잠금을 해제할 수 있다.
+                         */
+                        verificationInfo.state =
+                                ChannelVerificationState.READ_COMPLETE;
+
+                        AppLog.d(
+                                "[Channel] Verification READ completed"
+                                        + " / device = "
+                                        + updatedChannelDevice.getName()
+                                        + " / requested = "
+                                        + verificationInfo.requestedChannel
+                                        + " / confirmed = "
+                                        + channel
+                        );
+
+                        /*
+                         * Bottom Sheet에 새롭게 확인된 채널을 표시한다.
+                         */
+                        refreshSheetChannelInfo();
+
+                        /*
+                         * "채널 확인 중..." 메시지를
+                         * "채널 N 확인 완료."로 변경한다.
+                         */
+                        refreshSheetChannelVerification();
+
+                        /*
+                         * 변경 버튼 활성화 조건을 다시 계산한다.
+                         *
+                         * 다른 BLE 작업이 진행 중이라면
+                         * 기존 제한 조건에 따라 비활성화 상태를 유지한다.
+                         */
+                        refreshSheetChannelChangeButton();
+
+                        /*
+                         * 채널 선택창이 열려 있다면 함께 갱신한다.
+                         */
+                        refreshOpenChannelPicker();
+                    }
 
                     /*
                      * Adapter가 준비되지 않았다면
@@ -7258,7 +7624,8 @@ public class MainActivity extends AppCompatActivity {
      * - 해당 RadioButton을 미리 선택한다.
      * - Cancel 버튼은 Dialog만 닫는다.
      *
-     * 실제 언어 변경 기능은 추후 연결한다.
+     * 선택한 언어는 AppCompatDelegate를 통해 적용한다.
+     * 시스템 기본 언어, 한국어, 영어를 지원한다.
      */
     private void showLanguageDialog() {
 

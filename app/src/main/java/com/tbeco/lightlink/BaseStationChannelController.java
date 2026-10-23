@@ -176,7 +176,8 @@ public final class BaseStationChannelController {
      * 이 메서드는 화면 채널 번호를 변환하지 않는다.
      * UI 채널과 BLE 원시 값의 대응 관계는 호출 전에 확정해야 한다.
      *
-     * 현재는 공개 구현에서 확인된 1~16 범위만 허용한다.
+     * Base Station 2.0 실기기에서 검증한
+     * RF 채널 1~16 범위의 원시 값만 허용한다.
      *
      * Main/UI 스레드에서 호출한다.
      */
