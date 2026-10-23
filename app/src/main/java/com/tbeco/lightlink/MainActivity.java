@@ -2417,16 +2417,18 @@ public class MainActivity extends AppCompatActivity {
         }
 
         /*
-         * 다른 BLE 작업과의 충돌 방지.
+         * 다른 BLE 제어 작업과 충돌하지 않도록 한다.
          *
-         * 장치 구분 없이 다른 BLE 명령이 진행 중이라면
-         * RF 채널 변경 작업을 제한한다.
+         * Identify가 진행 중이라면 채널 변경을 제한한다.
          *
-         * 서로 다른 GATT 작업 간 충돌을 방지한다.
+         * 다른 장치의 채널 확인 작업이 진행 중이거나
+         * READ 재시도를 기다리는 동안에도
+         * 새로운 채널 변경을 시작하지 않는다.
          */
         if (isAnyPowerControllerBusy()
                 || isAnyIdentifyBusy()
-                || isChannelWriteBusy()) {
+                || isChannelWriteBusy()
+                || isChannelVerificationBusy()) {
 
             return false;
         }
@@ -2475,12 +2477,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         /*
-         * RF 채널 변경 작업과 Identify의 GATT 연결 충돌 방지.
+         * 채널 변경 작업 중에는 Identify를 시작하지 않는다.
          *
-         * 채널 WRITE가 진행 중이라면
-         * 새로운 Identify 작업을 시작하지 않는다.
+         * WRITE뿐 아니라 변경 이후 READ 확인과
+         * 재시도 대기 상태까지 포함한다.
+         *
+         * READ_COMPLETE / READ_FAILED 이후에는
+         * 기존 식별 허용 조건에 따라 다시 사용할 수 있다.
          */
-        if (isChannelWriteBusy()) {
+        if (isChannelWriteBusy()
+                || isChannelVerificationBusy()) {
+
             return false;
         }
 
@@ -7848,9 +7855,13 @@ public class MainActivity extends AppCompatActivity {
     private void updateScanButton() {
 
         /*
-         * BLE 검색 및 다른 작업 상태가 변경될 때
-         * 열려 있는 Bottom Sheet의 채널 변경 버튼을 갱신한다.
+         * BLE 작업 상태가 변경되면
+         * Identify와 채널 변경 버튼을 함께 갱신한다.
+         *
+         * 두 버튼은 각자의 허용 조건을 사용하지만
+         * 작업이 충돌하지 않도록 동일한 시점에 갱신한다.
          */
+        refreshIdentifyButton();
         refreshSheetChannelChangeButton();
 
         /*
