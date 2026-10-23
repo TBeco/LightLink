@@ -156,6 +156,19 @@ public class MainActivity extends AppCompatActivity {
      */
     private static final int CHANNEL_VERIFY_MAX_RETRIES = 2;
 
+    /*
+     * 채널 확인 완료 메시지 표시 시간.
+     *
+     * READ 성공 시점부터 30초 동안 표시한다.
+     *
+     * Bottom Sheet를 닫았다 다시 열어도
+     * 표시 시간이 초기화되지 않는다.
+     *
+     * 실패 메시지는 자동으로 숨기지 않는다.
+     */
+    private static final long CHANNEL_VERIFY_RESULT_DISPLAY_MS =
+            30_000L;
+
 
     /*
      * Power State READ에서 0x01을 실제로 확인했을 때 표시하는 상태.
@@ -413,11 +426,24 @@ public class MainActivity extends AppCompatActivity {
          */
         int readRetryCount;
 
+        /*
+         * 채널 READ가 정상적으로 완료된 시각.
+         *
+         * SystemClock.elapsedRealtime()을 사용한다.
+         *
+         * -1은 아직 확인이 완료되지 않았다는 의미다.
+         *
+         * Bottom Sheet를 닫았다 다시 열어도
+         * 완료 시각은 유지한다.
+         */
+        long completedAtElapsedRealtime;
+
         ChannelVerificationInfo(int requestedChannel) {
             this.requestedChannel = requestedChannel;
             this.state = ChannelVerificationState.WRITING;
             this.confirmedChannel = null;
             this.readRetryCount = 0;
+            this.completedAtElapsedRealtime = -1L;
         }
     }
 
@@ -2225,6 +2251,64 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*
+     * 채널 변경 및 후속 확인 작업 진행 여부.
+     *
+     * WRITING:
+     * 채널 변경 명령 처리 중.
+     *
+     * READING:
+     * 변경 이후 채널 확인 중.
+     *
+     * READ_COMPLETE:
+     * 채널은 확인했지만 해당 장치의 GATT 조회가
+     * 아직 끝나지 않았다면 작업 완료까지 기다린다.
+     *
+     * READ_FAILED:
+     * 확인 작업이 종료되었으므로 재검색을 허용한다.
+     *
+     * 다른 일반적인 상태 조회는 제한하지 않는다.
+     */
+    private boolean isChannelVerificationBusy() {
+
+        for (Map.Entry<String, ChannelVerificationInfo> entry
+                : channelVerificationStates.entrySet()) {
+
+            ChannelVerificationInfo info =
+                    entry.getValue();
+
+            if (info == null) {
+                continue;
+            }
+
+            /*
+             * 채널 변경 또는 확인 작업 진행 중.
+             */
+            if (info.state == ChannelVerificationState.WRITING
+                    || info.state == ChannelVerificationState.READING) {
+
+                return true;
+            }
+
+            /*
+             * 채널 READ에 성공했더라도
+             * 해당 장치의 GATT 조회가 남아 있다면
+             * 완료될 때까지 재검색을 제한한다.
+             */
+            if (info.state == ChannelVerificationState.READ_COMPLETE
+                    && readingStatus
+                    && currentStatusDevice != null
+                    && entry.getKey().equals(
+                    currentStatusDevice.getAddress()
+            )) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /*
      * RF 채널 변경 Controller 정리.
      *
      * Bluetooth OFF 또는 Activity 종료 시
@@ -2698,7 +2782,7 @@ public class MainActivity extends AppCompatActivity {
                 );
 
         /*
-         * 진행 중이거나 기록된 작업이 없다면
+         * 기록된 채널 변경 작업이 없다면
          * 결과 안내 영역을 숨긴다.
          */
         if (info == null) {
@@ -2708,6 +2792,35 @@ public class MainActivity extends AppCompatActivity {
             );
 
             return;
+        }
+
+        /*
+         * 채널 확인 완료 메시지의 표시 시간 검사.
+         *
+         * 완료 후 30초가 지났다면
+         * 결과 메시지만 숨긴다.
+         *
+         * READ_COMPLETE 상태는 유지하므로
+         * 채널 변경 버튼의 활성화 조건에는 영향을 주지 않는다.
+         *
+         * Bottom Sheet를 다시 열었을 때도
+         * 기존 완료 시각을 기준으로 판단한다.
+         */
+        if (info.state == ChannelVerificationState.READ_COMPLETE
+                && info.completedAtElapsedRealtime >= 0L) {
+
+            long elapsed =
+                    SystemClock.elapsedRealtime()
+                            - info.completedAtElapsedRealtime;
+
+            if (elapsed >= CHANNEL_VERIFY_RESULT_DISPLAY_MS) {
+
+                textVerification.setVisibility(
+                        View.GONE
+                );
+
+                return;
+            }
         }
 
         /*
@@ -4818,8 +4931,13 @@ public class MainActivity extends AppCompatActivity {
     private void checkPermissionAndScan() {
         if (isAnyPowerControllerBusy()
                 || isAnyIdentifyBusy()
-                || isChannelWriteBusy()) {
-            AppLog.d("Scan ignored: power command in progress");
+                || isChannelWriteBusy()
+                || isChannelVerificationBusy()) {
+
+            AppLog.d(
+                    "Scan ignored: BLE command or channel verification in progress"
+            );
+
             return;
         }
 
@@ -4875,10 +4993,11 @@ public class MainActivity extends AppCompatActivity {
          */
         if (isAnyPowerControllerBusy()
                 || isAnyIdentifyBusy()
-                || isChannelWriteBusy()) {
+                || isChannelWriteBusy()
+                || isChannelVerificationBusy()) {
 
             AppLog.d(
-                    "Scan ignored: power command in progress"
+                    "Scan ignored: BLE command or channel verification in progress"
             );
 
             restoreSearchButton();
@@ -4983,9 +5102,34 @@ public class MainActivity extends AppCompatActivity {
          * RecyclerView에 삭제된 범위를 정확하게 알린다.
          */
         int removedCount = deviceList.size();
-
         deviceList.clear();
         seenAddresses.clear();
+
+        /*
+         * 새로운 검색을 시작하므로
+         * 이전 채널 변경 완료 기록을 정리한다.
+         *
+         * READ_COMPLETE:
+         * 이미 완료된 작업이므로 기록을 삭제한다.
+         *
+         * READ_FAILED:
+         * 채널 확인에 실패한 장치는 재검색 후
+         * 정상적으로 채널을 읽을 때까지 기록을 유지한다.
+         *
+         * WRITING / READING:
+         * 해당 상태에서는 재검색 자체가 제한되어 있다.
+         */
+        channelVerificationStates.values().removeIf(
+                info -> info != null
+                        && info.state
+                        == ChannelVerificationState.READ_COMPLETE
+        );
+
+        /*
+         * Bottom Sheet가 열려 있다면
+         * 이전 완료 메시지도 즉시 갱신한다.
+         */
+        refreshSheetChannelVerification();
 
         /*
          * 새로운 검색을 시작하므로
@@ -5352,6 +5496,34 @@ public class MainActivity extends AppCompatActivity {
         clearIdentifyControllers();
         clearChannelController();
         bleScanner = null;
+
+        /*
+         * Bluetooth OFF로 중단된 채널 확인 작업 정리.
+         *
+         * 실제 채널 변경 여부를 확인하지 못했으므로
+         * READ_FAILED 상태로 전환한다.
+         *
+         * Bluetooth를 다시 켠 이후에는
+         * 재검색을 통해 채널을 확인할 수 있도록 한다.
+         */
+        for (ChannelVerificationInfo info
+                : channelVerificationStates.values()) {
+
+            if (info.state == ChannelVerificationState.WRITING
+                    || info.state == ChannelVerificationState.READING) {
+
+                info.state =
+                        ChannelVerificationState.READ_FAILED;
+
+                info.confirmedChannel = null;
+            }
+        }
+
+        /*
+         * Bottom Sheet에 중단된 작업 상태를 반영한다.
+         */
+        refreshSheetChannelVerification();
+        refreshSheetChannelChangeButton();
 
         /*
          * Bluetooth가 꺼지면 기존 검색 결과를 제거한다.
@@ -6371,13 +6543,68 @@ public class MainActivity extends AppCompatActivity {
                                     updatedChannelDevice.getAddress()
                             );
 
+                    /*
+                     * 이전 채널 확인에 실패한 장치의 복구 처리.
+                     *
+                     * 재검색 과정에서 정상적인 채널을 읽었다면
+                     * 기존 실패 상태를 해제한다.
+                     *
+                     * 재검색은 새로운 상태 조회이므로
+                     * 이전 채널 변경의 성공 메시지는 다시 표시하지 않는다.
+                     */
+                    if (verificationInfo != null
+                            && verificationInfo.state
+                            == ChannelVerificationState.READ_FAILED) {
+
+                        /*
+                         * 기존 실패 기록을 제거한다.
+                         *
+                         * 현재 채널 정보는 이미 BleDeviceItem에
+                         * 저장되어 있으므로 삭제하지 않는다.
+                         */
+                        channelVerificationStates.remove(
+                                updatedChannelDevice.getAddress()
+                        );
+
+                        AppLog.d(
+                                "[Channel] Verification recovered"
+                                        + " / device = "
+                                        + updatedChannelDevice.getName()
+                                        + " / channel = "
+                                        + channel
+                        );
+
+                        /*
+                         * Bottom Sheet의 현재 채널 정보를 갱신한다.
+                         */
+                        refreshSheetChannelInfo();
+
+                        /*
+                         * 이전 실패 안내 메시지를 제거한다.
+                         */
+                        refreshSheetChannelVerification();
+
+                        /*
+                         * 기존 채널 변경 잠금이 해제되었으므로
+                         * 버튼 활성화 조건을 다시 계산한다.
+                         */
+                        refreshSheetChannelChangeButton();
+
+                        /*
+                         * 채널 선택창이 열려 있다면 함께 갱신한다.
+                         */
+                        refreshOpenChannelPicker();
+                    }
+
+                    /*
+                     * WRITE 이후 자동 READ 확인 처리.
+                     *
+                     * 기존 정상 동작을 유지한다.
+                     */
                     if (verificationInfo != null
                             && verificationInfo.state
                             == ChannelVerificationState.READING) {
 
-                        /*
-                         * 이번 READ에서 확인된 채널 번호를 저장한다.
-                         */
                         verificationInfo.confirmedChannel =
                                 channel;
 
@@ -6387,6 +6614,58 @@ public class MainActivity extends AppCompatActivity {
                          */
                         verificationInfo.state =
                                 ChannelVerificationState.READ_COMPLETE;
+
+                        /*
+                         * 채널 확인 완료 시각을 기록한다.
+                         *
+                         * 이 시점부터 30초 동안 결과 메시지를 표시한다.
+                         *
+                         * Bottom Sheet를 닫았다 다시 열어도
+                         * 완료 시각은 변경하지 않는다.
+                         */
+                        verificationInfo.completedAtElapsedRealtime =
+                                SystemClock.elapsedRealtime();
+
+                        /*
+                         * 30초 후 결과 메시지를 갱신한다.
+                         *
+                         * 다른 채널 변경 작업이 새롭게 시작되었다면
+                         * 이전 작업의 타이머가 영향을 주지 않도록 한다.
+                         */
+                        ChannelVerificationInfo completedInfo =
+                                verificationInfo;
+
+                        String completedAddress =
+                                updatedChannelDevice.getAddress();
+
+                        handler.postDelayed(() -> {
+
+                            /*
+                             * 현재 등록된 작업과 동일한지 확인한다.
+                             *
+                             * 새로운 채널 변경 작업이 시작되었다면
+                             * 이전 타이머는 아무 작업도 하지 않는다.
+                             */
+                            ChannelVerificationInfo currentInfo =
+                                    channelVerificationStates.get(
+                                            completedAddress
+                                    );
+
+                            if (currentInfo != completedInfo
+                                    || currentInfo.state
+                                    != ChannelVerificationState.READ_COMPLETE) {
+
+                                return;
+                            }
+
+                            /*
+                             * 결과 메시지 표시 여부를 다시 계산한다.
+                             *
+                             * 채널 확인 상태 자체는 삭제하지 않는다.
+                             */
+                            refreshSheetChannelVerification();
+
+                        }, CHANNEL_VERIFY_RESULT_DISPLAY_MS);
 
                         AppLog.d(
                                 "[Channel] Verification READ completed"
@@ -7620,17 +7899,24 @@ public class MainActivity extends AppCompatActivity {
 
 
         /*
-         * 실제 Base Station 전원 전환 중일 때만
-         * 새로운 검색을 막는다.
+         * BLE 제어 작업 중에는 새로운 검색을 제한한다.
          *
-         * 단순 상태 조회 중에는 다시 검색 가능.
+         * Power / Identify / Channel WRITE 작업뿐 아니라
+         * 채널 변경 이후 확인 작업도 포함한다.
+         *
+         * 일반적인 상태 조회 중에는 재검색을 허용한다.
+         *
+         * READ_COMPLETE 또는 READ_FAILED로 작업이 종료되고
+         * 필요한 GATT 정리가 끝나면 다시 활성화한다.
          */
-        boolean powerBusy =
-                isAnyPowerControllerBusy() || isAnyIdentifyBusy();
-
+        boolean commandBusy =
+                isAnyPowerControllerBusy()
+                        || isAnyIdentifyBusy()
+                        || isChannelWriteBusy()
+                        || isChannelVerificationBusy();
 
         buttonScan.setEnabled(
-                !powerBusy
+                !commandBusy
         );
     }
 
