@@ -1333,9 +1333,9 @@ public class MainActivity extends AppCompatActivity {
                         R.id.buttonChannelPickerCancel
                 );
 
-        View buttonConfirm =
+        View buttonNext  =
                 dialogView.findViewById(
-                        R.id.buttonChannelPickerConfirm
+                        R.id.buttonChannelPickerNext
                 );
 
         /*
@@ -1665,7 +1665,7 @@ public class MainActivity extends AppCompatActivity {
             );
 
             /*
-             * 변경 확정 버튼 활성화 조건.
+             * 다음 버튼 활성화 조건.
              *
              * 1. 유효한 채널을 선택했는지 확인한다.
              * 2. 현재 채널과 동일한지 확인한다.
@@ -1673,6 +1673,8 @@ public class MainActivity extends AppCompatActivity {
              *
              * 채널 정보가 새로 갱신되더라도
              * 최신 상태를 기준으로 버튼을 다시 설정한다.
+             *
+             * 이 단계에서는 BLE WRITE를 실행하지 않는다.
              */
             boolean canConfirm =
                     selected >= 1
@@ -1681,7 +1683,7 @@ public class MainActivity extends AppCompatActivity {
                             || currentChannel != selected)
                             && canChangeRfChannel(device);
 
-            buttonConfirm.setEnabled(canConfirm);
+            buttonNext.setEnabled(canConfirm);
 
         };
 
@@ -1804,18 +1806,19 @@ public class MainActivity extends AppCompatActivity {
         refreshChannelSelection.run();
 
         /*
-         * RF 채널 변경 확정 버튼.
+         * RF 채널 선택창의 다음 버튼.
          *
          * 선택한 채널 번호를 전달하여
          * 사용자에게 최종 변경 확인창을 표시한다.
          *
-         * 확인창에서 변경을 승인한 경우에만
-         * 실제 BLE WRITE를 실행한다.
+         * 다음 버튼에서는 BLE WRITE를 실행하지 않는다.
+         * 최종 확인창에서 변경을 승인한 경우에만
+         * 실제 BLE WRITE를 요청한다.
          *
          * 채널 선택창은 최종 승인이 이루어진 후 닫는다.
-         * 확인창에서 취소하면 기존 선택 상태를 유지한다.
+         * 최종 확인창에서 취소하면 기존 선택 상태를 유지한다.
          */
-        buttonConfirm.setOnClickListener(v -> {
+        buttonNext.setOnClickListener(v -> {
 
             int requestedChannel =
                     selectedChannel[0];
@@ -2025,18 +2028,19 @@ public class MainActivity extends AppCompatActivity {
                 );
 
         /*
-         * 기존 LightLink 스타일의 확인창 사용.
+         * 채널 변경 전용 최종 확인창.
          *
-         * 취소:
-         * 아무런 BLE 명령을 보내지 않는다.
+         * 일반 Awake 장치에서는 기본 확인 문구만 표시한다.
          *
-         * 변경:
-         * 현재 상태를 다시 검사한 후 WRITE를 시작한다.
+         * Power State READ 미지원 장치에서는
+         * 전원 상태 확인 불가 안내를 추가한다.
+         *
+         * 실제 WRITE를 시작하기 전에
+         * 기존 장치 상태 및 채널 정보를 다시 검사한다.
          */
-        showStyledActionDialog(
-                getString(R.string.channel_write_confirm_title),
+        showChannelChangeConfirmDialog(
+                device,
                 confirmationMessage,
-                getString(R.string.channel_picker_confirm),
                 () -> {
 
                     /*
@@ -4845,6 +4849,148 @@ public class MainActivity extends AppCompatActivity {
                 getString(R.string.common_request_permissions),
                 () -> requestMissingPermissions(missing)
         );
+    }
+
+    /*
+     * Base Station 2.0 채널 변경 전용 최종 확인창.
+     *
+     * 기존 권한 및 설정 안내창과 분리하여
+     * dialog_channel_change_confirm.xml을 사용한다.
+     *
+     * 일반적인 Awake 장치:
+     * - 기본 채널 변경 확인 내용만 표시한다.
+     *
+     * Power State READ 미지원 장치:
+     * - 현재 전원 상태를 확인할 수 없으므로
+     *   상태 표시등 확인 안내를 추가한다.
+     *
+     * 기존 채널 변경 로직은 positiveAction으로 전달하며,
+     * 이 함수에서는 BLE 명령을 직접 실행하지 않는다.
+     */
+    private void showChannelChangeConfirmDialog(
+            BleDeviceItem device,
+            String confirmationMessage,
+            Runnable positiveAction) {
+
+        /*
+         * 채널 변경 전용 XML을 불러온다.
+         */
+        View dialogView =
+                getLayoutInflater().inflate(
+                        R.layout.dialog_channel_change_confirm,
+                        null
+                );
+
+        /*
+         * 확인창 UI 요소.
+         */
+        TextView textTitle =
+                dialogView.findViewById(
+                        R.id.textChannelConfirmTitle
+                );
+
+        TextView textMessage =
+                dialogView.findViewById(
+                        R.id.textChannelConfirmMessage
+                );
+
+        View layoutPowerWarning =
+                dialogView.findViewById(
+                        R.id.layoutChannelConfirmPowerWarning
+                );
+
+        TextView buttonCancel =
+                dialogView.findViewById(
+                        R.id.buttonChannelConfirmCancel
+                );
+
+        TextView buttonAction =
+                dialogView.findViewById(
+                        R.id.buttonChannelConfirmAction
+                );
+
+        /*
+         * 기존 채널 변경 확인 문구를 사용한다.
+         *
+         * 채널 중복 여부에 따른 메시지는
+         * requestRfChannelChange()에서 이미 결정된다.
+         */
+        textTitle.setText(
+                R.string.channel_write_confirm_title
+        );
+
+        textMessage.setText(
+                confirmationMessage
+        );
+
+        buttonAction.setText(
+                R.string.channel_picker_confirm
+        );
+
+        /*
+         * Power State READ를 지원하지 않는 장치에서만
+         * 추가 경고 영역을 표시한다.
+         *
+         * 구분선도 해당 영역 내부에 있으므로
+         * 경고가 필요 없는 경우 함께 숨겨진다.
+         */
+        boolean showPowerWarning =
+                device != null
+                        && device.isStateReadUnsupported();
+
+        layoutPowerWarning.setVisibility(
+                showPowerWarning
+                        ? View.VISIBLE
+                        : View.GONE
+        );
+
+        /*
+         * 기존 LightLink 다이얼로그 스타일을 유지한다.
+         */
+        AlertDialog dialog =
+                new AlertDialog.Builder(this)
+                        .setView(dialogView)
+                        .create();
+
+        /*
+         * 취소 버튼:
+         * 채널 변경 명령을 실행하지 않고 닫는다.
+         */
+        buttonCancel.setOnClickListener(
+                v -> dialog.dismiss()
+        );
+
+        /*
+         * 변경 버튼:
+         * 확인창을 닫고 기존 채널 변경 로직을 실행한다.
+         */
+        buttonAction.setOnClickListener(v -> {
+
+            dialog.dismiss();
+
+            if (positiveAction != null) {
+                positiveAction.run();
+            }
+        });
+
+        /*
+         * 확인창 표시.
+         */
+        dialog.show();
+
+        /*
+         * Android 기본 다이얼로그 배경을 투명하게 설정한다.
+         *
+         * XML에 지정한 기존 LightLink의
+         * 둥근 모서리 배경을 그대로 사용한다.
+         */
+        if (dialog.getWindow() != null) {
+
+            dialog.getWindow()
+                    .setBackgroundDrawableResource(
+                            android.R.color.transparent
+                    );
+        }
     }
 
     /*

@@ -232,13 +232,19 @@
                 android:textSize="15sp" />
 
             <!--
-                변경 확정 버튼.
+                다음 버튼.
 
-                채널 선택 및 BLE 기능을 연결하기 전까지
-                비활성화 상태를 유지한다.
+                사용자가 선택한 채널을 확인하고
+                최종 채널 변경 확인창을 표시한다.
+
+                이 버튼을 눌러도 실제 BLE WRITE는 실행되지 않는다.
+                실제 변경 명령은 최종 확인창에서 승인한 후 실행한다.
+
+                채널을 선택하지 않았거나 변경할 수 없는 상태에서는
+                버튼을 비활성화한다.
             -->
             <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/buttonChannelPickerConfirm"
+                android:id="@+id/buttonChannelPickerNext"
 
                 android:layout_width="0dp"
                 android:layout_height="48dp"
@@ -251,7 +257,7 @@
                 android:background="@drawable/dialog_action_button_background"
                 android:backgroundTint="@null"
 
-                android:text="@string/channel_picker_confirm"
+                android:text="@string/channel_picker_next"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="15sp"

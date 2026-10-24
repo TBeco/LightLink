@@ -73,6 +73,14 @@
     <string name="channel_verify_success">채널 %1$d 확인 완료.</string>
     <string name="channel_verify_failed">채널 정보를 확인하지 못했습니다. 이 장치의 채널 변경이 제한됩니다.</string>
 
+    <!-- 채널 확인 · 결과 안내 -->
+    <string name="channel_verify_mismatch">요청한 채널은 %1$d번이지만, 현재 채널은 %2$d번입니다. 베이스스테이션의 전원을 확인한 후 다시 시도하세요.</string>
+
+    <!-- 기타 채널 변경 결과 안내 -->
+    <string name="channel_write_sent">채널 WRITE 요청이 처리되었습니다. 실제 변경 여부는 다시 검색하여 확인하세요.</string>
+    <string name="channel_write_unconfirmed">채널 변경 결과를 확인하지 못했습니다. 재시도하기 전에 다시 검색하여 확인하세요.</string>
+    <string name="channel_write_unavailable">현재 채널을 변경할 수 없습니다. 베이스스테이션 상태를 확인한 뒤 다시 시도하세요.</string>
+
     <!-- 채널 중복 안내 -->
     <string name="device_channel_conflict">다른 장치와 중복</string>
 
@@ -86,17 +94,6 @@
     <!-- 채널 관련 주의사항 -->
     <string name="device_channel_usage_warning">같은 공간의 베이스스테이션은 서로 다른 채널을 사용하는 것이 좋습니다.</string>
     <string name="device_channel_power_warning">채널 변경 전, 상태 표시등이 초록색 또는 흰색인지 확인하세요.</string>
-
-    <!-- RF 채널 WRITE / 변경 확인 -->
-    <string name="channel_write_confirm_title">채널 변경 확인</string>
-    <string name="channel_write_confirm_message">채널을 %1$d번으로 변경할까요?\n\n변경 과정에서 베이스스테이션의 추적이 잠시 중단될 수 있습니다.</string>
-    <string name="channel_write_confirm_conflict">채널 %1$d번은 다른 베이스스테이션에서 사용 중입니다.\n\n그래도 해당 채널로 변경하시겠습니까?</string>
-
-    <!-- RF 채널 WRITE / 결과 안내 -->
-    <string name="channel_write_sent">채널 WRITE 요청이 처리되었습니다. 실제 변경 여부는 다시 검색하여 확인하세요.</string>
-    <string name="channel_write_unconfirmed">채널 변경 결과를 확인하지 못했습니다. 재시도하기 전에 다시 검색하여 확인하세요.</string>
-    <string name="channel_write_unavailable">현재 채널을 변경할 수 없습니다. 베이스스테이션 상태를 확인한 뒤 다시 시도하세요.</string>
-    <string name="channel_verify_mismatch">요청한 채널은 %1$d번이지만, 현재 채널은 %2$d번입니다. 베이스스테이션의 전원을 확인한 후 다시 시도하세요.</string>
 
     <!-- ==================================================
          03. dialog_channel_select.xml / RF 채널 선택
@@ -116,8 +113,9 @@
     <string name="channel_picker_legend_used_label">주황색 점:</string>
     <string name="channel_picker_legend_used_description">다른 장치가 사용 중</string>
 
-    <!-- 다이얼로그 버튼 -->
+    <!-- 채널 선택 및 최종 확인창 버튼 -->
     <string name="channel_picker_cancel">취소</string>
+    <string name="channel_picker_next">다음</string>
     <string name="channel_picker_confirm">변경</string>
 
     <!-- 채널 접근성 안내 -->
@@ -127,7 +125,20 @@
     <string name="channel_picker_accessibility_selected">선택됨</string>
 
     <!-- ==================================================
-         04. dialog_manual_power.xml / 수동 전원 제어
+         04. dialog_channel_change_confirm.xml / 채널 변경 확인
+         ================================================== -->
+
+    <!-- 확인창 제목 · 채널 변경 안내 -->
+    <string name="channel_write_confirm_title">채널 변경 확인</string>
+    <string name="channel_write_confirm_message">채널을 %1$d번으로 변경할까요?\n\n변경 과정에서 베이스스테이션의 추적이 잠시 중단될 수 있습니다.</string>
+    <string name="channel_write_confirm_conflict">채널 %1$d번은 다른 베이스스테이션에서 사용 중입니다.\n\n그래도 해당 채널로 변경하시겠습니까?</string>
+
+    <!-- 상태 확인 미지원 장치 · 조건부 경고 -->
+    <string name="channel_confirm_power_warning_title">전원 상태 확인 불가</string>
+    <string name="channel_confirm_power_warning_message">이전 버전의 펌웨어를 사용 중일 수 있어 현재 전원 상태를 확인할 수 없습니다.\n\n채널 변경 전 상태 표시등이 초록색 또는 흰색인지 확인해 주세요. 절전 상태에서는 변경되지 않을 수 있습니다.</string>
+
+    <!-- ==================================================
+         05. dialog_manual_power.xml / 수동 전원 제어
          ================================================== -->
 
     <!-- 제목 · 본문 · 취소 -->
@@ -140,7 +151,7 @@
     <string name="manual_power_wake_accessibility">이 베이스스테이션에 Wake 명령 보내기</string>
 
     <!-- ==================================================
-         05. dialog_settings_action.xml / 권한 · 설정 안내
+         06. dialog_settings_action.xml / 권한 · 설정 안내
          ================================================== -->
 
     <!-- 공통 버튼 -->
@@ -165,7 +176,7 @@
     <string name="location_services_disabled_message">현재 스마트폰의 위치 기능이 꺼져 있습니다.\n\nLightLink에서 베이스스테이션을 검색하려면 위치 기능을 활성화해 주세요.</string>
 
     <!-- ==================================================
-         06. item_ble_device.xml / 베이스스테이션 목록
+         07. item_ble_device.xml / 베이스스테이션 목록
          ================================================== -->
 
     <!-- 기본 접근성 -->
@@ -196,7 +207,7 @@
 
 
     <!-- ==================================================
-         07. popup_main_menu.xml / 메인 메뉴
+         08. popup_main_menu.xml / 메인 메뉴
          ================================================== -->
 
     <!-- 언어 설정 메뉴 -->
@@ -214,7 +225,7 @@
 
 
     <!-- ==================================================
-         08. dialog_language.xml / 언어 설정
+         09. dialog_language.xml / 언어 설정
          ================================================== -->
 
     <!-- 팝업 제목 -->

@@ -1,28 +1,28 @@
 # LightLink
 
-An Android app for controlling SteamVR Base Station 2.0 over Bluetooth Low Energy (BLE).
+An Android app for managing SteamVR Base Station 2.0 over Bluetooth Low Energy (BLE).
 
-LightLink는 Bluetooth Low Energy(BLE)를 이용해 SteamVR Base Station 2.0을 검색하고 전원을 제어하는 **Android 전용 앱**입니다.
+LightLink는 Bluetooth Low Energy(BLE)를 이용해 SteamVR Base Station 2.0을 검색하고 관리하는 **Android 전용 앱**입니다.
 
-**Version:** `v0.9.0-beta.1` · **Status:** Beta · **Android:** 8.0 (API 26)+
+**Version:** `v0.9.0-beta.2` · **Status:** Beta · **Android:** 8.0 (API 26)+
 
 ## Download / 다운로드
 
 **[Download APK from GitHub Releases](https://github.com/TBeco/LightLink/releases)**
 
-Download the `.apk` file from the **Assets** section of a release.
+Download the `.apk` file from the **Assets** section of the latest release.
 
-GitHub Releases에서 해당 버전의 **Assets**에 있는 `.apk` 파일을 다운로드하면 됩니다.
+GitHub Releases에서 최신 버전의 **Assets**에 있는 `.apk` 파일을 다운로드하면 됩니다.
 
-LightLink is still in beta, and compatibility may vary between devices.
+LightLink is currently in beta. Compatibility may vary depending on your Android device and Base Station firmware.
 
-현재 베타 버전으로, 기기에 따라 동작에 차이가 있을 수 있습니다.
+현재 베타 버전으로, Android 기기와 베이스스테이션 펌웨어에 따라 동작에 차이가 있을 수 있습니다.
 
 ## Screenshots / 스크린샷
 
-|                     Main Screen /<br/>메인 화면                     |                       Manual Power Control /<br/>수동 전원 제어                        |                      Device Identify /<br/>장치 식별                       |
-|:--------------------------------------------------------------:|:---------------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
-| <img src="screenshots/main.jpg" width="220" alt="Main Screen"> | <img src="screenshots/device-control.jpg" width="220" alt="Manual Power Control"> | <img src="screenshots/device-identify.jpg" width="220" alt="Device Identify"> |
+|                     Main Screen /<br/>메인 화면                    |                        Manual Power Control /<br/>수동 전원 제어                        |                         Device Management /<br/>장치 관리                         |
+| :------------------------------------------------------------: | :-------------------------------------------------------------------------------: |:---------------------------------------------------------------------------------:|
+| <img src="screenshots/main.jpg" width="220" alt="Main Screen"> | <img src="screenshots/device-control.jpg" width="220" alt="Manual Power Control"> | <img src="screenshots/device-management.jpg" width="220" alt="Device Management"> |
 
 ## Why I Made LightLink / 개발 배경
 
@@ -44,32 +44,28 @@ The discovery issue has improved in my setup, and I'm still testing how well the
 
 ## Features / 주요 기능
 
-- Discover nearby Base Station 2.0 devices / 주변 베이스스테이션 검색
-- Read the power state when supported / 지원되는 장치의 현재 전원 상태 확인
-- Wake or Sleep each base station independently / 베이스스테이션별 전원 켜기(Wake) 및 절전(Sleep) 제어
-- Start and stop scanning manually / 검색 시작 및 중지
-- Show RF channel, Bluetooth signal strength (RSSI), and last successful state check time / 베이스스테이션 채널(RF Channel), 블루투스 신호 강도(RSSI), 마지막 상태 확인 시각 표시
-- Retry temporary Bluetooth connection failures / 일시적인 블루투스 연결 실패 시 재시도
-- Verify power state after Wake / Sleep commands when supported / 지원되는 장치에서 전원 명령 후 실제 상태 재확인
-- Allow manual Wake / Sleep control when older firmware does not support Power State READ / 일부 구형 펌웨어에서 상태 조회가 불가능할 때 수동 전원 제어
-- Open a device management panel for individual base stations / 베이스스테이션별 장치 관리 화면 제공
-- Identify a specific base station by making its LED blink white / 특정 베이스스테이션의 LED를 흰색으로 점멸시켜 장치 식별
-- Recheck the power state after identifying a sleeping base station when supported / 지원되는 장치에서 Sleep 상태의 베이스스테이션 식별 후 전원 상태 재확인
-- Switch between Korean, English, and the system default language / 한국어, 영어 및 시스템 기본 언어 선택
-- Save the selected language preference across app restarts / 앱 재실행 후에도 선택한 언어 설정 유지
-- Access language settings and GitHub through the in-app menu / 앱 내 메뉴에서 언어 설정 및 GitHub 저장소 접근
+* **Device Discovery:** Find nearby Base Station 2.0 devices. / 주변 베이스스테이션 검색
+* **Power Control:** Wake or Sleep base stations individually or together. / 개별 및 다중 전원 제어
+* **Device Management:** Check device information and identify a base station by blinking its LED. / 장치 정보 확인 및 LED를 이용한 장치 식별
+* **Channel Change:** View and change channels (1–16), with duplicate channel detection. / 채널(1~16) 조회·변경 및 채널 중복 감지
+* **Device Status:** View power state, signal strength (RSSI), and last state check time. / 전원 상태, 신호 강도 및 마지막 상태 확인 시각 표시
+* **Language Support:** Korean and English, with a system-default option. / 한국어·영어 및 시스템 기본 언어 지원
+
+Older firmware that does not support Power State READ may still allow manual Wake / Sleep control.
+
+전원 상태 조회를 지원하지 않는 일부 구형 펌웨어에서도 수동 Wake / Sleep 제어를 사용할 수 있습니다.
 
 ## Planned Features / 개발 예정 기능
 
 The following features are planned or being considered for future versions.
 
-- **RF Channel Conflict Detection:** Detect duplicate RF channels among discovered Base Station 2.0 devices and display warning indicators in the device list.
-- **RF Channel Management (Under Consideration):** Explore changing Base Station 2.0 RF channels directly through BLE.
+* **Japanese Language Support (Planned):** Add Japanese to the available interface languages.
+* **Base Station 1.0 Support (Under Consideration):** Explore compatibility with SteamVR Base Station 1.0.
 
 다음 기능은 향후 버전에서 개발을 계획하거나 검토하고 있습니다.
 
-- **RF 채널 중복 감지:** 검색된 Base Station 2.0 장치 간 RF 채널 중복을 감지하고, 장치 목록에 경고 표시 제공
-- **RF 채널 관리 (검토 중):** BLE를 이용한 Base Station 2.0의 RF 채널 직접 변경 기능 검토
+* **일본어 지원 (예정):** 앱 인터페이스에 일본어 추가
+* **Base Station 1.0 지원 (검토 중):** SteamVR Base Station 1.0 호환성 검토
 
 These plans may change depending on testing results and technical limitations.
 
@@ -77,26 +73,24 @@ These plans may change depending on testing results and technical limitations.
 
 ## Compatibility / 호환성
 
-- **Supported / 지원:** SteamVR Base Station 2.0
-- **Not supported / 미지원:** SteamVR Base Station 1.0
+* **Supported / 지원:** SteamVR Base Station 2.0
+* **Not Supported / 미지원:** SteamVR Base Station 1.0
 
-My main test setup uses Base Station 2.0 with firmware **3008**. Testers have also reported working results with firmware **3002**, although compatibility has not been fully verified across all features and devices.
+LightLink has been tested with Base Station 2.0 firmware **3002** and **3008**. Some features may behave differently depending on the firmware version.
 
-주요 테스트 환경은 펌웨어 **3008**의 Base Station 2.0입니다. 테스터를 통해 **3002**에서도 동작을 확인했지만, 모든 기능과 환경에서의 호환성 검증이 끝난 것은 아닙니다.
+Base Station 2.0의 **3002**, **3008** 펌웨어에서 테스트했으며, 펌웨어에 따라 일부 기능의 동작이 다를 수 있습니다.
 
-Some older firmware versions may not support Power State READ. If BLE write commands are available, LightLink can still send Wake / Sleep commands manually, but it cannot verify the resulting power state.
+**Note:** Before changing channels, make sure the base station's status LED is green or white. Channel changes may not apply while the base station is in Sleep mode.
 
-일부 오래된 펌웨어에서는 전원 상태 읽기(Power State READ)를 지원하지 않을 수 있습니다.
-
-이 경우 BLE 쓰기(Write)가 가능하다면 수동으로 Wake / Sleep 명령을 보낼 수 있지만, 명령 실행 후 실제 전원 상태를 확인할 수는 없습니다.
+**참고:** 채널 변경 전 베이스스테이션의 상태 표시등이 초록색 또는 흰색인지 확인해 주세요. 절전 상태에서는 채널 변경이 적용되지 않을 수 있습니다.
 
 ## Requirements / 실행 환경
 
-- Android 8.0 (API 26) or later / Android 8.0 이상
-- Bluetooth Low Energy (BLE) support / BLE 지원 기기
-- Required Bluetooth permissions / 필요한 블루투스 권한
-- Precise location permission / 정확한 위치 권한
-- Device location services enabled / 스마트폰 위치 기능 활성화
+* Android 8.0 (API 26) or later / Android 8.0 이상
+* Bluetooth Low Energy (BLE) support / BLE 지원 기기
+* Required Bluetooth permissions / 필요한 블루투스 권한
+* Precise location permission / 정확한 위치 권한
+* Device location services enabled / 스마트폰 위치 기능 활성화
 
 These location requirements reflect LightLink's current BLE scanning setup.
 
@@ -104,14 +98,14 @@ These location requirements reflect LightLink's current BLE scanning setup.
 
 ## Tested Android Devices / 테스트한 Android 기기
 
-- Samsung Galaxy S9
-- Samsung Galaxy A51 5G
-- Samsung Galaxy S23 Ultra
-- Samsung Galaxy S25 Edge
-- Samsung Galaxy Z Flip6
-- Samsung Galaxy Z Fold2
-- Samsung Galaxy Z Fold4
-- Samsung Galaxy Z Fold8
+* Samsung Galaxy S9
+* Samsung Galaxy A51 5G
+* Samsung Galaxy S23 Ultra
+* Samsung Galaxy S25 Edge
+* Samsung Galaxy Z Flip6
+* Samsung Galaxy Z Fold2
+* Samsung Galaxy Z Fold4
+* Samsung Galaxy Z Fold8
 
 This list includes devices used for testing. It does not guarantee that every feature works identically on each model.
 
@@ -119,13 +113,9 @@ This list includes devices used for testing. It does not guarantee that every fe
 
 ## Privacy / 개인정보
 
-LightLink does not require an account or cloud connection. Base station discovery and control happen locally over BLE.
+LightLink does not require an account or cloud connection. Base Station discovery and control are performed locally over BLE.
 
-Language preferences are stored using Android's app language settings or local app storage, depending on the Android version.
-
-LightLink는 계정이나 클라우드 연결 없이 사용할 수 있으며, 베이스스테이션 검색과 전원 제어는 기기 간 BLE 통신으로 이루어집니다.
-
-언어 설정은 Android 버전에 따라 시스템의 앱별 언어 설정 기능 또는 앱 내부 저장소에 저장됩니다.
+LightLink는 계정이나 클라우드 연결이 필요하지 않으며, 베이스스테이션 검색과 제어는 BLE를 통해 기기 간에 이루어집니다.
 
 ## Development & Feedback / 개발 및 피드백
 
@@ -147,7 +137,7 @@ The following reference was helpful when working with the Base Station 2.0 BLE G
 
 Base Station 2.0의 BLE GATT 서비스, 특성(Characteristic), 전원 제어 명령을 구현하면서 아래 자료를 참고했습니다.
 
-- [BenWoodford — Lighthouse 2.0 GATT Information](https://gist.github.com/BenWoodford/3a1e500a4ea2673525f5adb4120fd47c)
+* [BenWoodford — Lighthouse 2.0 GATT Information](https://gist.github.com/BenWoodford/3a1e500a4ea2673525f5adb4120fd47c)
 
 ## Disclaimer / 안내
 

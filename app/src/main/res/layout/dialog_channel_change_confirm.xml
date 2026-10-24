@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    LightLink 채널 변경 최종 확인창 UI.
+
+    사용처:
+    Base Station 2.0의 채널을 변경하기 전
+    사용자의 최종 확인을 받는다.
+
+    기본 구성:
+    1. 채널 변경 확인 제목
+    2. 변경할 채널 및 추적 중단 안내
+    3. 전원 상태 확인 미지원 장치의 추가 경고
+    4. 취소 / 변경 버튼
+
+    일반적인 Awake 장치에서는 기본 안내만 표시한다.
+
+    Power State READ를 지원하지 않는 장치에서는
+    전원 상태를 직접 확인하도록 추가 경고를 표시한다.
+
+    기존 dialog_settings_action.xml과 동일한
+    팝업 배경 및 버튼 디자인을 유지한다.
+
+    이 XML은 채널 변경 확인창 전용으로 사용하며,
+    권한 및 설정 안내창과 독립적으로 관리한다.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+
+    android:orientation="vertical"
+
+    android:paddingStart="24dp"
+    android:paddingTop="24dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="20dp"
+
+    android:background="@drawable/dialog_manual_background">
+
+
+    <!--
+        채널 변경 확인창 제목.
+
+        실제 제목은 MainActivity에서 설정한다.
+
+        접근성 Heading으로 지정하여
+        TalkBack에서 제목으로 인식할 수 있도록 한다.
+
+        tools:text는 Android Studio Preview 전용이다.
+    -->
+    <TextView
+        android:id="@+id/textChannelConfirmTitle"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+
+        android:accessibilityHeading="true"
+        tools:ignore="UnusedAttribute"
+
+        tools:text="채널 변경 확인" />
+
+
+    <!--
+        채널 변경 확인 본문.
+
+        MainActivity에서 다음 내용을 설정한다.
+
+        - 사용자가 선택한 채널 번호
+        - 채널 변경 시 추적이 일시적으로
+          중단될 수 있다는 안내
+        - 필요하다면 채널 중복 경고
+
+        기존 확인창의 글자 크기와
+        줄 간격을 그대로 유지한다.
+    -->
+    <TextView
+        android:id="@+id/textChannelConfirmMessage"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="18dp"
+
+        android:textColor="#BDBDBD"
+        android:textSize="15sp"
+
+        android:lineSpacingExtra="3dp"
+
+        tools:text="채널을 8번으로 변경할까요?&#10;&#10;채널 변경 시 추적이 일시적으로 중단될 수 있습니다." />
+
+
+    <!--
+        전원 상태 확인 미지원 장치용 추가 경고.
+
+        Power State READ를 지원하지 않는 Base Station은
+        현재 Awake / Sleep 상태를 확인할 수 없다.
+
+        따라서 채널 변경 전에 사용자가
+        실제 상태 표시등을 확인하도록 안내한다.
+
+        기본값은 GONE으로 설정한다.
+
+        MainActivity에서
+        device.isStateReadUnsupported()가 true인 경우에만
+        VISIBLE로 변경한다.
+
+        일반적인 Awake 장치에서는
+        구분선과 경고 문구 모두 표시하지 않는다.
+
+        tools:visibility는 Preview 전용이다.
+    -->
+    <LinearLayout
+        android:id="@+id/layoutChannelConfirmPowerWarning"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="18dp"
+
+        android:orientation="vertical"
+
+        android:visibility="gone"
+        tools:visibility="visible">
+
+
+        <!--
+            기본 채널 변경 안내와
+            추가 전원 상태 경고를 구분하는 선.
+
+            경고 영역 내부에 포함되어 있으므로
+            일반적인 Awake 장치에서는 표시되지 않는다.
+
+            기존 확인창의 디자인을 해치지 않도록
+            어두운 회색과 1dp 높이를 사용한다.
+        -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+
+            android:layout_marginBottom="14dp"
+
+            android:background="#444444" />
+
+
+        <!--
+            추가 경고 제목.
+
+            상태 확인이 불가능하다는 점을
+            사용자에게 명확하게 전달한다.
+
+            기존 LightLink 경고 UI와 동일한
+            주황색 계열을 사용한다.
+        -->
+        <TextView
+            android:id="@+id/textChannelConfirmPowerWarningTitle"
+
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:text="@string/channel_confirm_power_warning_title"
+
+            android:textColor="#FFB74D"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+
+        <!--
+            추가 경고 상세 설명.
+
+            구형 펌웨어를 사용할 가능성과
+            현재 전원 상태를 확인할 수 없다는 점을 안내한다.
+
+            사용자가 상태 표시등을 직접 확인하도록 하며,
+            절전 상태에서는 채널 변경이 적용되지 않을
+            가능성이 있음을 설명한다.
+
+            기본 본문보다 작은 13sp를 사용하여
+            안내 문구의 시각적 우선순위를 구분한다.
+
+            한국어 / 영어 문자열은
+            strings.xml에서 관리한다.
+        -->
+        <TextView
+            android:id="@+id/textChannelConfirmPowerWarningMessage"
+
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="8dp"
+
+            android:text="@string/channel_confirm_power_warning_message"
+
+            android:textColor="#BDBDBD"
+            android:textSize="13sp"
+
+            android:lineSpacingExtra="3dp" />
+
+    </LinearLayout>
+
+
+    <!--
+        채널 변경 확인창 하단 버튼 영역.
+
+        기존 dialog_settings_action.xml과
+        동일한 버튼 배경 및 가로 배치를 유지한다.
+
+        취소 버튼:
+        확인창을 닫고 채널 변경을 실행하지 않는다.
+
+        변경 버튼:
+        MainActivity에서 최종 채널 변경 요청을 실행한다.
+
+        기존 버튼 크기, 가중치, 간격을 유지한다.
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="24dp"
+
+        android:orientation="horizontal">
+
+
+        <!--
+            취소 버튼.
+
+            채널 변경을 취소하고 확인창을 닫는다.
+
+            클릭 동작은 MainActivity에서 설정한다.
+
+            기존 버튼 디자인과
+            최소 터치 영역을 유지한다.
+        -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonChannelConfirmCancel"
+
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="0.6"
+
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+
+            android:background="@drawable/dialog_action_button_background"
+            android:backgroundTint="@null"
+
+            android:text="@string/channel_picker_cancel"
+            android:textAllCaps="false"
+            android:textColor="#FF6B6B"
+            android:textSize="15sp" />
+
+
+        <!--
+            채널 변경 실행 버튼.
+
+            사용자가 최종 변경을 승인하면
+            MainActivity에서 BLE 채널 변경 작업을 시작한다.
+
+            실제 변경 결과는 이후 READ를 통해 확인한다.
+
+            기존 버튼 디자인과
+            버튼 사이의 60dp 간격을 유지한다.
+        -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonChannelConfirmAction"
+
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+
+            android:layout_marginStart="60dp"
+
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+
+            android:background="@drawable/dialog_action_button_background"
+            android:backgroundTint="@null"
+
+            android:text="@string/channel_picker_confirm"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+
+</LinearLayout>
